@@ -16,7 +16,8 @@ setup(
         'Django',
         'requests',
         'Celery',
+        'redis',
         'pymediainfo',
-        'fffw',
+        'fffw', 'django-model-utils'
     ]
 )

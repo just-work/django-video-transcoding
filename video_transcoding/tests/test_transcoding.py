@@ -2,13 +2,13 @@ import subprocess
 from unittest import mock
 
 import pymediainfo
-from django.test import TestCase
 from fffw.wrapper import ensure_binary
 
-from video import transcoding
+from video_transcoding import transcoding
+from video_transcoding.tests.base import BaseTestCase
 
 
-class TranscodingTestCase(TestCase):
+class TranscodingTestCase(BaseTestCase):
     """ Проверяет функционал транскодирования видеофайла."""
 
     # Минимальный шаблон для подделки результата вызова MediaInfo.parse

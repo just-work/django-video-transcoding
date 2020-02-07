@@ -2,18 +2,18 @@ from unittest import mock
 from uuid import uuid4, UUID
 
 from celery.result import AsyncResult
-from django.test import TestCase
 
-from video import models
+from video_transcoding import models
+from video_transcoding.tests.base import BaseTestCase
 
 
-class VideoModelTestCase(TestCase):
+class VideoModelTestCase(BaseTestCase):
     def setUp(self):
         self.on_commit_patcher = mock.patch('django.db.transaction.on_commit',
                                             side_effect=self.on_commit)
         self.on_commit_mock = self.on_commit_patcher.start()
         self.apply_async_patcher = mock.patch(
-            'video.tasks.transcode_video.apply_async',
+            'video_transcoding.tasks.transcode_video.apply_async',
             return_value=AsyncResult(str(uuid4())))
         self.apply_async_mock = self.apply_async_patcher.start()
 

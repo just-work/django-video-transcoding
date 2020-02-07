@@ -26,6 +26,7 @@ class Video(TimeStampedModel):
     basename = models.UUIDField(**nullable)
 
     class Meta:
+        app_label = 'video_transcoding'
         verbose_name = 'Видео'
         verbose_name_plural = 'Видео'
 

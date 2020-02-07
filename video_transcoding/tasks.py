@@ -5,12 +5,11 @@ from uuid import UUID, uuid4
 
 import celery
 import requests
-from django.conf import settings
 from django.db.transaction import atomic
 
-from video_transcoding.utils import LoggerMixin
-from video_transcoding import models, transcoding
+from video_transcoding import models, transcoding, defaults
 from video_transcoding.celery import app
+from video_transcoding.utils import LoggerMixin
 
 DESTINATION_FILENAME = '{basename}1080p.mp4'
 
@@ -116,7 +115,7 @@ class TranscodeVideo(LoggerMixin, celery.Task):
 
     def process_video(self, video: models.Video, basename: str):
         """ Собственно, транскодирование видео."""
-        with tempfile.TemporaryDirectory(dir=settings.VIDEO_TEMP_DIR,
+        with tempfile.TemporaryDirectory(dir=defaults.VIDEO_TEMP_DIR,
                                          prefix=f'video-{video.pk}-') as d:
             destination = os.path.join(d, f'{basename}1080p.mp4')
             self.transcode(video.source, destination)
@@ -144,7 +143,7 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         """
         self.logger.info("Start saving %s to origins", destination)
         filename = os.path.basename(destination)
-        for origin in settings.VIDEO_ORIGINS:
+        for origin in defaults.VIDEO_ORIGINS:
             url = os.path.join(origin, filename)
             self.logger.debug("Uploading %s to %s", destination, url)
             with open(destination, 'rb') as f:

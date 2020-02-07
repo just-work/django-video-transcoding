@@ -3,13 +3,12 @@ from unittest import mock
 from uuid import UUID, uuid4
 
 from celery.exceptions import Retry
-from django.conf import settings
-from django.test import TestCase
 
-from video import models, tasks, transcoding
+from video_transcoding import models, tasks, transcoding, defaults
+from video_transcoding.tests.base import BaseTestCase
 
 
-class TranscodeTaskVideoStateTestCase(TestCase):
+class TranscodeTaskVideoStateTestCase(BaseTestCase):
     """ Тестирует работу со статусами видео в задаче конвертации."""
 
     def setUp(self):
@@ -18,7 +17,7 @@ class TranscodeTaskVideoStateTestCase(TestCase):
             status=models.Video.QUEUED,
             source='ftp://ya.ru/1.mp4')
         self.handle_patcher = mock.patch(
-            'video.tasks.TranscodeVideo.process_video')
+            'video_transcoding.tasks.TranscodeVideo.process_video')
         self.handle_mock: mock.MagicMock = self.handle_patcher.start()
         self.retry_patcher = mock.patch('celery.Task.retry',
                                         side_effect=Retry)
@@ -131,7 +130,7 @@ class TranscodeTaskVideoStateTestCase(TestCase):
         self.assertEqual(self.video.status, models.Video.PROCESS)
 
 
-class ProcessVideoTestCase(TestCase):
+class ProcessVideoTestCase(BaseTestCase):
     """
     Проверяет обработку видеофайла в рамках задачи транскодирования видео.
     """
@@ -143,7 +142,8 @@ class ProcessVideoTestCase(TestCase):
             source='ftp://ya.ru/1.mp4')
         self.basename = uuid4().hex
 
-        self.transcoder_patcher = mock.patch('video.transcoding.Transcoder')
+        self.transcoder_patcher = mock.patch(
+            'video_transcoding.transcoding.Transcoder')
         self.transcoder_mock = self.transcoder_patcher.start()
         self.open_patcher = mock.patch('builtins.open', mock.mock_open(
             read_data=b'video_result'))
@@ -165,7 +165,7 @@ class ProcessVideoTestCase(TestCase):
         Проверяет корректность передачи путей до файлов в методы
         транскодирования и загрузки результата обработки на ориджины.
         """
-        tmp_dir = os.path.join(settings.VIDEO_TEMP_DIR, 'tmp')
+        tmp_dir = os.path.join(defaults.VIDEO_TEMP_DIR, 'tmp')
         with mock.patch('tempfile.TemporaryDirectory.__enter__',
                         return_value=tmp_dir) as tmp:
             self.run_task()
@@ -179,5 +179,5 @@ class ProcessVideoTestCase(TestCase):
         self.open_mock.assert_called_once_with(destination, 'rb')
 
         self.requests_mock.assert_called_once_with(
-            'put', os.path.join(settings.VIDEO_ORIGINS[0], filename),
+            'put', os.path.join(defaults.VIDEO_ORIGINS[0], filename),
             data=self.open_mock.return_value, timeout=(1, None))
