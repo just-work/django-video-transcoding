@@ -3,10 +3,10 @@ from logging import getLogger
 
 class LoggerMixin:
     """
-    Миксин для добавления логгера к классу.
+    A mixin for logger injection.
 
-    Нельзя использовать с моделями Django, т.к. Logger содержит несериализуемый
-    threading.Lock
+    Should not be used with Django models, because Logger contains
+    non-serializable threading.Lock object.
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

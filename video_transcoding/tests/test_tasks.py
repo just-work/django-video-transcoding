@@ -9,7 +9,7 @@ from video_transcoding.tests.base import BaseTestCase
 
 
 class TranscodeTaskVideoStateTestCase(BaseTestCase):
-    """ Тестирует работу со статусами видео в задаче конвертации."""
+    """ Tests Video status handling in transcode task."""
 
     def setUp(self):
         super().setUp()
@@ -36,7 +36,7 @@ class TranscodeTaskVideoStateTestCase(BaseTestCase):
 
     def test_lock_video(self):
         """
-        Видео в обработку попадает в статусе PROCESS и заканчивается в DONE.
+        Video transcoding starts with status PROCESS and finished with DONE.
         """
         self.video.error = "my error"
         self.video.save()
@@ -54,7 +54,7 @@ class TranscodeTaskVideoStateTestCase(BaseTestCase):
 
     def test_mark_error(self):
         """
-        При ошибке обработки видео падает в статус ERROR с сообщением об ошибке.
+        Video transcoding failed with ERROR status and error message saved.
         """
         error = transcoding.TranscodeError("my error " * 100)
         self.handle_mock.side_effect = error
@@ -67,7 +67,7 @@ class TranscodeTaskVideoStateTestCase(BaseTestCase):
 
     def test_skip_incorrect_status(self):
         """
-        Видео в неожиданных статусах не берутся в обработку.
+        Unexpected video statuses lead to task retry.
         """
         self.video.status = models.Video.ERROR
         self.video.save()
@@ -81,8 +81,10 @@ class TranscodeTaskVideoStateTestCase(BaseTestCase):
 
     def test_skip_locked(self):
         """
-        Видео, заблокированное в БД, не берется в обработку
+        Locked video leads to task retry.
         """
+        # We can't simulate database lock, so just simulate this with
+        # DoesNotExist in select_related(skip_locked=True)
         self.video.pk += 1
 
         with self.assertRaises(Retry):
@@ -92,8 +94,7 @@ class TranscodeTaskVideoStateTestCase(BaseTestCase):
 
     def test_skip_unlock_incorrect_status(self):
         """
-        После завершения обработки видео не изменяется в БД, если оно было
-        изменено в другом процессе.
+        Video status is not changed in db if video was modified somewhere else.
         """
 
         # noinspection PyUnusedLocal
@@ -110,8 +111,7 @@ class TranscodeTaskVideoStateTestCase(BaseTestCase):
 
     def test_skip_unlock_foreign_task_id(self):
         """
-        После завершения обработки видео не изменяется в БД, если оно было
-        залочено другой задачей
+        Video status is not changed in db if it was locked by another task.
         """
         task_id = uuid4()
 
@@ -132,7 +132,8 @@ class TranscodeTaskVideoStateTestCase(BaseTestCase):
 
 class ProcessVideoTestCase(BaseTestCase):
     """
-    Проверяет обработку видеофайла в рамках задачи транскодирования видео.
+    Tests video processing in terms of transcoding and uploading in
+    transcode_video task.
     """
 
     def setUp(self):
@@ -162,8 +163,8 @@ class ProcessVideoTestCase(BaseTestCase):
 
     def test_pass_args_to_transcoder(self):
         """
-        Проверяет корректность передачи путей до файлов в методы
-        транскодирования и загрузки результата обработки на ориджины.
+        Source file link and destination path are passed correctly to
+        transcoding and uploading methods. Temporary dir is created and removed.
         """
         tmp_dir = os.path.join(defaults.VIDEO_TEMP_DIR, 'tmp')
         with mock.patch('tempfile.TemporaryDirectory.__enter__',

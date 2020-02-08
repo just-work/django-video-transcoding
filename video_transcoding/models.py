@@ -2,21 +2,21 @@ import os
 
 from django.core.validators import URLValidator
 from django.db import models
+from django.utils.translation import ugettext_lazy as _
 from model_utils.models import TimeStampedModel
-
 
 nullable = dict(blank=True, null=True)
 
 
 class Video(TimeStampedModel):
-    """ Модель видео."""
+    """ Video model."""
     CREATED, QUEUED, PROCESS, DONE, ERROR = range(5)
     STATUS_CHOICES = (
-        (CREATED, 'создано'),  # редактор создал объект в БД
-        (QUEUED, 'в очереди'),  # задача на конвертацию поставлена в RabbitMQ
-        (PROCESS, 'в обработке'),  # Celery worker взял задачу в обработку
-        (DONE, 'готово'),  # видео успешно обработано
-        (ERROR, 'ошибка'),  # ошибка обработки видео
+        (CREATED, _('created')),  # And editor created video in db
+        (QUEUED, _('queued')),  # Transcoding task is sent to broker
+        (PROCESS, _('process')),  # Celery worker started video processing
+        (DONE, _('done')),  # Video processing is done successfully
+        (ERROR, _('error')),  # Video processing error
     )
 
     status = models.SmallIntegerField(default=CREATED, choices=STATUS_CHOICES)
@@ -27,8 +27,8 @@ class Video(TimeStampedModel):
 
     class Meta:
         app_label = 'video_transcoding'
-        verbose_name = 'Видео'
-        verbose_name_plural = 'Видео'
+        verbose_name = _('Video')
+        verbose_name_plural = _('Video')
 
     def __str__(self):
         basename = os.path.basename(self.source)
@@ -36,13 +36,12 @@ class Video(TimeStampedModel):
 
     def change_status(self, status: int, **fields):
         """
-        Меняет статус объекта видео.
+        Changes video status.
 
-        Параллельно обновляет другие поля модели. При сохранении также
-        обновляет поле modified.
+        Also saves another model fields and always updates `modified` value.
 
-        :param status: один из статусов (см. STATUS_CHOICES)
-        :param fields: словарь из значений полей модели.
+        :param status: one of statuses for Video.status (see STATUS_CHOICES)
+        :param fields: dict with model field values.
         """
         self.status = status
         update_fields = {'status', 'modified'}

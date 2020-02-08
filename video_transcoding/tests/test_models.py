@@ -8,6 +8,7 @@ from video_transcoding.tests.base import BaseTestCase
 
 
 class VideoModelTestCase(BaseTestCase):
+    """ Video django model tests."""
     def setUp(self):
         self.on_commit_patcher = mock.patch('django.db.transaction.on_commit',
                                             side_effect=self.on_commit)
@@ -26,7 +27,7 @@ class VideoModelTestCase(BaseTestCase):
         func()
 
     def test_send_transcode_task(self):
-        """ При создании нового видео оно отправляется на конвертацию."""
+        """ When new video is created, a transcode task is sent."""
         v = models.Video.objects.create(source='http://ya.ru/1.mp4')
         self.on_commit_mock.assert_called()
         self.apply_async_mock.assert_called_once_with(args=(v.id,),

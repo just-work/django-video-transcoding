@@ -3,14 +3,14 @@ from video_transcoding import tasks
 
 def send_transcode_task(video):
     """
-    Ставит задачу на транскодирование видео.
+    Send a video transcoding task.
 
-    При успешной постановки задачи в очередь меняет статус видео на QUEUED и
-    сохраняет идентификатор celery-задачи.
+    If task is successfully sent to broker, Video status is changed to QUEUED
+    and Celery task identifier is saved.
 
-    :param video: объект видеофайла
+    :param video: video object
     :type video: video.models.Video
-    :returns: объект результата Celery-задачи
+    :returns: Celery task result
     :rtype: celery.result.AsyncResult
     """
     result = tasks.transcode_video.apply_async(args=(video.pk,), countdown=10)

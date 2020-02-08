@@ -15,20 +15,20 @@ DESTINATION_FILENAME = '{basename}1080p.mp4'
 
 
 class TranscodeVideo(LoggerMixin, celery.Task):
-    """ Задача на обработку видео."""
+    """ Video processing task."""
     name = 'video.transcode'
     routing_key = 'video'
 
     def run(self, video_id: int):
         """
-        Выполняет транскодирование видео.
+        Process video.
 
-        1. Блокирует видео, меняя статус с QUEUED на PROCESS и запоминая task_id
-        2. Выполняет обработку
-        3. В случае успеха проставляет статус DONE и basename результата
-        4. В случае неудачи проставляет статус ERROR и сообщение об ошибке.
+        1. Locks video changing status from QUEUED to PROCESS
+        2. Transcodes video and stores result to origins
+        3. Changes video status to DONE, stores result basename
+        4. On errors changes video status ERROR, stores error message
 
-        :param video_id: первичный ключ видео.
+        :param video_id: Video id.
         """
         status = models.Video.DONE
         error = basename = None
@@ -45,15 +45,15 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         return error
 
     def select_for_update(self, video_id: int, status: int) -> models.Video:
-        """ Блокирует видео для обновлений в БД.
+        """ Lock video in DB for current task.
 
-        :param video_id: первичный ключ видео
-        :param status: ожидаемый статус видео
-        :returns: объект видео, полученный из БД
+        :param video_id: Video primary key
+        :param status: expected video status
+        :returns: Video object from db
 
-        :raises models.Video.DoesNotExist: в случае, если не удалось найти
-        видео с указанным первичным ключом и заблокировать его для обновлений
-        :raises ValueError: вслучае если статус видео отличается от ожидаемого
+        :raises models.Video.DoesNotExist: in case of missing or locked
+        Video for primary key
+        :raises ValueError: in case of unexpected Video status or task_id
         """
         try:
             video = models.Video.objects.select_for_update(
@@ -61,6 +61,12 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         except models.Video.DoesNotExist:
             self.logger.error("Can't lock video %s", video_id)
             raise
+
+        if video.task_id != UUID(self.request.id):
+            self.logger.error("Unexpected video %s task_id %s",
+                              video.id, video.task_id)
+            raise ValueError(video.task_id)
+
         if video.status != status:
             self.logger.error("Unexpected video %s status %s",
                               video.id, video.get_status_display())
@@ -70,51 +76,52 @@ class TranscodeVideo(LoggerMixin, celery.Task):
     @atomic
     def lock_video(self, video_id: int) -> models.Video:
         """
-        Получает из БД видео в ожидаемых статусах и переставляет статус на
-        "в обработке".
+        Gets video in QUEUED status from DB and changes status to PROCESS.
 
-        :param video_id: первичный ключ объекта видео
-        :returns: объект видео, полученный из БД
-        :raises Retry: в случае ошибки блокирования видео или если статус
-            видео отличается от "в очереди".
+        :param video_id: Video primary key
+        :returns: Video object
+        :raises Retry: in case of unexpected video status or task_id
         """
         try:
             video = self.select_for_update(video_id, models.Video.QUEUED)
         except (models.Video.DoesNotExist, ValueError) as e:
-            # в случае ошибки блокировки повторяем попытку
+            # if video is locked or task_id is not equal to current task, retry.
             raise self.retry(exc=e)
 
-        video.change_status(models.Video.PROCESS,
-                            task_id=self.request.id)
+        video.change_status(models.Video.PROCESS)
         return video
 
     @atomic
     def unlock_video(self, video_id: int, status: int, error: Optional[str],
                      basename: Optional[str]):
         """
-        Помечает видео одним из финальных статусов.
+        Marks video with final status.
 
-        :param video_id: первичный ключ объекта видео
-        :param status: финальный статус видео
-            (models.Video.DONE, models.Video.ERROR)
-        :param error: текстовое сообщение об ошибке
-        :param basename: UUID-подобный идентификатор результата обработки
-        :raises RuntimeError:
+        :param video_id: Video primary key
+        :param status: final video status (Video.DONE, Video.ERROR)
+        :param error: error message
+        :param basename: UUID-like result file identifier
+        :raises RuntimeError: in case of unexpected video status or task id
         """
         try:
             video = self.select_for_update(video_id, models.Video.PROCESS)
-            if video.task_id != UUID(self.request.id):
-                raise ValueError(video.task_id)
         except (models.Video.DoesNotExist, ValueError) as e:
-            # в случае ошибки блокировки ничего не меняем, т.к. кто-то другой
-            # изменил видео пока мы над ним работали
+            # if video is locked or task_id differs from current task, do
+            # nothing because video is modified somewhere else.
             raise RuntimeError("Can't unlock locked video %s: %s",
                                video_id, repr(e))
 
         video.change_status(status, error=error, basename=basename)
 
     def process_video(self, video: models.Video, basename: str):
-        """ Собственно, транскодирование видео."""
+        """
+        Video processing workflow.
+
+        1. Create temporary directory
+        2. Transcode source file
+        3. Upload resulting file to origins
+        4. Cleanup temporary directory
+        """
         with tempfile.TemporaryDirectory(dir=defaults.VIDEO_TEMP_DIR,
                                          prefix=f'video-{video.pk}-') as d:
             destination = os.path.join(d, f'{basename}1080p.mp4')
@@ -124,10 +131,10 @@ class TranscodeVideo(LoggerMixin, celery.Task):
 
     def transcode(self, source: str, destination: str):
         """
-        Стартует процесс транскодирования.
+        Starts video transcoding
 
-        :param source: ссылка на исходник
-        :param destination: путь для результата
+        :param source: source file link (http/ftp or file path)
+        :param destination: result temporary file path.
         """
         self.logger.info("Start transcoding %s to %s",
                          source, destination)
@@ -137,9 +144,9 @@ class TranscodeVideo(LoggerMixin, celery.Task):
 
     def store(self, destination: str):
         """
-        Загружает результат транскодирования на ориджины.
+        Stores transcoded video to origin list
 
-        :param destination: путь до результата транскодирования.
+        :param destination: transcoded video path.
         """
         self.logger.info("Start saving %s to origins", destination)
         filename = os.path.basename(destination)
