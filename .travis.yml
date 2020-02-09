@@ -1,0 +1,20 @@
+language: python
+dist: xenial
+python:
+  - "3.6"
+  - "3.7"
+  - "3.8"
+
+env:
+  matrix:
+    - DJANGO=2.2
+    - DJANGO=3.0
+
+install:
+  - pip install .
+  - pip install codecov
+
+script:
+    - python -m coverage run manage.py test -v3
+
+after_success: codecov
