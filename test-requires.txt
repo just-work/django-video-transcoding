@@ -2,6 +2,6 @@ Django
 django-model-utils
 Celery
 kombu
-requests
+requests==2.22.0
 pymediainfo
 fffw
