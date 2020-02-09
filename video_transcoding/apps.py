@@ -1,10 +1,10 @@
 from django.apps import AppConfig
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 
 
 class VideoTranscodingConfig(AppConfig):
     name = 'video_transcoding'
-    label = _('Video Transcoding')
+    verbose_name = _('Video Transcoding')
 
     def ready(self):
         __import__('video_transcoding.signals')
