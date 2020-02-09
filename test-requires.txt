@@ -1,6 +1,6 @@
-Django
-django-model-utils
-Celery
+Django==3.0.3
+django-model-utils==4.0.0
+Celery==4.4.0
 kombu==4.6.7
 requests
 pymediainfo
