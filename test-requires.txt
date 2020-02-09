@@ -1,6 +1,6 @@
 Django
 django-model-utils
-Celery
+Celery==4.4.0
 kombu
 requests
 pymediainfo
