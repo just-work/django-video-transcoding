@@ -4,4 +4,4 @@ Celery
 kombu
 requests
 pymediainfo
-fffw
+fffw==1.0.0
