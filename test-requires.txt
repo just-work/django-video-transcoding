@@ -1,0 +1,7 @@
+Django
+django-model-utils
+Celery
+kombu
+requests
+pymediainfo
+fffw
