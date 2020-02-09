@@ -15,6 +15,7 @@ class TranscodeTaskVideoStateTestCase(BaseTestCase):
         super().setUp()
         self.video = models.Video.objects.create(
             status=models.Video.QUEUED,
+            task_id=uuid4(),
             source='ftp://ya.ru/1.mp4')
         self.handle_patcher = mock.patch(
             'video_transcoding.tasks.TranscodeVideo.process_video')
@@ -30,6 +31,7 @@ class TranscodeTaskVideoStateTestCase(BaseTestCase):
 
     def run_task(self):
         result = tasks.transcode_video.apply(
+            task_id=str(self.video.task_id),
             args=(self.video.id,),
             throw=True)
         return result
