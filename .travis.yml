@@ -12,6 +12,7 @@ env:
 
 install:
   - pip install -r test-requires.txt
+  - pip install $DJANGO
   - pip install codecov
 
 script:
