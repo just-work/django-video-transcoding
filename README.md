@@ -67,5 +67,6 @@ TBD:
 * [x] travis-ci
 * [ ] sphinx docs - autodoc + manual
 * [x] coverage
-* [ ] typing
+* [x] typing
 * [x] badges
+* [ ] video hosting demo project with docker-compose, nginx and player demo
