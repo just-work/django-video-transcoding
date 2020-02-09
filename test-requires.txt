@@ -1,4 +1,4 @@
-Django
+Django==3.0.3
 django-model-utils
 Celery
 kombu
