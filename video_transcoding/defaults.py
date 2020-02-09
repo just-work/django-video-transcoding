@@ -9,8 +9,7 @@ CELERY_APP_NAME = 'video_transcoding'
 VIDEO_TRANSCODING_CELERY_CONF = {
     'broker_url': e('VIDEO_TRANSCODING_CELERY_BROKER_URL',
                     'amqp://guest:guest@rabbitmq:5672/'),
-    'result_backend': e('VIDEO_TRANSCODING_CELERY_RESULT_BACKEND',
-                        'redis://redis:6379/0'),
+    'result_backend': e('VIDEO_TRANSCODING_CELERY_RESULT_BACKEND', None),
     'task_default_exchange': CELERY_APP_NAME,
     'task_default_exchange_type': 'topic',
     'task_default_queue': CELERY_APP_NAME,
