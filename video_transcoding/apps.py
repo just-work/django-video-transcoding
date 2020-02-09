@@ -6,5 +6,5 @@ class VideoTranscodingConfig(AppConfig):
     name = 'video_transcoding'
     verbose_name = _('Video Transcoding')
 
-    def ready(self):
+    def ready(self) -> None:
         __import__('video_transcoding.signals')

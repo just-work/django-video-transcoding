@@ -1,7 +1,7 @@
 import os
 import re
 import subprocess
-from setuptools import setup, find_packages
+from setuptools import setup, find_packages  # type: ignore
 from pathlib import Path
 
 with open('README.md') as f:

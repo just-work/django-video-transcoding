@@ -1,4 +1,5 @@
 import os
+from typing import Any
 
 from django.core.validators import URLValidator
 from django.db import models
@@ -20,21 +21,21 @@ class Video(TimeStampedModel):
     )
 
     status = models.SmallIntegerField(default=CREATED, choices=STATUS_CHOICES)
-    error = models.TextField(**nullable)
-    task_id = models.UUIDField(**nullable)
+    error = models.TextField(blank=True, null=True)
+    task_id = models.UUIDField(blank=True, null=True)
     source = models.URLField(validators=[URLValidator(schemes=('ftp', 'http'))])
-    basename = models.UUIDField(**nullable)
+    basename = models.UUIDField(blank=True, null=True)
 
     class Meta:
         app_label = 'video_transcoding'
         verbose_name = _('Video')
         verbose_name_plural = _('Video')
 
-    def __str__(self):
+    def __str__(self) -> str:
         basename = os.path.basename(self.source)
         return f'{basename} ({self.get_status_display()})'
 
-    def change_status(self, status: int, **fields):
+    def change_status(self, status: int, **fields: Any) -> None:
         """
         Changes video status.
 
@@ -48,4 +49,4 @@ class Video(TimeStampedModel):
         for k, v in fields.items():
             setattr(self, k, v)
             update_fields.add(k)
-        self.save(update_fields=update_fields)
+        self.save(update_fields=tuple(update_fields))
