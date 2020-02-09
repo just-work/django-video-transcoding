@@ -19,7 +19,7 @@ class TranscodeVideo(LoggerMixin, celery.Task):
     name = 'video.transcode'
     routing_key = 'video'
 
-    def run(self, video_id: int):
+    def run(self, video_id: int) -> Optional[str]:
         """
         Process video.
 
@@ -93,7 +93,7 @@ class TranscodeVideo(LoggerMixin, celery.Task):
 
     @atomic
     def unlock_video(self, video_id: int, status: int, error: Optional[str],
-                     basename: Optional[str]):
+                     basename: Optional[str]) -> None:
         """
         Marks video with final status.
 
@@ -113,7 +113,7 @@ class TranscodeVideo(LoggerMixin, celery.Task):
 
         video.change_status(status, error=error, basename=basename)
 
-    def process_video(self, video: models.Video, basename: str):
+    def process_video(self, video: models.Video, basename: str) -> None:
         """
         Video processing workflow.
 
@@ -129,7 +129,7 @@ class TranscodeVideo(LoggerMixin, celery.Task):
             self.store(destination)
         self.logger.info("Processing done")
 
-    def transcode(self, source: str, destination: str):
+    def transcode(self, source: str, destination: str) -> None:
         """
         Starts video transcoding
 
@@ -142,7 +142,7 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         transcoder.transcode()
         self.logger.info("Transcoding %s finished", source)
 
-    def store(self, destination: str):
+    def store(self, destination: str) -> None:
         """
         Stores transcoded video to origin list
 
@@ -160,4 +160,4 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         self.logger.info("%s save finished", destination)
 
 
-transcode_video = app.register_task(TranscodeVideo())
+transcode_video = app.register_task(TranscodeVideo())  # type: ignore

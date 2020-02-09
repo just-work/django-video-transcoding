@@ -104,7 +104,7 @@ class Transcoder(LoggerMixin):
         self.logger.info("Parsed media info:\n%s", pformat(media_info))
         return media_info
 
-    def transcode(self):
+    def transcode(self) -> None:
         """ Transcodes video
 
         * checks source mediainfo
@@ -137,7 +137,8 @@ class Transcoder(LoggerMixin):
         self.validate(source_media_info, dest_media_info)
 
     @staticmethod
-    def validate(source_media_info: Metadata, dest_media_info: Metadata):
+    def validate(source_media_info: Metadata,
+                 dest_media_info: Metadata) -> None:
         """
         Validate video transcoding result.
 
@@ -154,7 +155,7 @@ class Transcoder(LoggerMixin):
             # is shorter)
             raise TranscodeError(f"incomplete file: {dst_duration}")
 
-    def run(self, ff: FFMPEG):
+    def run(self, ff: FFMPEG) -> None:
         """ Starts ffmpeg process and captures errors from it's logs"""
         return_code, error = ff.run()
         self.logger.info("ffmpeg return code is %s", return_code)
