@@ -1,7 +1,7 @@
-Django
-django-model-utils
-Celery
-kombu
-requests
+Django==3.0.3
+django-model-utils==4.0.0
+Celery==4.4.0
+kombu==4.6.7
+requests==2.22.0
 pymediainfo==4.1
-fffw
+fffw==1.0.0
