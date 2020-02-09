@@ -80,6 +80,5 @@ setup(
         # Video processing
         'pymediainfo',
         'fffw',
-
     ]
 )
