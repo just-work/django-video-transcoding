@@ -59,16 +59,16 @@ def get_version():
 
 setup(
     name='django_video_transcoding',
-    version=get_version(),
+    version=get_version() or 'dev',
     long_description=long_description,
     long_description_content_type='text/markdown',
-    packages=[find_packages(exclude=['video_transcoding.tests'])],
+    packages=find_packages(exclude=['video_transcoding.tests']),
     url='https://github.com/just-work/django-video-transcoding',
     license='BSD',
     author='Sergey Tikhonov',
     author_email='zimbler@gmail.com',
     description='Simple video transcoding application for Django framework',
-    requires=[
+    install_requires=[
         # Django
         'Django',
         'django-model-utils',
