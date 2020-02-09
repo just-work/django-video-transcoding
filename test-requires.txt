@@ -1,5 +1,5 @@
 Django
-django-model-utils
+django-model-utils==4.0.0
 Celery
 kombu
 requests
