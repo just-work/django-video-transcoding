@@ -80,5 +80,16 @@ setup(
         # Video processing
         'pymediainfo',
         'fffw',
+    ],
+    classifiers=[
+        'Development Status :: 1 - Planning',
+        'Environment :: Console',
+        'Framework :: Django :: 2.2',
+        'Framework :: Django :: 3.0',
+        'Operating System :: POSIX',
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Topic :: Multimedia :: Video :: Conversion',
     ]
 )
