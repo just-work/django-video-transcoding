@@ -1,4 +1,4 @@
-from typing import Any, Optional, TypeVar, Callable
+from typing import Any, TypeVar, Callable
 
 from django.contrib import admin
 from django.db.models import QuerySet

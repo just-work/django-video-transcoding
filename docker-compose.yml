@@ -1,0 +1,38 @@
+version: "3.5"
+services:
+  #  rabbitmq:
+  #    image: rabbitmq:3.8-management
+  #    container_name: dvt-rabbitmq
+  #    hostname: rabbitmq
+  #    ports:
+  #      - "15672:15672"
+  #      - "5672:5672"
+  #    environment:
+  #      - RABBITMQ_ERLANG_COOKIE=ASDFCASDFASDFSHFGH
+  #      - RABBITMQ_DEFAULT_USER=guest
+  #      - RABBITMQ_DEFAULT_PASS=guest
+  #      - RABBITMQ_DEFAULT_VHOST=/
+  admin:
+    build:
+      context: .
+      dockerfile: deploy/dvt/Dockerfile
+      target: dvt-admin
+    command: bash -c /app/start-django-dev.sh
+    container_name: dvt-admin
+    restart: unless-stopped
+    volumes:
+      - "database:/app/db/"
+    ports:
+      - "8000:8000"
+    expose:
+      - "8000"
+    #    depends_on:
+    #      - rabbitmq
+    environment:
+      - VIDEO_TRANSCODING_CELERY_BROKER_URL
+      - DJANGO_SUPERUSER_USERNAME
+      - DJANGO_SUPERUSER_PASSWORD
+      - DJANGO_SUPERUSER_EMAIL
+
+volumes:
+  database:

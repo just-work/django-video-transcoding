@@ -4,7 +4,7 @@ import subprocess
 from setuptools import setup, find_packages  # type: ignore
 from pathlib import Path
 
-with open('README.md') as f:
+with open('../README.md') as f:
     long_description = f.read()
 
 version_re = re.compile('^Version: (.+)$', re.M)
@@ -64,7 +64,7 @@ setup(
     long_description_content_type='text/markdown',
     packages=find_packages(exclude=['video_transcoding.tests']),
     url='https://github.com/just-work/django-video-transcoding',
-    license='BSD',
+    license='MIT',
     author='Sergey Tikhonov',
     author_email='zimbler@gmail.com',
     description='Simple video transcoding application for Django framework',
