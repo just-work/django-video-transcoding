@@ -63,7 +63,7 @@ setup(
     version=get_version() or 'dev',
     long_description=long_description,
     long_description_content_type='text/markdown',
-    packages=find_packages(exclude=['video_transcoding.tests']),
+    packages=find_packages(exclude=['dvt', 'video_transcoding.tests']),
     url='https://github.com/just-work/django-video-transcoding',
     license='MIT',
     author='Sergey Tikhonov',
