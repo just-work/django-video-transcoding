@@ -61,6 +61,24 @@ Start celery worker
 $> celery worker -A video_transcoding.celery
 ```
 
+## Demo project
+
+### Run admin, storage and celery worker
+
+```shell script
+docker-compose up
+```
+
+* http://localhost:8000/admin/ - Django admin
+* http://storage.localhost:8000/videos/ - WebDAV for sources & results
+* http://storage.localhost:8000/hls/ - HLS stream endpoint
+
+### Transcode something
+
+* `curl -T cat.mp4 http://storage.localhost:8080/videos/sources/cat.mp4`
+* Create new video with link above
+* Wait till video will change status to DONE.
+* On video change form admin page there is a sample video player. 
 
 
 TBD:
@@ -70,4 +88,4 @@ TBD:
 * [x] coverage
 * [x] typing
 * [x] badges
-* [ ] video hosting demo project with docker-compose, nginx and player demo
+* [x] video hosting demo project with docker-compose, nginx and player demo
