@@ -1,4 +1,5 @@
-from typing import Any, TypeVar, Callable
+from typing import Any, TypeVar, Callable, cast
+from uuid import UUID
 
 from django.contrib import admin
 from django.db.models import QuerySet
@@ -30,10 +31,11 @@ class VideoAdmin(admin.ModelAdmin):
     readonly_fields = ('created', 'modified', 'video_player')
 
     class Media:
+        _prefix = 'https://cdn.jsdelivr.net/mediaelement/latest'
         css = {
-            "all": ('https://cdn.jsdelivr.net/mediaelement/latest/mediaelementplayer.css',)
+            "all": (f'{_prefix}/mediaelementplayer.css',)
         }
-        js = ('https://cdn.jsdelivr.net/mediaelement/latest/mediaelement-and-player.min.js',)
+        js = ('{_prefix}/mediaelement-and-player.min.js',)
 
     @short_description(_("Status"))
     def status_display(self, obj: models.Video) -> str:
@@ -49,8 +51,13 @@ class VideoAdmin(admin.ModelAdmin):
 
     @short_description(_('Video player'))
     def video_player(self, obj: models.Video) -> str:
-        source = f'{defaults.VIDEO_EDGE_URL}/hls/{obj.basename.hex},1080p.mp4.urlset/master.m3u8'
-        return mark_safe('''<video width="480px" height="270px" class="mejs__player">
+        if obj.basename is None:
+            return ""
+        basename = cast(UUID, obj.basename)
+        source = (f'{defaults.VIDEO_EDGE_URL}/hls/'
+                  f'{basename.hex},1080p.mp4.urlset/master.m3u8')
+        return mark_safe('''
+<video width="480px" height="270px" class="mejs__player">
 <source src="%s" />
 </video>''' % (source,))
 

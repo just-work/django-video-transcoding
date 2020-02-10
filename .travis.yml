@@ -17,6 +17,6 @@ install:
 
 script:
     - python -m coverage run src/manage.py test -v3
-    - cd src && mypy --config-file=../mypy.ini .
+    - cd src && mypy --config-file=../mypy.ini video_transcoding
 
 after_success: codecov
