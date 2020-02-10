@@ -50,6 +50,16 @@ services:
     environment:
       - DJANGO_SETTINGS_MODULE=dvt.settings
       - VIDEO_TRANSCODING_CELERY_BROKER_URL
+  storage:
+    build:
+      context: .
+      dockerfile: deploy/storage/Dockerfile
+    command: sh -c /app/start-nginx.sh
+    ports:
+      - "8080:8080"
+    volumes:
+      - "videos:/opt/static/videos"
 
 volumes:
   database:
+  videos:
