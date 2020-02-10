@@ -16,7 +16,7 @@ install:
   - pip install codecov mypy django-stubs
 
 script:
-    - dvt-common -m coverage run manage.py test -v3
+    - python -m coverage run manage.py test -v3
     - mypy --config-file=mypy.ini .
 
 after_success: codecov
