@@ -1,11 +1,13 @@
-from typing import Any, Optional, TypeVar, Callable
+from typing import Any, TypeVar, Callable, cast
+from uuid import UUID
 
 from django.contrib import admin
 from django.db.models import QuerySet
 from django.http import HttpRequest, HttpResponse
+from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 
-from video_transcoding import helpers, models
+from video_transcoding import helpers, models, defaults
 
 C = TypeVar("C", bound=Callable)
 
@@ -26,6 +28,14 @@ class VideoAdmin(admin.ModelAdmin):
     list_filter = ('status',)
     search_fields = ('source', '=basename')
     actions = admin.ModelAdmin.actions + ["transcode"]
+    readonly_fields = ('created', 'modified', 'video_player')
+
+    class Media:
+        _prefix = 'https://cdn.jsdelivr.net/mediaelement/latest'
+        css = {
+            "all": (f'{_prefix}/mediaelementplayer.css',)
+        }
+        js = ('{_prefix}/mediaelement-and-player.min.js',)
 
     @short_description(_("Status"))
     def status_display(self, obj: models.Video) -> str:
@@ -38,6 +48,18 @@ class VideoAdmin(admin.ModelAdmin):
                   queryset: "QuerySet[models.Video]") -> None:
         for video in queryset:
             helpers.send_transcode_task(video)
+
+    @short_description(_('Video player'))
+    def video_player(self, obj: models.Video) -> str:
+        if obj.basename is None:
+            return ""
+        basename = cast(UUID, obj.basename)
+        source = (f'{defaults.VIDEO_EDGE_URL}/hls/'
+                  f'{basename.hex},1080p.mp4.urlset/master.m3u8')
+        return mark_safe('''
+<video width="480px" height="270px" class="mejs__player">
+<source src="%s" />
+</video>''' % (source,))
 
     def add_view(self,
                  request: HttpRequest,

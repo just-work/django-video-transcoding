@@ -17,7 +17,7 @@ DESTINATION_FILENAME = '{basename}1080p.mp4'
 class TranscodeVideo(LoggerMixin, celery.Task):
     """ Video processing task."""
     name = 'video.transcode'
-    routing_key = 'video'
+    routing_key = 'video_transcoding'
 
     def run(self, video_id: int) -> Optional[str]:
         """
@@ -36,10 +36,10 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         try:
             basename = uuid4().hex
             self.process_video(video, basename)
-        except transcoding.TranscodeError as e:
+        except Exception as e:
             basename = None
             status = models.Video.ERROR
-            error = e.message
+            error = repr(e)
         finally:
             self.unlock_video(video_id, status, error, basename)
         return error

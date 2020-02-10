@@ -11,12 +11,13 @@ env:
     - DJANGO=3.0
 
 install:
-  - pip install -r test-requires.txt
+  - pip install -r requires.txt
   - pip install Django~=$DJANGO
   - pip install codecov mypy django-stubs
 
 script:
-    - python -m coverage run manage.py test -v3
-    - mypy --config-file=mypy.ini .
+  - cd src
+  - python -m coverage run ./manage.py test -v3
+  - mypy --config-file=../mypy.ini video_transcoding
 
 after_success: codecov

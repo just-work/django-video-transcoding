@@ -4,7 +4,7 @@ from django.db import transaction
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
-from video_transcoding import models, helpers
+from video_transcoding import helpers, models
 
 
 # noinspection PyUnusedLocal

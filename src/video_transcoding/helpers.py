@@ -1,6 +1,7 @@
 from celery.result import AsyncResult
 
-from video_transcoding import tasks, models
+from video_transcoding import tasks
+from video_transcoding import models
 
 
 def send_transcode_task(video: models.Video) -> AsyncResult:
