@@ -32,6 +32,7 @@ services:
       - rabbitmq
     environment:
       - VIDEO_TRANSCODING_CELERY_BROKER_URL
+      - VIDEO_EDGE_URL
       - DJANGO_SUPERUSER_USERNAME
       - DJANGO_SUPERUSER_PASSWORD
       - DJANGO_SUPERUSER_EMAIL
@@ -47,13 +48,17 @@ services:
       - "database:/app/db/"
     depends_on:
       - rabbitmq
+    links:
+      - "storage:storage.localhost"
     environment:
       - DJANGO_SETTINGS_MODULE=dvt.settings
+      - VIDEO_ORIGINS
       - VIDEO_TRANSCODING_CELERY_BROKER_URL
   storage:
     build:
       context: .
       dockerfile: deploy/storage/Dockerfile
+    hostname: storage.localhost
     command: sh -c /app/start-nginx.sh
     ports:
       - "8080:8080"
