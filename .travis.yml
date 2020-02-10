@@ -1,4 +1,4 @@
-language: dvt-common
+language: python
 dist: xenial
 python:
   - "3.6"
@@ -11,9 +11,9 @@ env:
     - DJANGO=3.0
 
 install:
-  - python -m pip install -r requires.txt
-  - python -m pip install Django~=$DJANGO
-  - python -m pip install codecov mypy django-stubs
+  - pip install -r requires.txt
+  - pip install Django~=$DJANGO
+  - pip install codecov mypy django-stubs
 
 script:
     - dvt-common -m coverage run manage.py test -v3
