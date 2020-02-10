@@ -16,7 +16,8 @@ install:
   - pip install codecov mypy django-stubs
 
 script:
-    - cd src && python -m coverage run ./manage.py test -v3
-    - cd src && mypy --config-file=../mypy.ini video_transcoding
+  - cd src
+  - python -m coverage run ./manage.py test -v3
+  - mypy --config-file=../mypy.ini video_transcoding
 
 after_success: codecov
