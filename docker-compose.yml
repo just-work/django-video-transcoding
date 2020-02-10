@@ -18,7 +18,6 @@ services:
     build:
       context: .
       dockerfile: deploy/dvt/Dockerfile
-      target: dvt-admin
     command: bash -c /app/start-django-dev.sh
     container_name: dvt-admin
     restart: unless-stopped
@@ -40,7 +39,6 @@ services:
     build:
       context: .
       dockerfile: deploy/dvt/Dockerfile
-      target: dvt-celery
     command: bash -c /app/start-celery-worker.sh
     container_name: dvt-celery
     restart: unless-stopped
