@@ -65,7 +65,7 @@ class TranscodeTaskVideoStateTestCase(BaseTestCase):
 
         self.video.refresh_from_db()
         self.assertEqual(self.video.status, models.Video.ERROR)
-        self.assertEqual(self.video.error, error.message)
+        self.assertEqual(self.video.error, repr(error))
 
     def test_skip_incorrect_status(self):
         """

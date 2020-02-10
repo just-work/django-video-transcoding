@@ -36,10 +36,10 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         try:
             basename = uuid4().hex
             self.process_video(video, basename)
-        except transcoding.TranscodeError as e:
+        except Exception as e:
             basename = None
             status = models.Video.ERROR
-            error = e.message
+            error = repr(e)
         finally:
             self.unlock_video(video_id, status, error, basename)
         return error
