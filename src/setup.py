@@ -17,7 +17,8 @@ def get_version():
 
     https://gist.github.com/pwithnall/7bc5f320b3bdf418265a
     """
-    d: Path = Path(__file__).parent.absolute()
+    d: Path = Path(__file__).absolute().parents[1]
+    print(d)
     git_dir = d.joinpath('.git')
     if git_dir.is_dir():
         # Get the version using "git describe".
