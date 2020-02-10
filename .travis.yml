@@ -17,6 +17,6 @@ install:
 
 script:
     - python -m coverage run src/manage.py test -v3
-    - mypy --config-file=mypy.ini src
+    - cd src && mypy --config-file=../mypy.ini .
 
 after_success: codecov
