@@ -88,4 +88,4 @@ TBD:
 * [x] coverage
 * [x] typing
 * [x] badges
-* [ ] video hosting demo project with docker-compose, nginx and player demo
+* [x] video hosting demo project with docker-compose, nginx and player demo
