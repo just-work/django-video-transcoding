@@ -17,7 +17,7 @@ DESTINATION_FILENAME = '{basename}1080p.mp4'
 class TranscodeVideo(LoggerMixin, celery.Task):
     """ Video processing task."""
     name = 'video.transcode'
-    routing_key = 'video'
+    routing_key = 'video_transcoding'
 
     def run(self, video_id: int) -> Optional[str]:
         """
