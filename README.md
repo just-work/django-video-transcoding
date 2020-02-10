@@ -43,6 +43,7 @@ INSTALLED_APPS += ['video_transcoding']
 Common env variables used in django web server and celery
 
 ```
+DJANGO_SETTINGS_MODULE=YOUR_PROJECT.settings
 VIDEO_TRANSCODING_CELERY_BROKER_URL=amqp://guest:guest@rabbitmq:15672/
 ```
 
