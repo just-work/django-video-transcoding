@@ -35,7 +35,7 @@ class VideoAdmin(admin.ModelAdmin):
         css = {
             "all": (f'{_prefix}/mediaelementplayer.css',)
         }
-        js = ('{_prefix}/mediaelement-and-player.min.js',)
+        js = (f'{_prefix}/mediaelement-and-player.min.js',)
 
     @short_description(_("Status"))
     def status_display(self, obj: models.Video) -> str:
