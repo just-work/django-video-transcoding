@@ -4,7 +4,7 @@ import subprocess
 from setuptools import setup, find_packages  # type: ignore
 from pathlib import Path
 
-with open('../README.md') as f:
+with open('README.md') as f:
     long_description = f.read()
 
 version_re = re.compile('^Version: (.+)$', re.M)
@@ -17,8 +17,7 @@ def get_version():
 
     https://gist.github.com/pwithnall/7bc5f320b3bdf418265a
     """
-    d: Path = Path(__file__).absolute().parents[1]
-    print(d)
+    d: Path = Path(__file__).absolute().parent
     git_dir = d.joinpath('.git')
     if git_dir.is_dir():
         # Get the version using "git describe".
@@ -63,7 +62,10 @@ setup(
     version=get_version() or 'dev',
     long_description=long_description,
     long_description_content_type='text/markdown',
-    packages=find_packages(exclude=['dvt', 'video_transcoding.tests']),
+    packages=find_packages(
+        where='src',
+        exclude=['dvt', 'video_transcoding.tests']),
+    package_dir={"": "src"},
     url='https://github.com/just-work/django-video-transcoding',
     license='MIT',
     author='Sergey Tikhonov',
