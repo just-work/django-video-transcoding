@@ -12,5 +12,5 @@ ADD ./deploy/dvt/start-django-dev.sh /app/
 ADD ./deploy/dvt/start-celery-worker.sh /app/
 RUN chmod +x /app/*.sh
 EXPOSE 8000
-ADD ./src/ /app/src/
-ADD ./db/ /app/db/
+RUN mkdir /app/db
+COPY ./src /app/src

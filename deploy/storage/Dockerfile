@@ -19,7 +19,7 @@ RUN ./configure --prefix=/usr/local/nginx \
 	--with-file-aio \
 	--with-threads \
 	--with-cc-opt="-O3"
-RUN make
+RUN make -j${nproc}
 RUN make install
 RUN rm -rf /usr/local/nginx/html /usr/local/nginx/conf/*.default
 

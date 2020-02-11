@@ -70,8 +70,8 @@ docker-compose up
 ```
 
 * http://localhost:8000/admin/ - Django admin
-* http://storage.localhost:8000/videos/ - WebDAV for sources & results
-* http://storage.localhost:8000/hls/ - HLS stream endpoint
+* http://storage.localhost:8080/videos/ - WebDAV for sources & results
+* http://storage.localhost:8080/hls/ - HLS stream endpoint
 
 ### Transcode something
 
