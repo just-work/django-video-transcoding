@@ -32,9 +32,10 @@ services:
     environment:
       - VIDEO_TRANSCODING_CELERY_BROKER_URL
       - VIDEO_EDGE_URL
-      - DJANGO_SUPERUSER_USERNAME
-      - DJANGO_SUPERUSER_PASSWORD
-      - DJANGO_SUPERUSER_EMAIL
+      - DJANGO_SUPERUSER_USERNAME=admin
+      - DJANGO_SUPERUSER_PASSWORD=admin
+      - DJANGO_SUPERUSER_EMAIL=admin@dvt.localhost
+
   celery:
     build:
       context: .
@@ -52,6 +53,7 @@ services:
       - DJANGO_SETTINGS_MODULE=dvt.settings
       - VIDEO_ORIGINS
       - VIDEO_TRANSCODING_CELERY_BROKER_URL
+
   storage:
     build:
       context: .
