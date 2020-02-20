@@ -9,8 +9,6 @@ from model_utils.models import TimeStampedModel
 
 from video_transcoding import defaults
 
-nullable = dict(blank=True, null=True)
-
 
 class Video(TimeStampedModel):
     """ Video model."""
@@ -24,11 +22,11 @@ class Video(TimeStampedModel):
     )
 
     status = models.SmallIntegerField(default=CREATED, choices=STATUS_CHOICES)
-    error = models.TextField(**nullable)
-    task_id = models.UUIDField(**nullable)
+    error = models.TextField(blank=True, null=True)
+    task_id = models.UUIDField(blank=True, null=True)
     source = models.URLField(
         validators=[URLValidator(schemes=('http', 'https'))])
-    basename = models.UUIDField(**nullable)
+    basename = models.UUIDField(blank=True, null=True)
 
     class Meta:
         app_label = 'video_transcoding'
