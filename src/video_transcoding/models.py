@@ -41,6 +41,8 @@ class Video(TimeStampedModel):
         """
         Returns a link to m3u8 playlist on one of randomly chosen edges.
         """
+        if self.basename is None:
+            raise RuntimeError("Video has no files")
         return defaults.VIDEO_URL.format(
             edge=edge.rstrip('/'),
             filename=self.basename.hex)

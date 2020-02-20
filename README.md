@@ -87,6 +87,22 @@ docker-compose up
 * On video change form admin page there is a sample video player. 
 
 
+## Develop
+
+### Tests
+
+```
+src/manage.py test
+```
+
+### Type checking
+
+```
+$> pip install mypy django-stubs
+$> cd src && mypy --config-file=../mypy.ini video_transcoding
+
+```
+
 TBD:
 
 * [x] travis-ci
