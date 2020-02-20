@@ -47,6 +47,12 @@ DJANGO_SETTINGS_MODULE=YOUR_PROJECT.settings
 VIDEO_TRANSCODING_CELERY_BROKER_URL=amqp://guest:guest@rabbitmq:15672/
 ```
 
+Web-server-only env variables:
+
+```
+VIDEO_EDGES='http://edge-1.localhost,http://edge-2.localhost'
+```
+
 Celery-only env variables:
 
 ```
@@ -80,6 +86,22 @@ docker-compose up
 * Wait till video will change status to DONE.
 * On video change form admin page there is a sample video player. 
 
+
+## Develop
+
+### Tests
+
+```
+src/manage.py test
+```
+
+### Type checking
+
+```
+$> pip install mypy django-stubs
+$> cd src && mypy --config-file=../mypy.ini video_transcoding
+
+```
 
 TBD:
 
