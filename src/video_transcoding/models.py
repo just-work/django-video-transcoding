@@ -1,5 +1,6 @@
 import os
-from typing import Any
+from typing import Any, cast
+from uuid import UUID
 
 from django.core.validators import URLValidator
 from django.db import models
@@ -23,10 +24,11 @@ class Video(TimeStampedModel):
     )
 
     status = models.SmallIntegerField(default=CREATED, choices=STATUS_CHOICES)
-    error = models.TextField(blank=True, null=True)
-    task_id = models.UUIDField(blank=True, null=True)
-    source = models.URLField(validators=[URLValidator(schemes=('ftp', 'http'))])
-    basename = models.UUIDField(blank=True, null=True)
+    error = models.TextField(**nullable)
+    task_id = models.UUIDField(**nullable)
+    source = models.URLField(
+        validators=[URLValidator(schemes=('http', 'https'))])
+    basename = models.UUIDField(**nullable)
 
     class Meta:
         app_label = 'video_transcoding'
@@ -43,9 +45,10 @@ class Video(TimeStampedModel):
         """
         if self.basename is None:
             raise RuntimeError("Video has no files")
+        basename = cast(UUID, self.basename)
         return defaults.VIDEO_URL.format(
             edge=edge.rstrip('/'),
-            filename=self.basename.hex)
+            filename=basename.hex)
 
     def change_status(self, status: int, **fields: Any) -> None:
         """
