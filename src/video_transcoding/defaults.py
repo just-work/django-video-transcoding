@@ -29,5 +29,8 @@ VIDEO_TEMP_DIR = '/tmp'
 VIDEO_ORIGINS = e('VIDEO_ORIGINS',
                   'http://storage.localhost:8080/videos/').split(',')
 
-# Video streamer public url
-VIDEO_EDGE_URL = e('VIDEO_EDGE_URL', 'http://storage.localhost:8080')
+# Video streamer public urls (comma-separated)
+VIDEO_EDGES = e('VIDEO_EDGES', 'http://storage.localhost:8080/').split(',')
+
+# Edge video manifest url template
+VIDEO_URL = '{edge}/hls/{filename}1080p.mp4/index.m3u8'

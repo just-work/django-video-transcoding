@@ -31,7 +31,8 @@ services:
       - rabbitmq
     environment:
       - VIDEO_TRANSCODING_CELERY_BROKER_URL
-      - VIDEO_EDGE_URL
+      - VIDEO_EDGES
+      - VIDEO_URL
       - DJANGO_SUPERUSER_USERNAME=admin
       - DJANGO_SUPERUSER_PASSWORD=admin
       - DJANGO_SUPERUSER_EMAIL=admin@dvt.localhost

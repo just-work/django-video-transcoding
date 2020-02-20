@@ -1,3 +1,4 @@
+import random
 from typing import Any, TypeVar, Callable, cast
 from uuid import UUID
 
@@ -54,8 +55,9 @@ class VideoAdmin(admin.ModelAdmin):
         if obj.basename is None:
             return ""
         basename = cast(UUID, obj.basename)
-        source = (f'{defaults.VIDEO_EDGE_URL}/hls/'
-                  f'{basename.hex},1080p.mp4.urlset/master.m3u8')
+        edge = random.choice(defaults.VIDEO_EDGES).rstrip('/')
+        filename = basename.hex
+        source = defaults.VIDEO_URL.format(edge=edge, filename=filename)
         return mark_safe('''
 <video width="480px" height="270px" class="mejs__player">
 <source src="%s" />
