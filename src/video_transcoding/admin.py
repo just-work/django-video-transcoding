@@ -1,6 +1,5 @@
 import random
-from typing import Any, TypeVar, Callable, cast
-from uuid import UUID
+from typing import Any, TypeVar, Callable
 
 from django.contrib import admin
 from django.db.models import QuerySet
@@ -54,10 +53,8 @@ class VideoAdmin(admin.ModelAdmin):
     def video_player(self, obj: models.Video) -> str:
         if obj.basename is None:
             return ""
-        basename = cast(UUID, obj.basename)
-        edge = random.choice(defaults.VIDEO_EDGES).rstrip('/')
-        filename = basename.hex
-        source = defaults.VIDEO_URL.format(edge=edge, filename=filename)
+        edge = random.choice(defaults.VIDEO_EDGES)
+        source = obj.format_video_url(edge)
         return mark_safe('''
 <video width="480px" height="270px" class="mejs__player">
 <source src="%s" />

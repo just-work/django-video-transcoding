@@ -6,6 +6,8 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 
+from video_transcoding import defaults
+
 nullable = dict(blank=True, null=True)
 
 
@@ -34,6 +36,14 @@ class Video(TimeStampedModel):
     def __str__(self) -> str:
         basename = os.path.basename(self.source)
         return f'{basename} ({self.get_status_display()})'
+
+    def format_video_url(self, edge: str) -> str:
+        """
+        Returns a link to m3u8 playlist on one of randomly chosen edges.
+        """
+        return defaults.VIDEO_URL.format(
+            edge=edge.rstrip('/'),
+            filename=self.basename.hex)
 
     def change_status(self, status: int, **fields: Any) -> None:
         """
