@@ -17,6 +17,7 @@ install:
 
 script:
   - cd src
+  - python ./manage.py makemigrations --check --dry-run
   - python -m coverage run ./manage.py test -v3
   - mypy --config-file=../mypy.ini video_transcoding
 
