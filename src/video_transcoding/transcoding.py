@@ -4,11 +4,13 @@ from typing import Optional, Dict, Any
 import pymediainfo
 from fffw.encoding import FFMPEG, VideoCodec, AudioCodec, Muxer
 from fffw.graph import SourceFile
+from fffw.graph.filters import Scale
 
 from video_transcoding.utils import LoggerMixin
 
 AUDIO_CODEC = 'audio_codec'
 VIDEO_CODEC = 'video_codec'
+SCALE = 'scale'
 
 # Used metadata keys
 AUDIO_DURATION = 'audio_duration'
@@ -22,12 +24,25 @@ AUDIO:
 %s
 """
 
+# HLS Segment duration step, seconds
+SEGMENT_SIZE = 4
+
+# Force key frame every N seconds
+KEY_FRAMES = 'expr:if(isnan(prev_forced_t),1,gte(t,prev_forced_t+{sec}))'
+
+# Allowed duration difference between source and result
+DURATION_DELTA = 0.95
+
 # Video transcoding params
 TRANSCODING_OPTIONS = {
     VIDEO_CODEC: {
         'vcodec': 'libx264',
         'vbitrate': 5_000_000,
-        'size': '1920x1080'
+        'force_key_frames': KEY_FRAMES.format(sec=SEGMENT_SIZE),
+    },
+    SCALE: {
+        'width': 1920,
+        'height': 1080,
     },
     AUDIO_CODEC: {
         'acodec': 'aac',
@@ -118,9 +133,14 @@ class Transcoder(LoggerMixin):
         ff = FFMPEG(overwrite=True, loglevel='repeat+level+info')
         # Init source file
         ff < SourceFile(self.source)
-
+        # Scaling
+        fc = ff.init_filter_complex()
+        fc.video | Scale(**TRANSCODING_OPTIONS[SCALE]) | fc.get_video_dest(0)
+        gop = int(source_media_info['video_frame_rate'] * SEGMENT_SIZE)
         # codecs, muxer and output path
-        cv0 = VideoCodec(**TRANSCODING_OPTIONS[VIDEO_CODEC])
+        cv0 = VideoCodec(
+            gop=gop,
+            **TRANSCODING_OPTIONS[VIDEO_CODEC])
         ca0 = AudioCodec(**TRANSCODING_OPTIONS[AUDIO_CODEC])
         out0 = Muxer(self.destination, format='mp4')
 
@@ -149,7 +169,7 @@ class Transcoder(LoggerMixin):
                            source_media_info[AUDIO_DURATION])
         dst_duration = min(dest_media_info[VIDEO_DURATION],
                            dest_media_info[AUDIO_DURATION])
-        if dst_duration < 0.95 * src_duration:
+        if dst_duration < DURATION_DELTA * src_duration:
             # Check whether result duration corresponds to source duration
             # (damaged source files may be processed successfully but result
             # is shorter)
