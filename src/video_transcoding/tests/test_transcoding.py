@@ -115,7 +115,7 @@ class TranscodingTestCase(BaseTestCase):
             '-crf', '23',
             '-maxrate', '5000000',
             '-bufsize', '10000000',
-            '-g', '24',
+            '-g', '49',
             '-r', '24.97',
             '-b:v', '5000000',
             '-map', '0:a',
