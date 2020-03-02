@@ -30,7 +30,7 @@ AUDIO:
 # HLS Segment duration step, seconds
 SEGMENT_SIZE = 4
 # H.264 Group of pixels duration, seconds
-GOP_DURATION = 1
+GOP_DURATION = 2
 
 # Force key frame every N seconds
 KEY_FRAMES = 'expr:if(isnan(prev_forced_t),1,gte(t,prev_forced_t+{sec}))'
