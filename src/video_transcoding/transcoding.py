@@ -42,7 +42,6 @@ DURATION_DELTA = 0.95
 TRANSCODING_OPTIONS = {
     VIDEO_CODEC: {
         'vcodec': 'libx264',
-        'vbitrate': 5_000_000,
         'force_key_frames': KEY_FRAMES.format(sec=SEGMENT_SIZE),
         'crf': 23,
         'preset': 'slow',
