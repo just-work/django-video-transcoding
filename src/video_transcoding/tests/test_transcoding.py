@@ -108,13 +108,21 @@ class TranscodingTestCase(BaseTestCase):
             '-y',
             '-map', '[vout0]',
             '-c:v', 'libx264',
+            '-preset', 'slow',
             '-force_key_frames',
             'expr:if(isnan(prev_forced_t),1,gte(t,prev_forced_t+4))',
-            '-g', '99',
+            '-profile:v', 'high',
+            '-crf', '23',
+            '-maxrate', '5000000',
+            '-bufsize', '10000000',
+            '-g', '49',
+            '-r', '24.97',
             '-b:v', '5000000',
             '-map', '0:a',
             '-c:a', 'aac',
             '-b:a', '192000',
+            '-ar', '48000.0',
+            '-ac', '2',
             '-f', 'mp4', self.dest
         ]))
         self.popen_mock.assert_called_once_with(

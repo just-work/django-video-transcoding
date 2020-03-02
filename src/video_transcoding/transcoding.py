@@ -1,3 +1,4 @@
+import math
 from pprint import pformat
 from typing import Optional, Dict, Any
 
@@ -14,7 +15,9 @@ SCALE = 'scale'
 
 # Used metadata keys
 AUDIO_DURATION = 'audio_duration'
+AUDIO_SAMPLING_RATE = 'audio_sampling_rate'
 VIDEO_DURATION = 'video_duration'
+VIDEO_FRAME_RATE = 'video_frame_rate'
 
 # Handy media info log format
 MEDIA_INFO_MSG_FORMAT = """%s media info:
@@ -26,6 +29,8 @@ AUDIO:
 
 # HLS Segment duration step, seconds
 SEGMENT_SIZE = 4
+# H.264 Group of pixels duration, seconds
+GOP_DURATION = 2
 
 # Force key frame every N seconds
 KEY_FRAMES = 'expr:if(isnan(prev_forced_t),1,gte(t,prev_forced_t+{sec}))'
@@ -39,6 +44,11 @@ TRANSCODING_OPTIONS = {
         'vcodec': 'libx264',
         'vbitrate': 5_000_000,
         'force_key_frames': KEY_FRAMES.format(sec=SEGMENT_SIZE),
+        'crf': 23,
+        'preset': 'slow',
+        'maxrate': 5_000_000,
+        'bufsize': 10_000_000,
+        'vprofile': 'high',
     },
     SCALE: {
         'width': 1920,
@@ -46,7 +56,8 @@ TRANSCODING_OPTIONS = {
     },
     AUDIO_CODEC: {
         'acodec': 'aac',
-        'abitrate': 192000
+        'abitrate': 192000,
+        'achannels': 2,
     },
 }
 
@@ -111,9 +122,9 @@ class Transcoder(LoggerMixin):
             'par': float(video.pixel_aspect_ratio),
             VIDEO_DURATION: float(video.duration),
             'video_bitrate': float(video.bit_rate),
-            'video_frame_rate': float(video.frame_rate),
+            VIDEO_FRAME_RATE: float(video.frame_rate),
             'audio_bitrate': float(audio.bit_rate),
-            'audio_sampling_rate': float(audio.sampling_rate),
+            AUDIO_SAMPLING_RATE: float(audio.sampling_rate),
             AUDIO_DURATION: float(audio.duration),
         }
         self.logger.info("Parsed media info:\n%s", pformat(media_info))
@@ -136,12 +147,22 @@ class Transcoder(LoggerMixin):
         # Scaling
         fc = ff.init_filter_complex()
         fc.video | Scale(**TRANSCODING_OPTIONS[SCALE]) | fc.get_video_dest(0)
-        gop = int(source_media_info['video_frame_rate'] * SEGMENT_SIZE)
+
+        # set group of pixels length to segment size
+        gop = math.floor(source_media_info[VIDEO_FRAME_RATE] * GOP_DURATION)
+        # preserve source audio sampling rate
+        arate = source_media_info[AUDIO_SAMPLING_RATE]
+        # preserve original video FPS
+        vrate = source_media_info[VIDEO_FRAME_RATE]
         # codecs, muxer and output path
+
         cv0 = VideoCodec(
             gop=gop,
+            vrate=vrate,
             **TRANSCODING_OPTIONS[VIDEO_CODEC])
-        ca0 = AudioCodec(**TRANSCODING_OPTIONS[AUDIO_CODEC])
+        ca0 = AudioCodec(
+            arate=arate,
+            **TRANSCODING_OPTIONS[AUDIO_CODEC])
         out0 = Muxer(self.destination, format='mp4')
 
         # Add output file to ffmpeg
