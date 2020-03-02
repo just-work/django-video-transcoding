@@ -117,7 +117,6 @@ class TranscodingTestCase(BaseTestCase):
             '-bufsize', '10000000',
             '-g', '49',
             '-r', '24.97',
-            '-b:v', '5000000',
             '-map', '0:a',
             '-c:a', 'aac',
             '-b:a', '192000',
