@@ -44,6 +44,11 @@ TRANSCODING_OPTIONS = {
         'vcodec': 'libx264',
         'vbitrate': 5_000_000,
         'force_key_frames': KEY_FRAMES.format(sec=SEGMENT_SIZE),
+        'crf': 23,
+        'preset': 'slow',
+        'maxrate': 5_000_000,
+        'bufsize': 10_000_000,
+        'vprofile': 'high',
     },
     SCALE: {
         'width': 1920,
