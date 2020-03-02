@@ -110,11 +110,14 @@ class TranscodingTestCase(BaseTestCase):
             '-c:v', 'libx264',
             '-force_key_frames',
             'expr:if(isnan(prev_forced_t),1,gte(t,prev_forced_t+4))',
-            '-g', '99',
+            '-g', '24',
+            '-r', '24.97',
             '-b:v', '5000000',
             '-map', '0:a',
             '-c:a', 'aac',
             '-b:a', '192000',
+            '-ar', '48000.0',
+            '-ac', '2',
             '-f', 'mp4', self.dest
         ]))
         self.popen_mock.assert_called_once_with(
