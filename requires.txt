@@ -1,4 +1,4 @@
-Django==3.0.3
+Django==3.0.4
 django-model-utils==4.0.0
 Celery==4.4.1
 kombu==4.6.8
