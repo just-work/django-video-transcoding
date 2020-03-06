@@ -26,7 +26,7 @@ VIDEO_TRANSCODING_CELERY_CONF = {
 VIDEO_TEMP_DIR = '/tmp'
 
 # Download source before processing
-VIDEO_DOWNLOAD_SOURCE = bool(int(e('VIDEO_DOWNLOAD_SOURCE', 1)))
+VIDEO_DOWNLOAD_SOURCE = bool(int(e('VIDEO_DOWNLOAD_SOURCE', 0)))
 
 # A list of WebDAV endpoints for storing video results
 VIDEO_ORIGINS = e('VIDEO_ORIGINS',

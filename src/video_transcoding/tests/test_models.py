@@ -30,9 +30,22 @@ class VideoModelTestCase(BaseTestCase):
         """ When new video is created, a transcode task is sent."""
         v = models.Video.objects.create(source='http://ya.ru/1.mp4')
         self.on_commit_mock.assert_called()
-        self.apply_async_mock.assert_called_once_with(args=(v.id,),
-                                                      countdown=10)
+        self.apply_async_mock.assert_called_once_with(
+            args=(v.id,),
+            kwargs={'download': False},
+            countdown=10)
         v.refresh_from_db()
         self.assertEqual(v.status, models.Video.QUEUED)
         result = self.apply_async_mock.return_value
         self.assertEqual(v.task_id, UUID(result.task_id))
+
+    @mock.patch('video_transcoding.defaults.VIDEO_DOWNLOAD_SOURCE',
+                new_callable=mock.PropertyMock(return_value=True))
+    def test_send_transcode_task_with_download(self, _):
+        """ When new video is created, a transcode task is sent."""
+        v = models.Video.objects.create(source='http://ya.ru/1.mp4')
+        self.on_commit_mock.assert_called()
+        self.apply_async_mock.assert_called_once_with(
+            args=(v.id,),
+            kwargs={'download': True},
+            countdown=10)

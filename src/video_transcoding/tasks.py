@@ -145,7 +145,7 @@ class TranscodeVideo(LoggerMixin, celery.Task):
             self.store(destination)
         self.logger.info("Processing done")
 
-    def download(self, source: str, destination: str):
+    def download(self, source: str, destination: str) -> None:
         """
         Downloads source to temporary directory
         :param source: source file link
@@ -155,8 +155,8 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         timeout = (CONNECT_TIMEOUT, DOWNLOAD_TIMEOUT)
         with requests.get(source, stream=True, timeout=timeout) as response:
             response.raise_for_status()
-            encoding = response.headers.get('transfer-encoding')
             with open(destination, 'wb') as f:
+                encoding = response.headers.get('transfer-encoding')
                 if encoding:
                     self.logger.warning(
                         "Transfer-encoding is %s, not fastest one",

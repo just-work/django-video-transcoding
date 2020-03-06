@@ -100,7 +100,7 @@ class TranscodeTaskVideoStateTestCase(BaseTestCase):
         """
 
         # noinspection PyUnusedLocal
-        def change_status(video, basename):
+        def change_status(video, *args, **kwargs):
             video.change_status(models.Video.QUEUED)
 
         self.handle_mock.side_effect = change_status
@@ -118,7 +118,7 @@ class TranscodeTaskVideoStateTestCase(BaseTestCase):
         task_id = uuid4()
 
         # noinspection PyUnusedLocal
-        def change_status(video, basename):
+        def change_status(video, *args, **kwargs):
             video.task_id = task_id
             video.save()
 
@@ -181,6 +181,7 @@ class ProcessVideoTestCase(BaseTestCase):
 
         self.open_mock.assert_called_once_with(destination, 'rb')
 
+        timeout = (tasks.CONNECT_TIMEOUT, tasks.UPLOAD_TIMEOUT)
         self.requests_mock.assert_called_once_with(
             'put', os.path.join(defaults.VIDEO_ORIGINS[0], filename),
-            data=self.open_mock.return_value, timeout=(1, None))
+            data=self.open_mock.return_value, timeout=timeout)
