@@ -199,4 +199,5 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         self.logger.info("%s save finished", destination)
 
 
-transcode_video = app.register_task(TranscodeVideo())  # type: ignore
+transcode_video: TranscodeVideo = app.register_task(
+    TranscodeVideo())  # type: ignore
