@@ -1,4 +1,6 @@
+import io
 import os
+import shutil
 import tempfile
 from typing import Optional
 from uuid import UUID, uuid4
@@ -13,13 +15,17 @@ from video_transcoding.utils import LoggerMixin
 
 DESTINATION_FILENAME = '{basename}1080p.mp4'
 
+CONNECT_TIMEOUT = 1
+DOWNLOAD_TIMEOUT = 60 * 60
+UPLOAD_TIMEOUT = 60 * 60
+
 
 class TranscodeVideo(LoggerMixin, celery.Task):
     """ Video processing task."""
     name = 'video.transcode'
     routing_key = 'video_transcoding'
 
-    def run(self, video_id: int) -> Optional[str]:
+    def run(self, video_id: int, download: bool = False) -> Optional[str]:
         """
         Process video.
 
@@ -29,13 +35,14 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         4. On errors changes video status ERROR, stores error message
 
         :param video_id: Video id.
+        :param download: Download source file to tmp dir before processing.
         """
         status = models.Video.DONE
         error = basename = None
         video = self.lock_video(video_id)
         try:
             basename = uuid4().hex
-            self.process_video(video, basename)
+            self.process_video(video, basename, download=download)
         except Exception as e:
             basename = None
             status = models.Video.ERROR
@@ -113,7 +120,8 @@ class TranscodeVideo(LoggerMixin, celery.Task):
 
         video.change_status(status, error=error, basename=basename)
 
-    def process_video(self, video: models.Video, basename: str) -> None:
+    def process_video(self, video: models.Video, basename: str,
+                      download: bool = False) -> None:
         """
         Video processing workflow.
 
@@ -121,13 +129,43 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         2. Transcode source file
         3. Upload resulting file to origins
         4. Cleanup temporary directory
+        :param video: Video object
+        :param basename: video files common base name
+        :param download: download source to temp dir
         """
         with tempfile.TemporaryDirectory(dir=defaults.VIDEO_TEMP_DIR,
                                          prefix=f'video-{video.pk}-') as d:
             destination = os.path.join(d, f'{basename}1080p.mp4')
-            self.transcode(video.source, destination)
+            if download:
+                source = os.path.join(d, f'{basename}.src.bin')
+                self.download(video.source, source)
+            else:
+                source = video.source
+            self.transcode(source, destination)
             self.store(destination)
         self.logger.info("Processing done")
+
+    def download(self, source: str, destination: str) -> None:
+        """
+        Downloads source to temporary directory
+        :param source: source file link
+        :param destination: path to downloaded file
+        """
+        self.logger.info("Start downloading %s to %s", source, destination)
+        timeout = (CONNECT_TIMEOUT, DOWNLOAD_TIMEOUT)
+        with requests.get(source, stream=True, timeout=timeout) as response:
+            response.raise_for_status()
+            with open(destination, 'wb') as f:
+                encoding = response.headers.get('transfer-encoding')
+                if encoding:
+                    self.logger.warning(
+                        "Transfer-encoding is %s, not fastest one",
+                        encoding)
+                    for chunk in response.iter_content(io.DEFAULT_BUFFER_SIZE):
+                        f.write(chunk)
+                else:
+                    shutil.copyfileobj(response.raw, f)
+        self.logger.info("Downloading %s finished", source)
 
     def transcode(self, source: str, destination: str) -> None:
         """
@@ -150,14 +188,16 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         """
         self.logger.info("Start saving %s to origins", destination)
         filename = os.path.basename(destination)
+        timeout = (CONNECT_TIMEOUT, UPLOAD_TIMEOUT)
         for origin in defaults.VIDEO_ORIGINS:
             url = os.path.join(origin, filename)
             self.logger.debug("Uploading %s to %s", destination, url)
             with open(destination, 'rb') as f:
-                response = requests.put(url, data=f, timeout=(1, None))
+                response = requests.put(url, data=f, timeout=timeout)
                 response.raise_for_status()
             self.logger.info("Uploaded to %s", url)
         self.logger.info("%s save finished", destination)
 
 
-transcode_video = app.register_task(TranscodeVideo())  # type: ignore
+transcode_video: TranscodeVideo = app.register_task(
+    TranscodeVideo())  # type: ignore

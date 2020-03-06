@@ -50,6 +50,7 @@ VIDEO_TRANSCODING_CELERY_BROKER_URL=amqp://guest:guest@rabbitmq:15672/
 Web-server-only env variables:
 
 ```
+VIDEO_DOWNLOAD_SOURCE=0
 VIDEO_EDGES='http://edge-1.localhost,http://edge-2.localhost'
 ```
 

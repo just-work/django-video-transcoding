@@ -1,6 +1,6 @@
 from celery.result import AsyncResult
 
-from video_transcoding import tasks
+from video_transcoding import tasks, defaults
 from video_transcoding import models
 
 
@@ -16,6 +16,9 @@ def send_transcode_task(video: models.Video) -> AsyncResult:
     :returns: Celery task result
     :rtype: celery.result.AsyncResult
     """
-    result = tasks.transcode_video.apply_async(args=(video.pk,), countdown=10)
+    result = tasks.transcode_video.apply_async(
+        args=(video.pk,),
+        kwargs={'download': defaults.VIDEO_DOWNLOAD_SOURCE},
+        countdown=10)
     video.change_status(video.QUEUED, task_id=result.task_id)
     return result

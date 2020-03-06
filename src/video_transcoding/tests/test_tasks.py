@@ -2,6 +2,7 @@ import os
 from unittest import mock
 from uuid import UUID, uuid4
 
+import requests
 from celery.exceptions import Retry
 
 from video_transcoding import models, tasks, transcoding, defaults
@@ -100,7 +101,7 @@ class TranscodeTaskVideoStateTestCase(BaseTestCase):
         """
 
         # noinspection PyUnusedLocal
-        def change_status(video, basename):
+        def change_status(video, *args, **kwargs):
             video.change_status(models.Video.QUEUED)
 
         self.handle_mock.side_effect = change_status
@@ -118,7 +119,7 @@ class TranscodeTaskVideoStateTestCase(BaseTestCase):
         task_id = uuid4()
 
         # noinspection PyUnusedLocal
-        def change_status(video, basename):
+        def change_status(video, *args, **kwargs):
             video.task_id = task_id
             video.save()
 
@@ -151,36 +152,144 @@ class ProcessVideoTestCase(BaseTestCase):
         self.open_patcher = mock.patch('builtins.open', mock.mock_open(
             read_data=b'video_result'))
         self.open_mock = self.open_patcher.start()
-        self.requests_patcher = mock.patch('requests.api.request')
+        self.response = requests.Response()
+        self.response.status_code = 200
+        self.response.raw = mock.MagicMock()
+        self.requests_patcher = mock.patch('requests.api.request',
+                                           return_value=self.response)
         self.requests_mock = self.requests_patcher.start()
+        self.copy_patcher = mock.patch('shutil.copyfileobj')
+        self.copy_mock = self.copy_patcher.start()
 
     def tearDown(self):
         super().tearDown()
         self.transcoder_patcher.stop()
         self.open_patcher.stop()
         self.requests_patcher.stop()
+        self.copy_patcher.stop()
 
-    def run_task(self):
-        return tasks.transcode_video.process_video(self.video, self.basename)
+    def run_task(self, download: bool = False):
+        return tasks.transcode_video.process_video(
+            self.video, self.basename, download=download)
+
+    @staticmethod
+    def temp_dir_mock() -> mock.MagicMock:
+        tmp_dir = os.path.join(defaults.VIDEO_TEMP_DIR, 'video-1')
+        return mock.patch('tempfile.TemporaryDirectory.__enter__',
+                          return_value=tmp_dir)
 
     def test_pass_args_to_transcoder(self):
         """
         Source file link and destination path are passed correctly to
         transcoding and uploading methods. Temporary dir is created and removed.
         """
-        tmp_dir = os.path.join(defaults.VIDEO_TEMP_DIR, 'tmp')
-        with mock.patch('tempfile.TemporaryDirectory.__enter__',
-                        return_value=tmp_dir) as tmp:
+        with self.temp_dir_mock() as tmp:
             self.run_task()
         tmp.assert_called_once_with()
 
         filename = f'{self.basename}1080p.mp4'
-        destination = os.path.join(tmp_dir, filename)
+        destination = os.path.join(tmp.return_value, filename)
         self.transcoder_mock.assert_called_once_with(
             self.video.source, destination)
 
         self.open_mock.assert_called_once_with(destination, 'rb')
 
+        timeout = (tasks.CONNECT_TIMEOUT, tasks.UPLOAD_TIMEOUT)
         self.requests_mock.assert_called_once_with(
             'put', os.path.join(defaults.VIDEO_ORIGINS[0], filename),
-            data=self.open_mock.return_value, timeout=(1, None))
+            data=self.open_mock.return_value, timeout=timeout)
+
+    def test_pass_downloaded_file_to_transcoder(self):
+        """
+        Downloaded source file in temporary directory is passed as input to
+        transcoder.
+
+        """
+        with self.temp_dir_mock() as tmp:
+            self.run_task(download=True)
+        tmp.assert_called_once_with()
+        tmp_dir = tmp.return_value
+
+        filename = f'{self.basename}1080p.mp4'
+        temp_file = os.path.join(tmp_dir, f'{self.basename}.src.bin')
+        destination = os.path.join(tmp_dir, filename)
+        self.transcoder_mock.assert_called_once_with(temp_file, destination)
+
+    def test_download_source(self):
+        """
+        Source file is downloaded to temporary directory.
+        """
+        with self.temp_dir_mock() as tmp:
+            dest = os.path.join(tmp.return_value, 'dest')
+            tasks.transcode_video.download(self.video.source, dest)
+
+        # Requested source file from web server
+        timeout = (tasks.CONNECT_TIMEOUT, tasks.DOWNLOAD_TIMEOUT)
+        self.requests_mock.assert_called_once_with(
+            'get', self.video.source, params=None, stream=True, timeout=timeout,
+            allow_redirects=True)
+
+        # Opened temp file in write mode
+        self.open_mock.assert_called_once_with(dest, 'wb')
+
+        # Copied response body to file
+        self.copy_mock.assert_called_once_with(
+            self.response.raw, self.open_mock.return_value)
+
+    def test_download_chunked(self):
+        """
+        Downloading gzipped source file supported.
+        """
+        self.response.headers['Transfer-encoding'] = 'gzip'
+        self.response.raw.stream.return_value = (
+            'first_chunk',
+            'second_chunk'
+        )
+        with self.temp_dir_mock() as tmp:
+            dest = os.path.join(tmp.return_value, 'dest')
+            tasks.transcode_video.download(self.video.source, dest)
+
+        self.open_mock.return_value.write.assert_has_calls(
+            [mock.call('first_chunk'), mock.call('second_chunk')])
+
+    def test_download_handle_server_status(self):
+        """
+        Non-20x server status is an error.
+        """
+        self.response.status_code = 404
+        with self.temp_dir_mock() as tmp:
+            dest = os.path.join(tmp.return_value, 'dest')
+            with self.assertRaises(requests.HTTPError) as e:
+                tasks.transcode_video.download(self.video.source, dest)
+            self.assertEqual(e.exception.response.status_code, 404)
+
+    def test_store_result(self):
+        """
+        Transcoded file is correctly stored to origin server.
+        """
+        with self.temp_dir_mock() as tmp:
+            dest = os.path.join(tmp.return_value, 'dest')
+            tasks.transcode_video.store(dest)
+
+        # Opened temp file for reading
+        self.open_mock.assert_called_once_with(dest, 'rb')
+
+        # Put file to origin server
+        timeout = (tasks.CONNECT_TIMEOUT, tasks.DOWNLOAD_TIMEOUT)
+        store_url = os.path.join(
+            defaults.VIDEO_ORIGINS[0], os.path.basename(dest))
+        self.requests_mock.assert_called_once_with(
+            'put', store_url, data=self.open_mock.return_value,
+            timeout=timeout)
+
+    def test_store_handle_response_status(self):
+        """
+        Failed store request is and error.
+        """
+        self.response.status_code = 403
+
+        with self.temp_dir_mock() as tmp:
+            dest = os.path.join(tmp.return_value, 'dest')
+            with self.assertRaises(requests.HTTPError) as e:
+                tasks.transcode_video.store(dest)
+            self.assertEqual(e.exception.response.status_code, 403)
