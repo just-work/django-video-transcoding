@@ -25,6 +25,9 @@ VIDEO_TRANSCODING_CELERY_CONF = {
 # Directory for large output files
 VIDEO_TEMP_DIR = '/tmp'
 
+# Download source before processing
+VIDEO_DOWNLOAD_SOURCE = bool(int(e('VIDEO_DOWNLOAD_SOURCE', 1)))
+
 # A list of WebDAV endpoints for storing video results
 VIDEO_ORIGINS = e('VIDEO_ORIGINS',
                   'http://storage.localhost:8080/videos/').split(',')
