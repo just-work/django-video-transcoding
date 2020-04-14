@@ -54,6 +54,7 @@ services:
       - DJANGO_SETTINGS_MODULE=dvt.settings
       - VIDEO_ORIGINS
       - VIDEO_TRANSCODING_CELERY_BROKER_URL
+    stop_signal: SIGTERM
 
   storage:
     build:

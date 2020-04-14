@@ -198,7 +198,6 @@ class Transcoder(LoggerMixin):
     def run(self, ff: FFMPEG) -> None:
         """ Starts ffmpeg process and captures errors from it's logs"""
         return_code, error = ff.run()
-        self.logger.info("ffmpeg return code is %s", return_code)
         if error or return_code != 0:
             # Check return code and error messages
             error = error or f"invalid ffmpeg return code {return_code}"

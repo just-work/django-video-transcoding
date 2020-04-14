@@ -3,6 +3,7 @@ from unittest import mock
 from uuid import UUID, uuid4
 
 import requests
+from billiard.exceptions import SoftTimeLimitExceeded
 from celery.exceptions import Retry
 
 from video_transcoding import models, tasks, transcoding, defaults
@@ -23,7 +24,7 @@ class TranscodeTaskVideoStateTestCase(BaseTestCase):
         self.handle_mock: mock.MagicMock = self.handle_patcher.start()
         self.retry_patcher = mock.patch('celery.Task.retry',
                                         side_effect=Retry)
-        self.retry_patcher.start()
+        self.retry_mock = self.retry_patcher.start()
 
     def tearDown(self):
         super().tearDown()
@@ -131,6 +132,22 @@ class TranscodeTaskVideoStateTestCase(BaseTestCase):
         self.video.refresh_from_db()
         self.assertEqual(self.video.task_id, task_id)
         self.assertEqual(self.video.status, models.Video.PROCESS)
+
+    def test_retry_task_on_worker_shutdown(self):
+        """
+        For graceful restart Video status should be reverted to queued on task
+        retry.
+        """
+        exc = SoftTimeLimitExceeded()
+        self.handle_mock.side_effect = exc
+
+        with self.assertRaises(Retry):
+            self.run_task()
+
+        self.video.refresh_from_db()
+        self.assertEqual(self.video.status, models.Video.QUEUED)
+        self.assertEqual(self.video.error, repr(exc))
+        self.retry_mock.assert_called_once_with(countdown=10)
 
 
 class ProcessVideoTestCase(BaseTestCase):
