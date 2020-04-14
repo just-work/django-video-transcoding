@@ -1,3 +1,5 @@
+import os
+
 from celery.result import AsyncResult
 
 from video_transcoding import tasks, defaults

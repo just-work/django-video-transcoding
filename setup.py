@@ -78,6 +78,7 @@ setup(
         # Background processing
         'Celery',
         'kombu',
+        'billiard',
         # Uploading
         'requests',
         # Video processing

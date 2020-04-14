@@ -7,6 +7,7 @@ from uuid import UUID, uuid4
 
 import celery
 import requests
+from billiard.exceptions import SoftTimeLimitExceeded
 from django.db.transaction import atomic
 
 from video_transcoding import models, transcoding, defaults
@@ -43,6 +44,12 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         try:
             basename = uuid4().hex
             self.process_video(video, basename, download=download)
+        except SoftTimeLimitExceeded as e:
+            # celery graceful shutdown
+            status = models.Video.QUEUED
+            basename = None
+            error = repr(e)
+            raise self.retry(countdown=10)
         except Exception as e:
             basename = None
             status = models.Video.ERROR

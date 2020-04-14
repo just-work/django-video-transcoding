@@ -1,9 +1,14 @@
 import os
+import signal
 from unittest import mock
 from uuid import UUID, uuid4
 
 import requests
+from billiard.exceptions import SoftTimeLimitExceeded
 from celery.exceptions import Retry
+from celery.platforms import EX_OK
+from celery.signals import worker_shutting_down
+from django.test import TestCase
 
 from video_transcoding import models, tasks, transcoding, defaults
 from video_transcoding.tests.base import BaseTestCase
@@ -23,7 +28,7 @@ class TranscodeTaskVideoStateTestCase(BaseTestCase):
         self.handle_mock: mock.MagicMock = self.handle_patcher.start()
         self.retry_patcher = mock.patch('celery.Task.retry',
                                         side_effect=Retry)
-        self.retry_patcher.start()
+        self.retry_mock = self.retry_patcher.start()
 
     def tearDown(self):
         super().tearDown()
@@ -131,6 +136,22 @@ class TranscodeTaskVideoStateTestCase(BaseTestCase):
         self.video.refresh_from_db()
         self.assertEqual(self.video.task_id, task_id)
         self.assertEqual(self.video.status, models.Video.PROCESS)
+
+    def test_retry_task_on_worker_shutdown(self):
+        """
+        For graceful restart Video status should be reverted to queued on task
+        retry.
+        """
+        exc = SoftTimeLimitExceeded()
+        self.handle_mock.side_effect = exc
+
+        with self.assertRaises(Retry):
+            self.run_task()
+
+        self.video.refresh_from_db()
+        self.assertEqual(self.video.status, models.Video.QUEUED)
+        self.assertEqual(self.video.error, repr(exc))
+        self.retry_mock.assert_called_once_with(countdown=10)
 
 
 class ProcessVideoTestCase(BaseTestCase):
@@ -293,3 +314,25 @@ class ProcessVideoTestCase(BaseTestCase):
             with self.assertRaises(requests.HTTPError) as e:
                 tasks.transcode_video.store(dest)
             self.assertEqual(e.exception.response.status_code, 403)
+
+
+class CelerySignalsTestCase(TestCase):
+    """ Celery signals handling tests."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.kill_patcher = mock.patch('os.killpg')
+        self.kill_mock = self.kill_patcher.start()
+
+    def tearDown(self) -> None:
+        super().tearDown()
+        self.kill_patcher.stop()
+
+    def test_handle_worker_shutting_down(self):
+        """
+        On worker_shutting_down signal send SIGUSR1 to child process group.
+        """
+        worker_shutting_down.send(sender=None, sig="TERM", how="Warm",
+                                  exitcode=EX_OK)
+
+        self.kill_mock.assert_called_once_with(os.getpid(), signal.SIGUSR1)

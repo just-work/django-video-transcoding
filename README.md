@@ -112,3 +112,14 @@ TBD:
 * [x] typing
 * [x] badges
 * [x] video hosting demo project with docker-compose, nginx and player demo
+
+
+## Production
+
+### Graceful shutdown
+
+* if you are running transcoder in docker, make sure that celery master process
+    has pid 1 (docker will send SIGTERM to it by default)
+* when using separate celery app, send SIGUSR1 from master to workers to trigger
+    soft shutdown handling
+    (see `video_transcoding.celery.send_term_to_children`)
