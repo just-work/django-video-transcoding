@@ -1,0 +1,1 @@
+include src/locale/*/LC_MESSAGES/django.po
