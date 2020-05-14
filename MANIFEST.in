@@ -1,1 +1,1 @@
-include src/locale/*/LC_MESSAGES/django.po
+recursive-include src/video_transcoding/locale *
