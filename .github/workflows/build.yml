@@ -18,4 +18,4 @@ jobs:
         pip install -q -e .
     - name: Run Tests
       run: |
-        python src/manage.py test src/video_transcoding/
+        python src/manage.py test src/
