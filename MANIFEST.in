@@ -1,0 +1,1 @@
+recursive-include src/video_transcoding/locale *
