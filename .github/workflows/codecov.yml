@@ -1,0 +1,28 @@
+name: codecov
+
+on: [push, pull_request]
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - name: Setup Python
+      uses: actions/setup-python@master
+      with:
+        python-version: 3.8
+    - name: Generate coverage report
+      run: |
+        pip install -r requires.txt
+        pip install coverage
+        pip install -q -e .
+        coverage run src/manage.py test src/
+        coverage xml
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v1
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: true

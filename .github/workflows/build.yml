@@ -1,0 +1,32 @@
+name: build
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 1
+      matrix:
+        python-version: [3.6, 3.7, 3.8]
+        django-version: [2.2, 3.0]
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v1
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        echo "Python ${{ matrix.python-version }} -> Django ${{ matrix.django-version }}"
+        sed -i '/Django==.*/d' ./requires.txt # delete django dependency
+        pip install -r requires.txt
+        python -m pip install "Django~=${{ matrix.django-version }}.0"
+        pip install -q -e .
+        echo "Django: `django-admin --version`"
+        python --version
+    - name: Run Tests
+      run: |
+        python src/manage.py test src/
