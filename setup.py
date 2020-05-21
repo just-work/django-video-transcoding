@@ -66,6 +66,7 @@ setup(
         where='src',
         exclude=['dvt', 'video_transcoding.tests']),
     package_dir={"": "src"},
+    include_package_data=True,
     url='https://github.com/just-work/django-video-transcoding',
     license='MIT',
     author='Sergey Tikhonov',
