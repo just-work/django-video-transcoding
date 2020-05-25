@@ -70,7 +70,7 @@ msgstr "Источник"
 
 #: video_transcoding/models.py:33
 msgid "Basename"
-msgstr "Базовое имя"
+msgstr "Идентификатор результата"
 
 #: video_transcoding/models.py:37 video_transcoding/models.py:38
 msgid "Video"
