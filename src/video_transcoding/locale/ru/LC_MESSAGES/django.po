@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-04-30 09:00+0000\n"
+"POT-Creation-Date: 2020-05-24 15:41+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -20,7 +20,7 @@ msgstr ""
 "%10<=4 && (n%100<12 || n%100>14) ? 1 : n%10==0 || (n%10>=5 && n%10<=9) || (n"
 "%100>=11 && n%100<=14)? 2 : 3);\n"
 
-#: video_transcoding/admin.py:40
+#: video_transcoding/admin.py:40 video_transcoding/models.py:25
 msgid "Status"
 msgstr "Статус"
 
@@ -56,6 +56,22 @@ msgstr "завершено"
 msgid "error"
 msgstr "ошибка"
 
-#: video_transcoding/models.py:33 video_transcoding/models.py:34
+#: video_transcoding/models.py:26
+msgid "Error"
+msgstr "Ошибка"
+
+#: video_transcoding/models.py:28
+msgid "Task ID"
+msgstr "Id задачи"
+
+#: video_transcoding/models.py:29
+msgid "Source"
+msgstr "Источник"
+
+#: video_transcoding/models.py:33
+msgid "Basename"
+msgstr "Идентификатор результата"
+
+#: video_transcoding/models.py:37 video_transcoding/models.py:38
 msgid "Video"
 msgstr "Видео"

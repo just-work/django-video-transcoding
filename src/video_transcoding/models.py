@@ -21,12 +21,16 @@ class Video(TimeStampedModel):
         (ERROR, _('error')),  # Video processing error
     )
 
-    status = models.SmallIntegerField(default=CREATED, choices=STATUS_CHOICES)
-    error = models.TextField(blank=True, null=True)
-    task_id = models.UUIDField(blank=True, null=True)
-    source = models.URLField(
-        validators=[URLValidator(schemes=('http', 'https'))])
-    basename = models.UUIDField(blank=True, null=True)
+    status = models.SmallIntegerField(default=CREATED, choices=STATUS_CHOICES,
+                                      verbose_name=_('Status'))
+    error = models.TextField(blank=True, null=True, verbose_name=_('Error'))
+    task_id = models.UUIDField(blank=True, null=True,
+                               verbose_name=_('Task ID'))
+    source = models.URLField(verbose_name=_('Source'),
+                             validators=[
+                                 URLValidator(schemes=('http', 'https'))])
+    basename = models.UUIDField(blank=True, null=True,
+                                verbose_name=_('Basename'))
 
     class Meta:
         app_label = 'video_transcoding'
