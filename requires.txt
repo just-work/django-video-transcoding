@@ -1,6 +1,6 @@
 Django==3.0.7
 django-model-utils==4.0.0
-Celery==4.4.3
+Celery==4.4.4
 kombu==4.6.10
 requests==2.23.0
 pymediainfo==4.2.1
