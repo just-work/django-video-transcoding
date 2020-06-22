@@ -1,11 +1,15 @@
 import math
 from dataclasses import dataclass
 from pprint import pformat
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Tuple, cast
 
 import pymediainfo
-from fffw.encoding import *
-from fffw.graph import *
+from fffw.encoding import codecs
+from fffw.graph.meta import VideoMeta, AudioMeta, AUDIO, VIDEO, from_media_info
+from fffw.encoding.inputs import input_file, Stream
+from fffw.encoding.filters import Scale
+from fffw.encoding.outputs import output_file
+from fffw.encoding.ffmpeg import FFMPEG
 from fffw.wrapper import param
 
 from video_transcoding.utils import LoggerMixin
@@ -66,13 +70,13 @@ Metadata = Dict[str, Any]
 
 
 @dataclass
-class AudioCodec(AudioCodec):
+class AudioCodec(codecs.AudioCodec):
     rate: float = param(name='ar')
     channels: int = param(name='ac')
 
 
 @dataclass
-class VideoCodec(VideoCodec):
+class VideoCodec(codecs.VideoCodec):
     force_key_frames: str = param()
     constant_rate_factor: int = param(name='crf')
     preset: str = param()
@@ -163,13 +167,15 @@ class Transcoder(LoggerMixin):
                         Stream(AUDIO, audio_meta))
 
         # Output codecs
+        video_opts = cast(Dict[str, Any], TRANSCODING_OPTIONS[VIDEO_CODEC])
         cv0 = VideoCodec(
             gop=gop,
             rate=vrate,
-            **TRANSCODING_OPTIONS[VIDEO_CODEC])
+            **video_opts)
+        audio_opts = cast(Dict[str, Any], TRANSCODING_OPTIONS[AUDIO_CODEC])
         ca0 = AudioCodec(
             rate=arate,
-            **TRANSCODING_OPTIONS[AUDIO_CODEC])
+            **audio_opts)
 
         # Scaling
         ff.video | Scale(**TRANSCODING_OPTIONS[SCALE]) > cv0
@@ -188,7 +194,8 @@ class Transcoder(LoggerMixin):
         self.validate(source_media_info, dest_media_info)
 
     @staticmethod
-    def get_meta_data(filename):
+    def get_meta_data(filename: str) -> Tuple[Optional[AudioMeta],
+                                              Optional[VideoMeta]]:
         result: pymediainfo.MediaInfo = pymediainfo.MediaInfo.parse(filename)
         metadata = from_media_info(result)
         video_meta = None
