@@ -13,7 +13,7 @@ jobs:
         python-version: 3.8
     - name: Generate coverage report
       run: |
-        pip install -r requires.txt
+        pip install -r requirements.txt
         pip install coverage
         pip install -q -e .
         coverage run src/manage.py test src/
