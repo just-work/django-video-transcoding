@@ -4,4 +4,4 @@ Celery==4.4.5
 kombu==4.6.10
 requests==2.24.0
 pymediainfo==4.2.1
-fffw==1.0.1
+fffw==2.0.3
