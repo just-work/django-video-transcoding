@@ -33,6 +33,7 @@ class TranscodingTestCase(BaseTestCase):
 <Duration>{audio_duration:.3f}</Duration>
 <Bit_Rate>{audio_bitrate}</Bit_Rate>
 <Sampling_Rate>{audio_sampling_rate}</Sampling_Rate>
+<Samples_count>{audio_samples}</Samples_count>
 </track>
 
 </File>
@@ -92,7 +93,12 @@ class TranscodingTestCase(BaseTestCase):
     def get_media_info(self, filename) -> pymediainfo.MediaInfo:
         """ Prepares mediainfo result for file."""
         metadata = self.media_info[filename]
-        xml = self.media_info_xml.format(filename=filename, **metadata)
+        rate = metadata['audio_sampling_rate']
+        duration = metadata['audio_duration']
+        xml = self.media_info_xml.format(
+            filename=filename,
+            audio_samples=int(rate * duration),
+            **metadata)
         return pymediainfo.MediaInfo(xml)
 
     def test_smoke(self):
@@ -103,24 +109,24 @@ class TranscodingTestCase(BaseTestCase):
         ffmpeg_args = list(map(ensure_binary, [
             'ffmpeg',
             '-loglevel', 'repeat+level+info',
-            '-i', self.source,
-            '-filter_complex', '[0:v]scale=1920x1080[vout0]',
             '-y',
+            '-i', self.source,
+            '-filter_complex', '[0:v]scale=w=1920:h=1080[vout0]',
             '-map', '[vout0]',
             '-c:v', 'libx264',
-            '-preset', 'slow',
             '-force_key_frames',
             'expr:if(isnan(prev_forced_t),1,gte(t,prev_forced_t+4))',
-            '-profile:v', 'high',
             '-crf', '23',
+            '-preset', 'slow',
             '-maxrate', '5000000',
             '-bufsize', '10000000',
+            '-profile:v', 'high',
             '-g', '49',
             '-r', '24.97',
             '-map', '0:a',
             '-c:a', 'aac',
             '-b:a', '192000',
-            '-ar', '48000.0',
+            '-ar', '48000',
             '-ac', '2',
             '-f', 'mp4', self.dest
         ]))
