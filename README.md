@@ -1,9 +1,10 @@
 # django-video-transcoding
 Simple video transcoding application for Django Framework
 
-[![Build Status](https://travis-ci.org/just-work/django-video-transcoding.svg?branch=master)](https://travis-ci.org/just-work/django-video-transcoding)
+[![build](https://github.com/just-work/django-video-transcoding/workflows/build/badge.svg?branch=master)](https://github.com/just-work/django-video-transcoding/actions?query=event%3Apush+branch%3Amaster+workflow%3Abuild)
 [![codecov](https://codecov.io/gh/just-work/django-video-transcoding/branch/master/graph/badge.svg)](https://codecov.io/gh/just-work/django-video-transcoding)
 [![Updates](https://pyup.io/repos/github/just-work/django-video-transcoding/shield.svg)](https://pyup.io/repos/github/just-work/django-video-transcoding/)
+[![PyPI version](https://badge.fury.io/py/django-video-transcoding.svg)](http://badge.fury.io/py/django-video-transcoding)
 
 ## Installation
 
