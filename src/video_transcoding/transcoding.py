@@ -1,11 +1,16 @@
 import math
+from dataclasses import dataclass
 from pprint import pformat
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Tuple, cast
 
 import pymediainfo
-from fffw.encoding import FFMPEG, VideoCodec, AudioCodec, Muxer
-from fffw.graph import SourceFile
-from fffw.graph.filters import Scale
+from fffw.encoding import codecs
+from fffw.graph.meta import VideoMeta, AudioMeta, AUDIO, VIDEO, from_media_info
+from fffw.encoding.inputs import input_file, Stream
+from fffw.encoding.filters import Scale
+from fffw.encoding.outputs import output_file
+from fffw.encoding.ffmpeg import FFMPEG
+from fffw.wrapper import param
 
 from video_transcoding.utils import LoggerMixin
 
@@ -41,27 +46,45 @@ DURATION_DELTA = 0.95
 # Video transcoding params
 TRANSCODING_OPTIONS = {
     VIDEO_CODEC: {
-        'vcodec': 'libx264',
+        'codec': 'libx264',
         'force_key_frames': KEY_FRAMES.format(sec=SEGMENT_SIZE),
-        'crf': 23,
+        'constant_rate_factor': 23,
         'preset': 'slow',
-        'maxrate': 5_000_000,
-        'bufsize': 10_000_000,
-        'vprofile': 'high',
+        'max_rate': 5_000_000,
+        'buf_size': 10_000_000,
+        'profile': 'high',
     },
     SCALE: {
         'width': 1920,
         'height': 1080,
     },
     AUDIO_CODEC: {
-        'acodec': 'aac',
-        'abitrate': 192000,
-        'achannels': 2,
+        'codec': 'aac',
+        'bitrate': 192000,
+        'channels': 2,
     },
 }
 
 Metadata = Dict[str, Any]
 """ File metadata type."""
+
+
+@dataclass
+class AudioCodec(codecs.AudioCodec):
+    rate: float = param(name='ar')
+    channels: int = param(name='ac')
+
+
+@dataclass
+class VideoCodec(codecs.VideoCodec):
+    force_key_frames: str = param()
+    constant_rate_factor: int = param(name='crf')
+    preset: str = param()
+    max_rate: int = param(name='maxrate')
+    buf_size: int = param(name='bufsize')
+    profile: str = param(stream_suffix=True)
+    gop: int = param(name='g')
+    rate: float = param(name='r')
 
 
 class TranscodeError(Exception):
@@ -88,43 +111,31 @@ class Transcoder(LoggerMixin):
         self.source = source
         self.destination = destination
 
-    def get_media_info(self, filename: str) -> Metadata:
+    def get_media_info(self, video: Optional[VideoMeta],
+                       audio: Optional[AudioMeta]) -> Metadata:
         """
-        Gets file metadata, returns it in a dict form.
+        Transforms video and audio metadata to a dict
 
-        :param filename: file path or link
+        :param video: video stream metadata
+        :param audio: audio stream metadata
         :returns: metadata single level dictionary
         """
-        result: pymediainfo.MediaInfo = pymediainfo.MediaInfo.parse(filename)
-        video: Optional[pymediainfo.Track] = None
-        audio: Optional[pymediainfo.Track] = None
-        for track in result.tracks:
-            if track.track_type == 'Video':
-                video = track
-            if track.track_type == 'Audio':
-                audio = track
-
-        self.logger.info(MEDIA_INFO_MSG_FORMAT,
-                         filename,
-                         pformat(getattr(video, '__dict__', None)),
-                         pformat(getattr(audio, '__dict__', None)))
-
         if video is None:
             raise TranscodeError("missing video stream")
         if audio is None:
             raise TranscodeError("missing audio stream")
 
         media_info = {
-            'width': int(video.width),
-            'height': int(video.height),
-            'aspect': float(video.display_aspect_ratio),
-            'par': float(video.pixel_aspect_ratio),
-            VIDEO_DURATION: float(video.duration),
-            'video_bitrate': float(video.bit_rate),
-            VIDEO_FRAME_RATE: float(video.frame_rate),
-            'audio_bitrate': float(audio.bit_rate),
-            AUDIO_SAMPLING_RATE: float(audio.sampling_rate),
-            AUDIO_DURATION: float(audio.duration),
+            'width': video.width,
+            'height': video.height,
+            'aspect': video.dar,
+            'par': video.par,
+            VIDEO_DURATION: video.duration.total_seconds(),
+            'video_bitrate': video.bitrate,
+            VIDEO_FRAME_RATE: video.frame_rate,
+            'audio_bitrate': audio.bitrate,
+            AUDIO_SAMPLING_RATE: audio.sampling_rate,
+            AUDIO_DURATION: audio.duration.total_seconds(),
         }
         self.logger.info("Parsed media info:\n%s", pformat(media_info))
         return media_info
@@ -136,45 +147,65 @@ class Transcoder(LoggerMixin):
         * runs `ffmpeg`
         * validates result
         """
+        audio_meta, video_meta = self.get_meta_data(self.source)
+
         # Get source mediainfo to use in validation
-        source_media_info = self.get_media_info(self.source)
+        source_media_info = self.get_media_info(video_meta, audio_meta)
+
+        # set group of pixels length to segment size
+        gop = math.floor(source_media_info[VIDEO_FRAME_RATE] * GOP_DURATION)
+        # preserve original video FPS
+        vrate = source_media_info[VIDEO_FRAME_RATE]
+        # preserve source audio sampling rate
+        arate = source_media_info[AUDIO_SAMPLING_RATE]
 
         # Common ffmpeg flags
         ff = FFMPEG(overwrite=True, loglevel='repeat+level+info')
         # Init source file
-        ff < SourceFile(self.source)
-        # Scaling
-        fc = ff.init_filter_complex()
-        fc.video | Scale(**TRANSCODING_OPTIONS[SCALE]) | fc.get_video_dest(0)
+        ff < input_file(self.source,
+                        Stream(VIDEO, video_meta),
+                        Stream(AUDIO, audio_meta))
 
-        # set group of pixels length to segment size
-        gop = math.floor(source_media_info[VIDEO_FRAME_RATE] * GOP_DURATION)
-        # preserve source audio sampling rate
-        arate = source_media_info[AUDIO_SAMPLING_RATE]
-        # preserve original video FPS
-        vrate = source_media_info[VIDEO_FRAME_RATE]
-        # codecs, muxer and output path
-
+        # Output codecs
+        video_opts = cast(Dict[str, Any], TRANSCODING_OPTIONS[VIDEO_CODEC])
         cv0 = VideoCodec(
             gop=gop,
-            vrate=vrate,
-            **TRANSCODING_OPTIONS[VIDEO_CODEC])
+            rate=vrate,
+            **video_opts)
+        audio_opts = cast(Dict[str, Any], TRANSCODING_OPTIONS[AUDIO_CODEC])
         ca0 = AudioCodec(
-            arate=arate,
-            **TRANSCODING_OPTIONS[AUDIO_CODEC])
-        out0 = Muxer(self.destination, format='mp4')
+            rate=arate,
+            **audio_opts)
 
-        # Add output file to ffmpeg
-        ff.add_output(out0, cv0, ca0)
+        # Scaling
+        ff.video | Scale(**TRANSCODING_OPTIONS[SCALE]) > cv0
+
+        # codecs, muxer and output path
+        ff > output_file(self.destination, cv0, ca0, format='mp4')
 
         # Run ffmpeg
         self.run(ff)
 
         # Get result mediainfo
-        dest_media_info = self.get_media_info(self.destination)
+        audio_meta, video_meta = self.get_meta_data(self.destination)
+        dest_media_info = self.get_media_info(video_meta, audio_meta)
 
         # Validate ffmpeg result
         self.validate(source_media_info, dest_media_info)
+
+    @staticmethod
+    def get_meta_data(filename: str) -> Tuple[Optional[AudioMeta],
+                                              Optional[VideoMeta]]:
+        result: pymediainfo.MediaInfo = pymediainfo.MediaInfo.parse(filename)
+        metadata = from_media_info(result)
+        video_meta = None
+        audio_meta = None
+        for m in metadata:
+            if m.kind == VIDEO and video_meta is None:
+                video_meta = m
+            if m.kind == AUDIO and audio_meta is None:
+                audio_meta = m
+        return audio_meta, video_meta
 
     @staticmethod
     def validate(source_media_info: Metadata,
@@ -195,7 +226,8 @@ class Transcoder(LoggerMixin):
             # is shorter)
             raise TranscodeError(f"incomplete file: {dst_duration}")
 
-    def run(self, ff: FFMPEG) -> None:
+    @staticmethod
+    def run(ff: FFMPEG) -> None:
         """ Starts ffmpeg process and captures errors from it's logs"""
         return_code, error = ff.run()
         if error or return_code != 0:
