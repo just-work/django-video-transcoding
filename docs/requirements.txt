@@ -1,4 +1,4 @@
 sphinx
-sphinxcontrib-blockdiag
+sphinxcontrib-blockdiag==2.0.0
 sphinxcontrib-seqdiag
 recommonmark
