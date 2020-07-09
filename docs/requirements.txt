@@ -1,1 +1,4 @@
 sphinx
+sphinxcontrib-blockdiag
+sphinxcontrib-seqdiag
+recommonmark
