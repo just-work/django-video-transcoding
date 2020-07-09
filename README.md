@@ -10,11 +10,10 @@ Simple video transcoding application for Django Framework
 
 ### System requirements
 
-In case of latest Ubuntu LTS (18.04):
+In case of latest Ubuntu LTS (20.04):
 
-1. ffmpeg-4.0
+1. ffmpeg-4.x
   ```shell script
-  $> sudo add-apt-repository ppa:jonathonf/ffmpeg-4
   $> sudo apt install ffmpeg
   ```
 2. mediainfo
