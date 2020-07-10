@@ -11,6 +11,7 @@ video files for video-on-demand services.
    :caption: Contents:
 
    quickstart
+   installation
    architecture
 
 Indices and tables

@@ -12,14 +12,18 @@
 #
 import os
 import sys
+import django
 
+# noinspection PyPackageRequirements
 from recommonmark.transform import AutoStructify
 
-sys.path.insert(0, os.path.abspath('../../'))
+sys.path.insert(0, os.path.abspath('../../src/'))
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "dvt.settings")
+django.setup()
 
 # -- Project information -----------------------------------------------------
 
-project = 'django_video_transcoding'
+project = 'Django Video Transcoding'
 copyright = '2020, Sergey Tikhonov'
 author = 'Sergey Tikhonov'
 
@@ -66,6 +70,14 @@ html_theme = 'alabaster'
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
+
+# -- sphinx.ext.autodoc
+
+autodoc_member_order = 'groupwise'
+
+# -- modindex --
+
+modindex_common_prefix = ['video_transcoding']
 
 
 def setup(app):

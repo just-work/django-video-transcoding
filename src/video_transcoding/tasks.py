@@ -66,8 +66,9 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         :returns: Video object from db
 
         :raises models.Video.DoesNotExist: in case of missing or locked
-        Video for primary key
+            Video for primary key
         :raises ValueError: in case of unexpected Video status or task_id
+
         """
         try:
             video = models.Video.objects.select_for_update(
@@ -136,6 +137,7 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         2. Transcode source file
         3. Upload resulting file to origins
         4. Cleanup temporary directory
+
         :param video: Video object
         :param basename: video files common base name
         :param download: download source to temp dir
