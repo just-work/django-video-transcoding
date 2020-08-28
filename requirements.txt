@@ -3,4 +3,4 @@ django-model-utils==4.0.0
 Celery==4.4.7
 requests==2.24.0
 pymediainfo==4.2.1
-fffw==2.0.4
+fffw==2.1.0
