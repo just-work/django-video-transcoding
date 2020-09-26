@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
-exec celery worker -A video_transcoding.celery --loglevel=debug -c 1
+exec celery --app video_transcoding.celery worker --loglevel=DEBUG -c 1
 
