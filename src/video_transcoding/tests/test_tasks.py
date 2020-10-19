@@ -1,5 +1,6 @@
 import os
 import signal
+from typing import cast
 from unittest import mock
 from uuid import UUID, uuid4
 
@@ -196,8 +197,9 @@ class ProcessVideoTestCase(BaseTestCase):
     @staticmethod
     def temp_dir_mock() -> mock.MagicMock:
         tmp_dir = os.path.join(defaults.VIDEO_TEMP_DIR, 'video-1')
-        return mock.patch('tempfile.TemporaryDirectory.__enter__',
-                          return_value=tmp_dir)
+        return cast(mock.MagicMock,
+                    mock.patch('tempfile.TemporaryDirectory.__enter__',
+                               return_value=tmp_dir))
 
     def test_pass_args_to_transcoder(self):
         """
