@@ -1,8 +1,7 @@
-import subprocess
 from unittest import mock
 
 import pymediainfo
-from fffw.wrapper import ensure_binary
+from fffw.wrapper.helpers import ensure_text
 
 from video_transcoding import transcoding
 from video_transcoding.tests.base import BaseTestCase
@@ -67,20 +66,18 @@ class TranscodingTestCase(BaseTestCase):
             pymediainfo.MediaInfo, 'parse', side_effect=self.get_media_info)
         self.media_info_mock = self.media_info_patcher.start()
 
-        self.popen = mock.MagicMock()  # Popen()
-        self.process = mock.MagicMock()  # with Popen() as process
-        self.stderr = mock.MagicMock()  # process.stderr
-        self.popen.__enter__.return_value = self.process
-        self.process.stderr = self.stderr
-        self.process.returncode = 0
-        self.stderr.readline.side_effect = ('', None)
-        self.popen_patcher = mock.patch('subprocess.Popen',
-                                        return_value=self.popen)
-        self.popen_mock = self.popen_patcher.start()
+        self.runner_mock = mock.MagicMock(
+            return_value=(0, '', '')
+        )
+
+        self.runner_patcher = mock.patch(
+            'fffw.encoding.ffmpeg.FFMPEG.runner_class',
+            return_value=self.runner_mock)
+        self.ffmpeg_mock = self.runner_patcher.start()
 
     def tearDown(self):
         self.media_info_patcher.stop()
-        self.popen_patcher.stop()
+        self.runner_patcher.stop()
 
     def prepare_metadata(self, **kwargs):
         """
@@ -106,7 +103,7 @@ class TranscodingTestCase(BaseTestCase):
         ffmpeg arguments test.
         """
         self.transcoder.transcode()
-        ffmpeg_args = list(map(ensure_binary, [
+        ffmpeg_args = [
             'ffmpeg',
             '-loglevel', 'repeat+level+info',
             '-y',
@@ -129,6 +126,6 @@ class TranscodingTestCase(BaseTestCase):
             '-ar', '48000',
             '-ac', '2',
             '-f', 'mp4', self.dest
-        ]))
-        self.popen_mock.assert_called_once_with(
-            ffmpeg_args, stderr=subprocess.PIPE)
+        ]
+        args, kwargs = self.ffmpeg_mock.call_args
+        self.assertEqual(ensure_text(args), tuple(ffmpeg_args))

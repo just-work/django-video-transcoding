@@ -229,7 +229,7 @@ class Transcoder(LoggerMixin):
     @staticmethod
     def run(ff: FFMPEG) -> None:
         """ Starts ffmpeg process and captures errors from it's logs"""
-        return_code, error = ff.run()
+        return_code, output, error = ff.run()
         if error or return_code != 0:
             # Check return code and error messages
             error = error or f"invalid ffmpeg return code {return_code}"
