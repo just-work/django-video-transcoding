@@ -75,16 +75,16 @@ setup(
     install_requires=[
         # Django
         'Django>=2.2,<3.2',
-        'django-model-utils',
+        'django-model-utils~=4.0.0',
         # Background processing
-        'Celery',
-        'kombu',
-        'billiard',
+        'Celery~=5.0.1',
+        'kombu~=5.0.2',
+        'billiard~=3.6.3.0',
         # Uploading
-        'requests',
+        'requests~=2.24.0',
         # Video processing
-        'pymediainfo',
-        'fffw',
+        'pymediainfo~=4.2.1',
+        'fffw~=3.1.0',
     ],
     classifiers=[
         'Development Status :: 1 - Planning',
