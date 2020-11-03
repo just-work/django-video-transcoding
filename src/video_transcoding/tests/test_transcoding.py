@@ -26,6 +26,7 @@ class TranscodingTestCase(BaseTestCase):
 <Pixel_Aspect_Ratio>{par:.3f}</Pixel_Aspect_Ratio>
 <Display_Aspect_Ratio>{aspect:.3f}</Display_Aspect_Ratio>
 <Frame_Rate>{video_frame_rate:.3f}</Frame_Rate>
+<Frame_count>{video_frames}</Frame_count>
 </track>
 
 <track type="Audio">
@@ -91,10 +92,13 @@ class TranscodingTestCase(BaseTestCase):
         """ Prepares mediainfo result for file."""
         metadata = self.media_info[filename]
         rate = metadata['audio_sampling_rate']
-        duration = metadata['audio_duration']
+        audio_duration = metadata['audio_duration']
+        fps = metadata['video_frame_rate']
+        video_duration = metadata['video_duration']
         xml = self.media_info_xml.format(
             filename=filename,
-            audio_samples=int(rate * duration),
+            audio_samples=int(rate * audio_duration),
+            video_frames=int(fps * video_duration),
             **metadata)
         return pymediainfo.MediaInfo(xml)
 
