@@ -83,11 +83,11 @@ setup(
         # Uploading
         'requests~=2.24.0',
         # Video processing
-        'pymediainfo~=4.2.1',
+        'pymediainfo~=5.0.3',
         'fffw~=3.1.0',
     ],
     classifiers=[
-        'Development Status :: 1 - Planning',
+        'Development Status :: 4 - Beta',
         'Environment :: Console',
         'Framework :: Django :: 2.2',
         'Framework :: Django :: 3.0',
