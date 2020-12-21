@@ -53,6 +53,7 @@ TRANSCODING_OPTIONS = {
         'max_rate': 5_000_000,
         'buf_size': 10_000_000,
         'profile': 'high',
+        'pix_fmt': 'yuv420p',
     },
     SCALE: {
         'width': 1920,
@@ -85,6 +86,7 @@ class VideoCodec(codecs.VideoCodec):
     profile: str = param(stream_suffix=True)
     gop: int = param(name='g')
     rate: float = param(name='r')
+    pix_fmt: str = param()
 
 
 class TranscodeError(Exception):
