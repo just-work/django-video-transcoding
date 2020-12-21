@@ -124,12 +124,13 @@ class TranscodingTestCase(BaseTestCase):
             '-profile:v', 'high',
             '-g', '49',
             '-r', '24.97',
+            '-pix_fmt', 'yuv420p',
             '-map', '0:a',
             '-c:a', 'aac',
             '-b:a', '192000',
             '-ar', '48000',
             '-ac', '2',
-            '-f', 'mp4', self.dest
+            '-f', 'mp4', self.dest,
         ]
         args, kwargs = self.ffmpeg_mock.call_args
         self.assertEqual(ensure_text(args), tuple(ffmpeg_args))
