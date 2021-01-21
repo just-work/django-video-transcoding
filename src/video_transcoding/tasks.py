@@ -172,6 +172,12 @@ class TranscodeVideo(LoggerMixin, celery.Task):
                         f.write(chunk)
                 else:
                     shutil.copyfileobj(response.raw, f)
+                content_length = response.headers.get('Content-Length')
+                if content_length is not None:
+                    size = f.tell()
+                    if size != int(content_length):
+                        raise ValueError("Partial file", size)
+
         self.logger.info("Downloading %s finished", source)
 
     def transcode(self, source: str, destination: str) -> None:
