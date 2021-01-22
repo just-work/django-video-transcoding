@@ -286,6 +286,21 @@ class ProcessVideoTestCase(BaseTestCase):
                 tasks.transcode_video.download(self.video.source, dest)
             self.assertEqual(e.exception.response.status_code, 404)
 
+    def test_download_handle_content_length(self):
+        """
+        If download file size does not match content-length, raise error.
+        """
+        self.response.headers['Content-Length'] = '100500'
+
+        with self.temp_dir_mock() as tmp:
+            dest = os.path.join(tmp.return_value, 'dest')
+            self.open_mock.return_value.tell.return_value = 42
+            with self.assertRaises(ValueError) as ctx:
+                tasks.transcode_video.download(self.video.source, dest)
+
+        self.assertEqual(ctx.exception.args[0], 'Partial file')
+        self.assertEqual(ctx.exception.args[1], 42)
+
     def test_store_result(self):
         """
         Transcoded file is correctly stored to origin server.
