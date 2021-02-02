@@ -22,4 +22,4 @@ jobs:
           pip install -r requirements.txt
       - name: Run Mypy tests
         run: |
-          cd src && mypy --config-file=../mypy.ini video_transcoding
+          cd src && mypy --config-file=../mypy.ini -p video_transcoding
