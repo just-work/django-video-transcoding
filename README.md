@@ -101,7 +101,7 @@ src/manage.py test
 ```
 $> pip install mypy django-stubs
 $> cd src && /data/dvt/virtualenv/bin/dmypy run -- \
-   --config-file ../mypy.ini video_transcoding
+   --config-file ../mypy.ini -p video_transcoding
 
 ```
 
