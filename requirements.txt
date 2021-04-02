@@ -6,5 +6,5 @@ pymediainfo==5.0.3
 fffw==3.3.1
 mypy~=0.790
 django-stubs==1.7.0
-billiard==3.6.3.0
+billiard==3.6.4.0
 kombu==5.0.2
