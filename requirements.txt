@@ -1,10 +1,10 @@
-Django==3.1.7
+Django==3.2
 django-model-utils==4.1.1
 requests==2.25.1
 Celery==5.0.5
 pymediainfo==5.0.3
-fffw==3.3.1
-mypy~=0.790
+fffw==3.3.4
+mypy~=0.812
 django-stubs==1.7.0
 billiard==3.6.4.0
 kombu==5.0.2
