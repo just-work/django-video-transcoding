@@ -74,17 +74,17 @@ setup(
     description='Simple video transcoding application for Django framework',
     install_requires=[
         # Django
-        'Django>=2.2,<3.2',
-        'django-model-utils~=4.0.0',
+        'Django>=2.2,<3.3',
+        'django-model-utils>=4.0.0,<4.2.0',
         # Background processing
-        'Celery~=5.0.1',
+        'Celery~=5.0.5',
         'kombu~=5.0.2',
-        'billiard~=3.6.3.0',
+        'billiard~=3.6.4.0',
         # Uploading
-        'requests~=2.24.0',
+        'requests~=2.25.0',
         # Video processing
         'pymediainfo~=5.0.3',
-        'fffw~=3.2.0',
+        'fffw~=3.3.0',
     ],
     classifiers=[
         'Development Status :: 4 - Beta',
@@ -92,6 +92,7 @@ setup(
         'Framework :: Django :: 2.2',
         'Framework :: Django :: 3.0',
         'Framework :: Django :: 3.1',
+        'Framework :: Django :: 3.2',
         'Operating System :: POSIX',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
