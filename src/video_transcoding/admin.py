@@ -27,7 +27,7 @@ class VideoAdmin(admin.ModelAdmin):
     list_display = ('basename', 'source', 'status_display')
     list_filter = ('status',)
     search_fields = ('source', '=basename')
-    actions = list(admin.ModelAdmin.actions) + ["transcode"]
+    actions = list(admin.ModelAdmin.actions or ()) + ["transcode"]
     readonly_fields = ('created', 'modified', 'video_player')
 
     class Media:
