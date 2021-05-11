@@ -1,4 +1,4 @@
-sphinx==4.0.0
+sphinx==4.0.1
 sphinxcontrib-blockdiag==2.0.0
 sphinxcontrib-seqdiag==2.0.0
 recommonmark==0.7.1
