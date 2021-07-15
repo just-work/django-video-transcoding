@@ -1,6 +1,6 @@
 Django==3.2.5
 django-model-utils==4.1.1
-requests==2.25.1
+requests==2.26.0
 Celery==5.1.2
 pymediainfo==5.1.0
 fffw==3.3.4
