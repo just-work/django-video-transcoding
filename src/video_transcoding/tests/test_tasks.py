@@ -275,6 +275,27 @@ class ProcessVideoTestCase(BaseTestCase):
         self.open_mock.return_value.write.assert_has_calls(
             [mock.call('first_chunk'), mock.call('second_chunk')])
 
+    @mock.patch('video_transcoding.defaults.CHECKSUM_SOURCE',
+                new_callable=mock.PropertyMock(return_value=True))
+    def test_download_checksum(self, _):
+        """
+        Enabling checksum forces chunk encoding and checksum computation.
+        """
+        self.response.raw.stream.return_value = (
+            'first_chunk',
+            'second_chunk'
+        )
+        with self.temp_dir_mock() as tmp:
+            dest = os.path.join(tmp.return_value, 'dest')
+            with mock.patch('hashlib.md5') as m:
+                tasks.transcode_video.download(self.video.source, dest)
+        m.return_value.update.assert_has_calls(
+            [
+                mock.call('first_chunk'),
+                mock.call('second_chunk'),
+            ]
+        )
+
     def test_download_handle_server_status(self):
         """
         Non-20x server status is an error.

@@ -37,3 +37,6 @@ VIDEO_EDGES = e('VIDEO_EDGES', 'http://storage.localhost:8080/').split(',')
 
 # Edge video manifest url template
 VIDEO_URL = '{edge}/hls/{filename}1080p.mp4/index.m3u8'
+
+# Output source files checksum
+CHECKSUM_SOURCE = bool(int(e('CHECKSUM_SOURCE', 0)))

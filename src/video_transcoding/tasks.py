@@ -4,7 +4,7 @@ import shutil
 import tempfile
 from typing import Optional
 from uuid import UUID, uuid4
-
+import hashlib
 import celery
 import requests
 from billiard.exceptions import SoftTimeLimitExceeded
@@ -160,16 +160,23 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         """
         self.logger.info("Start downloading %s to %s", source, destination)
         timeout = (CONNECT_TIMEOUT, DOWNLOAD_TIMEOUT)
-        with requests.get(source, stream=True, timeout=timeout) as response:
+        if defaults.CHECKSUM_SOURCE:
+            # noinspection PyUnresolvedReferences,PyProtectedMember
+            checksum = hashlib.md5()  # type: Optional[hashlib._Hash]
+        else:
+            checksum = None
+        with requests.get(source, stream=True, timeout=timeout, allow_redirects=True) as response:
             response.raise_for_status()
             with open(destination, 'wb') as f:
                 encoding = response.headers.get('transfer-encoding')
-                if encoding:
+                if encoding or checksum:
                     self.logger.warning(
                         "Transfer-encoding is %s, not fastest one",
-                        encoding)
+                        encoding or checksum)
                     for chunk in response.iter_content(io.DEFAULT_BUFFER_SIZE):
                         f.write(chunk)
+                        if checksum:
+                            checksum.update(chunk)
                 else:
                     shutil.copyfileobj(response.raw, f)
                 content_length = response.headers.get('Content-Length')
@@ -177,8 +184,9 @@ class TranscodeVideo(LoggerMixin, celery.Task):
                     size = f.tell()
                     if size != int(content_length):
                         raise ValueError("Partial file", size)
-
         self.logger.info("Downloading %s finished", source)
+        if checksum:
+            self.logger.info("Source file checksum: %s", checksum.hexdigest())
 
     def transcode(self, source: str, destination: str) -> None:
         """
