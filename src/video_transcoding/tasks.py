@@ -161,7 +161,8 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         self.logger.info("Start downloading %s to %s", source, destination)
         timeout = (CONNECT_TIMEOUT, DOWNLOAD_TIMEOUT)
         if defaults.CHECKSUM_SOURCE:
-            checksum = hashlib.md5()
+            # noinspection PyUnresolvedReferences,PyProtectedMember
+            checksum = hashlib.md5()  # type: Optional[hashlib._Hash]
         else:
             checksum = None
         with requests.get(source, stream=True, timeout=timeout, allow_redirects=True) as response:
