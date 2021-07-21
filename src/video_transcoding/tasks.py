@@ -172,7 +172,7 @@ class TranscodeVideo(LoggerMixin, celery.Task):
                 if encoding or checksum:
                     self.logger.warning(
                         "Transfer-encoding is %s, not fastest one",
-                        encoding)
+                        encoding or checksum)
                     for chunk in response.iter_content(io.DEFAULT_BUFFER_SIZE):
                         f.write(chunk)
                         if checksum:
