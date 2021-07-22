@@ -139,7 +139,7 @@ class TranscodingTestCase(BaseTestCase):
         self.runner_mock.return_value = (0, 'stdout', '[error] a warning captured')
         try:
             self.transcoder.transcode()
-        except transcoding.TranscodeError:
+        except transcoding.TranscodeError:  # pragma: no cover
             self.fail("False positive error")
 
     def test_handle_return_code_from_stderr(self):
