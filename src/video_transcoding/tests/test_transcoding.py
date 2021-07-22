@@ -134,3 +134,28 @@ class TranscodingTestCase(BaseTestCase):
         ]
         args, kwargs = self.ffmpeg_mock.call_args
         self.assertEqual(ensure_text(args), tuple(ffmpeg_args))
+
+    def test_handle_stderr_errors(self):
+        self.runner_mock.return_value = (0, 'stdout', '[error] a warning captured')
+        try:
+            self.transcoder.transcode()
+        except transcoding.TranscodeError:  # pragma: no cover
+            self.fail("False positive error")
+
+    def test_handle_return_code_from_stderr(self):
+        error = '[error] a warning captured'
+        self.runner_mock.return_value = (1, 'stdout', error)
+
+        with self.assertRaises(transcoding.TranscodeError) as ctx:
+            self.transcoder.transcode()
+
+        self.assertEqual(ctx.exception.message, error)
+
+    def test_handle_return_code(self):
+        self.runner_mock.return_value = (-9, '', '')
+
+        with self.assertRaises(transcoding.TranscodeError) as ctx:
+            self.transcoder.transcode()
+
+        self.assertEqual(ctx.exception.message, "invalid ffmpeg return code -9")
+
