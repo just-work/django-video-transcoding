@@ -41,16 +41,22 @@ class TranscodingTestCase(BaseTestCase):
 
     # Default video file metadata
     metadata = {
-        'width': 1920,
-        'height': 1080,
-        'aspect': 1.778,
-        'par': 1.0,
-        transcoding.VIDEO_DURATION: 3600.22,
+        transcoding.WIDTH: 1920,
+        transcoding.HEIGHT: 1080,
+        transcoding.DAR: 1.778,
+        transcoding.PAR: 1.0,
+
         'video_bitrate': 5000000,
-        'video_frame_rate': 24.97,
+
+        transcoding.VIDEO_DURATION: 3600.22,
+        transcoding.VIDEO_FRAME_RATE: 24.97,
+        transcoding.FRAMES_COUNT: round(3600.22 * 24.97),
+
         'audio_bitrate': 192000,
-        'audio_sampling_rate': 48000,
+
         transcoding.AUDIO_DURATION: 3600.22,
+        transcoding.AUDIO_SAMPLING_RATE: 48000,
+        transcoding.SAMPLES_COUNT: round(3600.22 * 48000),
     }
 
     def setUp(self):
@@ -91,14 +97,14 @@ class TranscodingTestCase(BaseTestCase):
     def get_media_info(self, filename) -> pymediainfo.MediaInfo:
         """ Prepares mediainfo result for file."""
         metadata = self.media_info[filename]
-        rate = metadata['audio_sampling_rate']
-        audio_duration = metadata['audio_duration']
-        fps = metadata['video_frame_rate']
-        video_duration = metadata['video_duration']
+        rate = metadata[transcoding.AUDIO_SAMPLING_RATE]
+        audio_duration = metadata[transcoding.AUDIO_DURATION]
+        fps = metadata[transcoding.VIDEO_FRAME_RATE]
+        video_duration = metadata[transcoding.VIDEO_DURATION]
         xml = self.media_info_xml.format(
             filename=filename,
-            audio_samples=int(rate * audio_duration),
-            video_frames=int(fps * video_duration),
+            audio_samples=metadata.get(transcoding.SAMPLES_COUNT, int(rate * audio_duration)),
+            video_frames=metadata.get(transcoding.FRAMES_COUNT, int(fps * video_duration)),
             **metadata)
         return pymediainfo.MediaInfo(xml)
 
@@ -159,3 +165,206 @@ class TranscodingTestCase(BaseTestCase):
 
         self.assertEqual(ctx.exception.message, "invalid ffmpeg return code -9")
 
+    def test_restore_video_aspect(self):
+        """
+        Metadata must satisfy following equations:
+
+        * DAR = Width / Height * PAR
+        """
+        dar = round(21/9, 3)
+        width = 1600
+        height = 1200
+        par = round(dar / (width / height), 3)
+
+        m = self.media_info[self.source]
+        m[transcoding.DAR] = dar
+        m[transcoding.WIDTH] = width
+        m[transcoding.HEIGHT] = height
+        m[transcoding.PAR] = par
+
+        # Check that by default metadata parsed correctly
+        try:
+            _, v = self.transcoder.get_meta_data(self.source)
+            self.assertEqual(v.dar, dar)
+            self.assertEqual(v.par, par)
+            self.assertEqual(v.width, width)
+            self.assertEqual(v.height, height)
+        except Exception as exc:
+            self.fail(exc)
+
+        with self.subTest("fix par"):
+            # wrong PAR in source metadata
+            m[transcoding.PAR] *= 1.1
+            _, v = self.transcoder.get_meta_data(self.source)
+            self.assertAlmostEqual(v.par, par, 3)
+        m[transcoding.PAR] = par
+
+        with self.subTest("restore par from dar"):
+            m[transcoding.PAR] = 0
+            _, v = self.transcoder.get_meta_data(self.source)
+            self.assertAlmostEqual(v.par, par, 3)
+        m[transcoding.PAR] = par
+
+        with self.subTest("restore dar from par"):
+            m[transcoding.DAR] = 0
+            _, v = self.transcoder.get_meta_data(self.source)
+            self.assertAlmostEqual(v.dar, dar, 3)
+        m[transcoding.DAR] = dar
+
+        with self.subTest("default dar and par"):
+            m[transcoding.DAR] = m[transcoding.PAR] = 0
+            _, v = self.transcoder.get_meta_data(self.source)
+            self.assertAlmostEqual(v.dar, width / height, 3)
+            self.assertAlmostEqual(v.par, 1.0, 3)
+        m[transcoding.PAR] = par
+        m[transcoding.DAR] = dar
+
+        with self.subTest("missing width or height"):
+            m[transcoding.WIDTH] = 0
+            m[transcoding.HEIGHT] = 0
+            with self.assertRaises(AssertionError):
+                # without W and H we can't restore initial metadata
+                self.transcoder.get_meta_data(self.source)
+
+    def test_restore_frames(self):
+        """
+        Metadata must satisfy following equation:
+
+        FPS = duration / frames_count
+        """
+        frames = 123456
+        fps = 29.97
+        duration = frames / fps
+
+        m = self.media_info[self.source]
+        m[transcoding.VIDEO_DURATION] = duration
+        m[transcoding.VIDEO_FRAME_RATE] = fps
+        m[transcoding.FRAMES_COUNT] = frames
+
+        # Check that by default metadata parsed correctly
+        try:
+            _, v = self.transcoder.get_meta_data(self.source)
+            self.assertEqual(v.frames, frames)
+            self.assertAlmostEqual(v.frame_rate, fps, 3)
+            self.assertAlmostEqual(float(v.duration), duration, 3)
+        except Exception as exc:
+            self.fail(exc)
+
+        with self.subTest("restore frames"):
+            m[transcoding.FRAMES_COUNT] = 0
+            _, v = self.transcoder.get_meta_data(self.source)
+            self.assertEqual(v.frames, frames)
+        m[transcoding.FRAMES_COUNT] = frames
+
+        with self.subTest("restore frame rate"):
+            m[transcoding.VIDEO_FRAME_RATE] = 0
+            _, v = self.transcoder.get_meta_data(self.source)
+            self.assertAlmostEqual(v.frame_rate, fps, 3)
+        m[transcoding.VIDEO_FRAME_RATE] = fps
+
+        with self.subTest("restore duration"):
+            m[transcoding.VIDEO_DURATION] = 0
+            _, v = self.transcoder.get_meta_data(self.source)
+            self.assertAlmostEqual(v.duration, duration, 3)
+        m[transcoding.VIDEO_DURATION] = duration
+
+        with self.subTest("only frames"):
+            m[transcoding.VIDEO_DURATION] = m[transcoding.VIDEO_FRAME_RATE] = 0
+            with self.assertRaises(AssertionError):
+                self.transcoder.get_meta_data(self.source)
+        m[transcoding.VIDEO_DURATION] = duration
+        m[transcoding.VIDEO_FRAME_RATE] = fps
+
+        with self.subTest("only frame rate"):
+            m[transcoding.VIDEO_DURATION] = m[transcoding.FRAMES_COUNT] = 0
+            _, v = self.transcoder.get_meta_data(self.source)
+            self.assertEqual(v.duration, 0)
+            self.assertEqual(v.frames, 0)
+        m[transcoding.VIDEO_DURATION] = duration
+        m[transcoding.FRAMES_COUNT] = frames
+
+        with self.subTest("only duration"):
+            m[transcoding.VIDEO_FRAME_RATE] = m[transcoding.FRAMES_COUNT] = 0
+            _, v = self.transcoder.get_meta_data(self.source)
+            self.assertEqual(v.frames, 0)
+            self.assertEqual(v.frame_rate, 0)
+            self.assertAlmostEqual(float(v.duration), duration, 3)
+        m[transcoding.FRAMES_COUNT] = frames
+        m[transcoding.VIDEO_FRAME_RATE] = fps
+
+        with self.subTest("fix fps"):
+            m[transcoding.VIDEO_FRAME_RATE] *= 1.1
+            _, v = self.transcoder.get_meta_data(self.source)
+            self.assertAlmostEqual(v.frame_rate, fps, 3)
+
+    def test_restore_samples(self):
+        """
+        Metadata must satisfy following equation:
+
+        Sampling rate = duration / samples
+        """
+        sampling_rate = 12025
+        duration = 10.123
+        samples = round(sampling_rate * duration)
+
+        m = self.media_info[self.source]
+        m[transcoding.AUDIO_DURATION] = duration
+        m[transcoding.AUDIO_SAMPLING_RATE] = sampling_rate
+        m[transcoding.SAMPLES_COUNT] = samples
+
+        # Check that by default metadata parsed correctly
+        try:
+            a, _ = self.transcoder.get_meta_data(self.source)
+            self.assertEqual(a.samples, samples)
+            self.assertEqual(a.sampling_rate, sampling_rate)
+            self.assertAlmostEqual(float(a.duration), duration, 3)
+        except Exception as exc:
+            self.fail(exc)
+
+        with self.subTest("restore samples"):
+            m[transcoding.SAMPLES_COUNT] = 0
+            a, _ = self.transcoder.get_meta_data(self.source)
+            self.assertEqual(a.samples, samples)
+        m[transcoding.SAMPLES_COUNT] = samples
+
+        with self.subTest("restore sampling rate"):
+            m[transcoding.AUDIO_SAMPLING_RATE] = 0
+            a, _ = self.transcoder.get_meta_data(self.source)
+            self.assertAlmostEqual(a.sampling_rate, sampling_rate, 3)
+        m[transcoding.AUDIO_SAMPLING_RATE] = sampling_rate
+
+        with self.subTest("restore duration"):
+            m[transcoding.AUDIO_DURATION] = 0
+            a, _ = self.transcoder.get_meta_data(self.source)
+            self.assertAlmostEqual(a.duration, duration, 3)
+        m[transcoding.AUDIO_DURATION] = duration
+
+        with self.subTest("only samples"):
+            m[transcoding.AUDIO_DURATION] = m[transcoding.AUDIO_SAMPLING_RATE] = 0
+            with self.assertRaises(AssertionError):
+                self.transcoder.get_meta_data(self.source)
+        m[transcoding.AUDIO_DURATION] = duration
+        m[transcoding.AUDIO_SAMPLING_RATE] = sampling_rate
+
+        with self.subTest("only sampling rate"):
+            m[transcoding.AUDIO_DURATION] = m[transcoding.SAMPLES_COUNT] = 0
+            a, _ = self.transcoder.get_meta_data(self.source)
+            self.assertEqual(a.duration, 0)
+            self.assertEqual(a.samples, 0)
+        m[transcoding.AUDIO_DURATION] = duration
+        m[transcoding.SAMPLES_COUNT] = samples
+
+        with self.subTest("only duration"):
+            m[transcoding.AUDIO_SAMPLING_RATE] = m[transcoding.SAMPLES_COUNT] = 0
+            a, _ = self.transcoder.get_meta_data(self.source)
+            self.assertEqual(a.samples, 0)
+            self.assertEqual(a.sampling_rate, 0)
+            self.assertEqual(a.duration, duration)
+        m[transcoding.SAMPLES_COUNT] = samples
+        m[transcoding.AUDIO_SAMPLING_RATE] = sampling_rate
+
+        with self.subTest("fix sampling rate"):
+            # Samples count is adjusted to sampling rate
+            m[transcoding.AUDIO_SAMPLING_RATE] *= 2
+            a, _ = self.transcoder.get_meta_data(self.source)
+            self.assertAlmostEqual(a.samples, samples * 2)
