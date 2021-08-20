@@ -240,7 +240,7 @@ class Transcoder(LoggerMixin):
 
         Duration = FPS * frames
         """
-        duration = float(TS(t.__dict__.get('duration', 0)))  # duration in seconds
+        duration = float(t.__dict__.get('duration', 0)) / 1000  # duration in seconds
         frame_rate = float(t.__dict__.get('frame_rate', 0))
         frames = int(t.__dict__.get('frame_count', 0))
 
@@ -264,7 +264,7 @@ class Transcoder(LoggerMixin):
             frame_rate = frames / duration
 
         t.__dict__['frame_rate'] = f'{frame_rate:.3f}'
-        t.__dict__['duration'] = f'{duration:.3f}'
+        t.__dict__['duration'] = f'{duration * 1000.0:.3f}'  # milliseconds again
         t.__dict__['frame_count'] = f'{frames}'
 
     def fix_samples(self, t: pymediainfo.Track) -> None:
@@ -273,7 +273,7 @@ class Transcoder(LoggerMixin):
 
         Duration = Sampling rate * samples
         """
-        duration = float(TS(t.__dict__.get('duration', 0)))  # duration in seconds
+        duration = float(t.__dict__.get('duration', 0)) / 1000  # duration in seconds
         sampling_rate = float(t.__dict__.get('sampling_rate', 0))
         samples = int(t.__dict__.get('samples_count', 0))
 
@@ -303,7 +303,7 @@ class Transcoder(LoggerMixin):
             samples = round(duration * sampling_rate)
 
         t.__dict__['sampling_rate'] = f'{sampling_rate}'
-        t.__dict__['duration'] = f'{duration:.3f}'
+        t.__dict__['duration'] = f'{duration * 1000.0:.3f}'  # milliseconds again
         t.__dict__['samples_count'] = f'{samples}'
 
     def get_meta_data(self, filename: str

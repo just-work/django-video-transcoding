@@ -3,7 +3,7 @@ django-model-utils==4.1.1
 requests==2.26.0
 Celery==5.1.2
 pymediainfo==5.1.0
-fffw==3.3.4
+fffw==3.4.0
 mypy~=0.902
 types-requests==2.25.6
 django-stubs==1.8.0

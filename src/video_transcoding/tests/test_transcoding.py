@@ -96,15 +96,17 @@ class TranscodingTestCase(BaseTestCase):
 
     def get_media_info(self, filename) -> pymediainfo.MediaInfo:
         """ Prepares mediainfo result for file."""
-        metadata = self.media_info[filename]
+        metadata = self.media_info[filename].copy()
         rate = metadata[transcoding.AUDIO_SAMPLING_RATE]
-        audio_duration = metadata[transcoding.AUDIO_DURATION]
+        audio_duration = metadata.pop(transcoding.AUDIO_DURATION)
         fps = metadata[transcoding.VIDEO_FRAME_RATE]
-        video_duration = metadata[transcoding.VIDEO_DURATION]
+        video_duration = metadata.pop(transcoding.VIDEO_DURATION)
         xml = self.media_info_xml.format(
             filename=filename,
             audio_samples=metadata.get(transcoding.SAMPLES_COUNT, int(rate * audio_duration)),
             video_frames=metadata.get(transcoding.FRAMES_COUNT, int(fps * video_duration)),
+            audio_duration=audio_duration * 1000,  # ms
+            video_duration=video_duration * 1000,  # ms
             **metadata)
         return pymediainfo.MediaInfo(xml)
 
