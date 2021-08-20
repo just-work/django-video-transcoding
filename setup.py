@@ -84,7 +84,7 @@ setup(
         'requests~=2.25.0',
         # Video processing
         'pymediainfo>=5.0.3,<5.2',
-        'fffw~=3.3.0',
+        'fffw~=3.4.0',
     ],
     classifiers=[
         'Development Status :: 4 - Beta',
