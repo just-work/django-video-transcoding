@@ -1,5 +1,5 @@
 Django==3.2.8
-django-model-utils==4.1.1
+django-model-utils==4.2.0
 requests==2.26.0
 Celery==5.1.2
 pymediainfo==5.1.0
