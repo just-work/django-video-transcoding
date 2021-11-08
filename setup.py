@@ -77,8 +77,8 @@ setup(
         'Django>=2.2,<3.3',
         'django-model-utils>=4.2.0,<4.3.0',
         # Background processing
-        'Celery>=5.0.5,<5.2.0',
-        'kombu>=5.0.2,<5.2.0',
+        'Celery>=5.0.5,<5.3.0',
+        'kombu>=5.0.2,<5.3.0',
         'billiard~=3.6.4.0',
         # Uploading
         'requests~=2.25.0',
