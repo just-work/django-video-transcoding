@@ -1,7 +1,7 @@
 Django==3.2.9
 django-model-utils==4.2.0
 requests==2.26.0
-Celery==5.2.0
+Celery==5.2.1
 pymediainfo==5.1.0
 fffw==3.4.1
 mypy~=0.902
