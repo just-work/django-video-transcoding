@@ -13,6 +13,7 @@ video files for video-on-demand services.
    quickstart
    installation
    architecture
+   modules
 
 Indices and tables
 ==================

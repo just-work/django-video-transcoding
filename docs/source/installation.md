@@ -85,7 +85,7 @@ storage.
 As `ffmpeg` can use HTTP links directly, there is a flag allowing to skip 
 source download step and start transcoding immediately:
 
-```env
+```bash
 export VIDEO_DOWNLOAD_SOURCE=1
 ```
 
@@ -96,7 +96,7 @@ so results storage must support it. `nginx` with `dav` module is preferred.
 
 For rendundancy, multiple storage hosts are supported:
 
-```env
+```bash
 export VIDEO_ORIGINS=http://storage-1/writable/,http://storage-2/writable/
 ```
 
@@ -106,7 +106,7 @@ export VIDEO_ORIGINS=http://storage-1/writable/,http://storage-2/writable/
 multiple links to video streams. Video player should support choosing single
 server from multiple links.
 
-```env
+```bash
 export VIDEO_EDGES=http://edge-1/streaming/,http://edge-1/streaming/
 ```
 
@@ -115,7 +115,7 @@ export VIDEO_EDGES=http://edge-1/streaming/,http://edge-1/streaming/
 By default, `django-video-transcoding` generates HLS manifest links for
 `nginx-vod-module`, but link format may be adopted to any streaming software.
 
-```env
+```bash
 export VIDEO_URL={edge}/hls/{filename}1080p.mp4/index.m3u8
 ```
 
