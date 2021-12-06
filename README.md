@@ -5,6 +5,7 @@ Simple video transcoding application for Django Framework
 [![codecov](https://codecov.io/gh/just-work/django-video-transcoding/branch/master/graph/badge.svg)](https://codecov.io/gh/just-work/django-video-transcoding)
 [![Updates](https://pyup.io/repos/github/just-work/django-video-transcoding/shield.svg)](https://pyup.io/repos/github/just-work/django-video-transcoding/)
 [![PyPI version](https://badge.fury.io/py/django-video-transcoding.svg)](http://badge.fury.io/py/django-video-transcoding)
+[![Documentation Status](https://readthedocs.org/projects/django-video-transcoding/badge/?version=latest)](https://django-video-transcoding.readthedocs.io/en/latest/?badge=latest)
 
 ## Installation
 
@@ -35,7 +36,7 @@ pip install django-video-transcoding
 
 Edit your project `settings.py`
 ```python
-INSTALLED_APPS += ['video_transcoding']
+INSTALLED_APPS.append('video_transcoding')
 ```
 
 ### Env
@@ -68,27 +69,9 @@ Start celery worker
 $> celery worker -A video_transcoding.celery
 ```
 
-## Demo project
-
-### Run admin, storage and celery worker
-
-```shell script
-docker-compose up
-```
-
-* http://localhost:8000/admin/ - Django admin (credentials are `admin:admin`)
-* http://storage.localhost:8080/videos/ - WebDAV for sources & results
-* http://storage.localhost:8080/hls/ - HLS stream endpoint
-
-### Transcode something
-
-* `curl -T cat.mp4 http://storage.localhost:8080/videos/sources/cat.mp4`
-* Create new video with link above
-* Wait till video will change status to DONE.
-* On video change form admin page there is a sample video player. 
-
-
 ## Develop
+
+[Development environment quickstart guide](/docs/source/quickstart.md)
 
 ### Tests
 
