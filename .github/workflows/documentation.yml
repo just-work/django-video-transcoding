@@ -13,6 +13,5 @@ jobs:
         python-version: '3.x'
     - name: Generate documentation
       run: |
-        pip install -r requirements.txt
         pip install -r docs/requirements.txt
         cd docs && make html
