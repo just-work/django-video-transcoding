@@ -74,7 +74,7 @@ setup(
     description='Simple video transcoding application for Django framework',
     install_requires=[
         # Django
-        'Django>=2.2,<4.1',
+        'Django>=2.2,<4.2',
         'django-model-utils>=4.2.0,<4.3.0',
         # Background processing
         'Celery>=5.0.5,<5.3.0',
@@ -94,6 +94,7 @@ setup(
         'Framework :: Django :: 3.1',
         'Framework :: Django :: 3.2',
         'Framework :: Django :: 4.0',
+        'Framework :: Django :: 4.1',
         'Operating System :: POSIX',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
