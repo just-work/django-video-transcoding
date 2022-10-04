@@ -1,4 +1,4 @@
-Django==4.1
+Django==4.1.2
 django-model-utils==4.2.0
 requests==2.28.1
 Celery==5.2.7
