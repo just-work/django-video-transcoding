@@ -4,4 +4,4 @@ sphinx==5.1.1
 sphinxcontrib-blockdiag==3.0.0
 sphinxcontrib-seqdiag==3.0.0
 recommonmark==0.7.1
-funcparserlib==1.0.0
+funcparserlib==1.0.1
