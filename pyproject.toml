@@ -1,0 +1,61 @@
+[build-system]
+requires = ["setuptools>=61.0", "setuptools-git-versioning"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools-git-versioning]
+enabled = true
+
+
+[project]
+name = "django_video_transcoding"
+dynamic = ["version"]
+description = "Simple video transcoding application for Django framework"
+readme = "README.md"
+authors = [
+    { name = "Sergey Tikhonov", email = "zimbler@gmail.com" },
+]
+
+dependencies = [
+    # Django Framework and batteries
+    "Django>=3.2,<5.1",
+    "django-model-utils>=4.2.0,<4.6.0",
+    # Background processing
+    "Celery>=5.0.5,<5.5.0",
+    "kombu>=5.0.2,<5.4.0",
+    "billiard>=3.6.4.0,<4.3.0",
+    # Uploading
+    "requests>=2.25,<2.33",
+    # Video processing
+    "pymediainfo>=5.0.3,<5.2",
+    "fffw~=4.0.0",
+]
+license = { text = "MIT" }
+keywords = [
+    "django",
+    "video",
+    "media",
+    "transcoding",
+    "processing",
+]
+classifiers = [
+        'Development Status :: 4 - Beta',
+        'Environment :: Console',
+        'Framework :: Django :: 3.2',
+        'Framework :: Django :: 4.0',
+        'Framework :: Django :: 4.1',
+        'Framework :: Django :: 4.2',
+        'Framework :: Django :: 5.0',
+        'Operating System :: POSIX',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.11',
+        'Programming Language :: Python :: 3.12',
+        'Topic :: Multimedia :: Video :: Conversion',
+]
+
+[project.urls]
+homepage = "https://github.com/just-work/django-video-transcoding"
+documentation = "https://django-video-transcoding.readthedocs.io/en/latest/"
+repository = "https://github.com/just-work/django-video-transcoding.git"
+issues = "https://github.com/just-work/django-video-transcoding/issues"
