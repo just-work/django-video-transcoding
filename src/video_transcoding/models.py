@@ -66,4 +66,5 @@ class Video(TimeStampedModel):
         for k, v in fields.items():
             setattr(self, k, v)
             update_fields.add(k)
-        self.save(update_fields=tuple(update_fields))
+        # suppress mypy [no-untyped-calls]
+        self.save(update_fields=tuple(update_fields))  # type: ignore
