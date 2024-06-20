@@ -75,7 +75,7 @@ setup(
     install_requires=[
         # Django
         'Django>=2.2,<5.1',
-        'django-model-utils>=4.2.0,<4.3.0',
+        'django-model-utils>=4.2.0,<4.6.0',
         # Background processing
         'Celery>=5.0.5,<5.5.0',
         'kombu>=5.0.2,<5.3.0',
