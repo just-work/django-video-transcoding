@@ -19,9 +19,9 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install tox tox-gh-actions wheel
+        pip install tox tox-gh-actions build wheel
         sed -i '/Django==.*/d' ./requirements.txt # delete django dependency
     - name: Test with tox
       run: |
         tox
-        python setup.py sdist bdist_wheel install
+        python -m build
