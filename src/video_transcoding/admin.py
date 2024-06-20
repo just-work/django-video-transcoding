@@ -1,9 +1,10 @@
 import random
-from typing import Any, TypeVar, Callable
+from typing import Any, TypeVar, Callable, Union
 
 from django.contrib import admin
 from django.db.models import QuerySet
 from django.http import HttpRequest, HttpResponse
+from django.utils.functional import Promise
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 
@@ -12,7 +13,7 @@ from video_transcoding import helpers, models, defaults
 C = TypeVar("C", bound=Callable)
 
 
-def short_description(name: str) -> Callable[[C], C]:
+def short_description(name: Union[str, Promise]) -> Callable[[C], C]:
     """ Sets short description for function."""
 
     def inner(func: C) -> C:
@@ -27,7 +28,7 @@ class VideoAdmin(admin.ModelAdmin):
     list_display = ('basename', 'source', 'status_display')
     list_filter = ('status',)
     search_fields = ('source', '=basename')
-    actions = list(admin.ModelAdmin.actions or ()) + ["transcode"]
+    actions = ['transcode']
     readonly_fields = ('created', 'modified', 'video_player')
 
     class Media:
