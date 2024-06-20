@@ -59,7 +59,7 @@ def get_version():
 
 setup(
     name='django_video_transcoding',
-    version=get_version() or 'dev',
+    version=get_version() or '0.0.0.dev1',
     long_description=long_description,
     long_description_content_type='text/markdown',
     packages=find_packages(
@@ -96,7 +96,6 @@ setup(
         'Framework :: Django :: 4.0',
         'Framework :: Django :: 4.1',
         'Operating System :: POSIX',
-        'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3.10',
