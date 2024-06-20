@@ -81,7 +81,7 @@ setup(
         'kombu>=5.0.2,<5.3.0',
         'billiard~=3.6.4.0',
         # Uploading
-        'requests~=2.25.0',
+        'requests>=2.25,<2.33',
         # Video processing
         'pymediainfo>=5.0.3,<5.2',
         'fffw~=4.0.0',
