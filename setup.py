@@ -59,7 +59,7 @@ def get_version():
 
 setup(
     name='django_video_transcoding',
-    version=get_version() or 'dev',
+    version=get_version() or '0.0.0.dev1',
     long_description=long_description,
     long_description_content_type='text/markdown',
     packages=find_packages(
