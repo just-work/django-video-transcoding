@@ -71,12 +71,9 @@ class Transcoder(LoggerMixin):
         # Get source mediainfo to use in validation
         src = self.get_media_info(video_meta, audio_meta)
 
-        # set group of pixels length to segment size
-        gop = math.floor(src.video.frame_rate * self.profile.video[0].gop_size)
-        # preserve original video FPS
-        vrate = src.video.frame_rate
-        # preserve source audio sampling rate
-        arate = src.audio.sampling_rate
+        gop = self.profile.video[0].gop_size
+        vrate = self.profile.video[0].frame_rate
+        arate = self.profile.audio[0].sample_rate
 
         # Common ffmpeg flags
         ff = FFMPEG(overwrite=True, loglevel='repeat+level+info')

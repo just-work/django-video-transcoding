@@ -42,6 +42,8 @@ class Profile:
     audio: List[AudioTrack]
 
 
+# Default frame rate
+FRAME_RATE = 30
 # HLS Segment duration step, seconds
 SEGMENT_SIZE = 4
 # H.264 Group of pixels duration, seconds
@@ -69,8 +71,8 @@ DEFAULT_PROFILE = Profile(
             width=1920,
             height=1080,
             force_key_frames=KEY_FRAMES.format(sec=SEGMENT_SIZE),
-            gop_size=GOP_DURATION,
-            frame_rate=30,
+            gop_size=GOP_DURATION * FRAME_RATE,
+            frame_rate=FRAME_RATE,
         )
     ],
     audio=[
