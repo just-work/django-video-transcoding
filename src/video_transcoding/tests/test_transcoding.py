@@ -1,3 +1,4 @@
+from typing import TYPE_CHECKING, Dict, Any
 from unittest import mock
 
 import pymediainfo
@@ -8,9 +9,14 @@ from video_transcoding.transcoding import transcoder
 from video_transcoding.transcoding.metadata import Analyzer
 from video_transcoding.transcoding.profiles import DEFAULT_PROFILE
 
+if TYPE_CHECKING:
+    MediaInfoMixinTarget = BaseTestCase
+else:
+    MediaInfoMixinTarget = object
 
-class TranscodingTestCase(BaseTestCase):
-    """ Video file transcoding tests."""
+
+class MediaInfoMixin(MediaInfoMixinTarget):
+    """ Mixin to manipulate MediaInfo output."""
 
     # Minimal mediainfo output template to mock MediaInfo.parse result
     media_info_xml = """<?xml version="1.0" encoding="UTF-8"?>
@@ -62,8 +68,49 @@ class TranscodingTestCase(BaseTestCase):
     }
 
     def setUp(self):
+        super().setUp()
+        self.media_info_patcher = mock.patch.object(
+            pymediainfo.MediaInfo, 'parse', side_effect=self.get_media_info)
+        self.media_info_mock = self.media_info_patcher.start()
+        self.media_info: Dict[str, Dict[str, Any]] = {}
+
+    def tearDown(self):
+        self.media_info_patcher.stop()
+
+    def get_media_info(self, filename: str) -> pymediainfo.MediaInfo:
+        """ Prepares mediainfo result for file."""
+        metadata = self.media_info[filename].copy()
+        rate = metadata['audio_sampling_rate']
+        audio_duration = metadata.pop('audio_duration')
+        fps = metadata['video_frame_rate']
+        video_duration = metadata.pop('video_duration')
+        xml = self.media_info_xml.format(
+            filename=filename,
+            audio_samples=metadata.get('samples_count',
+                                       int(rate * audio_duration)),
+            video_frames=metadata.get('frames_count',
+                                      int(fps * video_duration)),
+            audio_duration=audio_duration * 1000,  # ms
+            video_duration=video_duration * 1000,  # ms
+            **metadata)
+        return pymediainfo.MediaInfo(xml)
+
+    def prepare_metadata(self, **kwargs):
+        """
+        Modifies metadata template with new values.
+        """
+        media_info = self.metadata.copy()
+        media_info.update(kwargs)
+        return media_info
+
+
+class TranscodingTestCase(MediaInfoMixin, BaseTestCase):
+    """ Video file transcoding tests."""
+
+    def setUp(self):
         self.source = 'http://ya.ru/source.mp4'
         self.dest = '/tmp/result.mp4'
+        super().setUp()
         self.media_info = {
             self.source: self.prepare_metadata(),
             self.dest: self.prepare_metadata()
@@ -71,10 +118,6 @@ class TranscodingTestCase(BaseTestCase):
 
         self.transcoder = transcoder.Transcoder(self.source, self.dest,
                                                 DEFAULT_PROFILE)
-
-        self.media_info_patcher = mock.patch.object(
-            pymediainfo.MediaInfo, 'parse', side_effect=self.get_media_info)
-        self.media_info_mock = self.media_info_patcher.start()
 
         self.runner_mock = mock.MagicMock(
             return_value=(0, '', '')
@@ -86,32 +129,8 @@ class TranscodingTestCase(BaseTestCase):
         self.ffmpeg_mock = self.runner_patcher.start()
 
     def tearDown(self):
-        self.media_info_patcher.stop()
+        super().tearDown()
         self.runner_patcher.stop()
-
-    def prepare_metadata(self, **kwargs):
-        """
-        Modifies metadata template with new values.
-        """
-        media_info = self.metadata.copy()
-        media_info.update(kwargs)
-        return media_info
-
-    def get_media_info(self, filename) -> pymediainfo.MediaInfo:
-        """ Prepares mediainfo result for file."""
-        metadata = self.media_info[filename].copy()
-        rate = metadata['audio_sampling_rate']
-        audio_duration = metadata.pop('audio_duration')
-        fps = metadata['video_frame_rate']
-        video_duration = metadata.pop('video_duration')
-        xml = self.media_info_xml.format(
-            filename=filename,
-            audio_samples=metadata.get('samples_count', int(rate * audio_duration)),
-            video_frames=metadata.get('frames_count', int(fps * video_duration)),
-            audio_duration=audio_duration * 1000,  # ms
-            video_duration=video_duration * 1000,  # ms
-            **metadata)
-        return pymediainfo.MediaInfo(xml)
 
     def test_smoke(self):
         """
@@ -147,7 +166,9 @@ class TranscodingTestCase(BaseTestCase):
         self.assertEqual(ensure_text(args), tuple(ffmpeg_args))
 
     def test_handle_stderr_errors(self):
-        self.runner_mock.return_value = (0, 'stdout', '[error] a warning captured')
+        self.runner_mock.return_value = (
+            0, 'stdout', '[error] a warning captured',
+        )
         try:
             self.transcoder.transcode()
         except transcoder.TranscodeError:  # pragma: no cover
@@ -170,13 +191,23 @@ class TranscodingTestCase(BaseTestCase):
 
         self.assertEqual(ctx.exception.message, "invalid ffmpeg return code -9")
 
+
+class AnalyzerTestCase(MediaInfoMixin, BaseTestCase):
+    """ Media analyzer tests."""
+
+    def setUp(self):
+        super().setUp()
+        self.source = 'http://ya.ru/source.mp4'
+        self.analyzer = Analyzer()
+        self.media_info[self.source] = self.prepare_metadata()
+
     def test_restore_video_aspect(self):
         """
         Metadata must satisfy following equations:
 
         * DAR = Width / Height * PAR
         """
-        dar = round(21/9, 3)
+        dar = round(21 / 9, 3)
         width = 1600
         height = 1200
         par = round(dar / (width / height), 3)
