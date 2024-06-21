@@ -220,7 +220,7 @@ class AnalyzerTestCase(MediaInfoMixin, BaseTestCase):
 
         # Check that by default metadata parsed correctly
         try:
-            _, v = Analyzer().get_meta_data(self.source)
+            _, v = self.analyzer.get_meta_data(self.source)
             self.assertEqual(v.dar, dar)
             self.assertEqual(v.par, par)
             self.assertEqual(v.width, width)
@@ -231,25 +231,25 @@ class AnalyzerTestCase(MediaInfoMixin, BaseTestCase):
         with self.subTest("fix par"):
             # wrong PAR in source metadata
             m['par'] *= 1.1
-            _, v = Analyzer().get_meta_data(self.source)
+            _, v = self.analyzer.get_meta_data(self.source)
             self.assertAlmostEqual(v.par, par, 3)
         m['par'] = par
 
         with self.subTest("restore par from dar"):
             m['par'] = 0
-            _, v = Analyzer().get_meta_data(self.source)
+            _, v = self.analyzer.get_meta_data(self.source)
             self.assertAlmostEqual(v.par, par, 3)
         m['par'] = par
 
         with self.subTest("restore dar from par"):
             m['aspect'] = 0
-            _, v = Analyzer().get_meta_data(self.source)
+            _, v = self.analyzer.get_meta_data(self.source)
             self.assertAlmostEqual(v.dar, dar, 3)
         m['aspect'] = dar
 
         with self.subTest("default dar and par"):
             m['aspect'] = m['par'] = 0
-            _, v = Analyzer().get_meta_data(self.source)
+            _, v = self.analyzer.get_meta_data(self.source)
             self.assertAlmostEqual(v.dar, width / height, 3)
             self.assertAlmostEqual(v.par, 1.0, 3)
         m['par'] = par
@@ -260,7 +260,7 @@ class AnalyzerTestCase(MediaInfoMixin, BaseTestCase):
             m['height'] = 0
             with self.assertRaises(AssertionError):
                 # without W and H we can't restore initial metadata
-                Analyzer().get_meta_data(self.source)
+                self.analyzer.get_meta_data(self.source)
 
     def test_restore_frames(self):
         """
@@ -279,7 +279,7 @@ class AnalyzerTestCase(MediaInfoMixin, BaseTestCase):
 
         # Check that by default metadata parsed correctly
         try:
-            _, v = Analyzer().get_meta_data(self.source)
+            _, v = self.analyzer.get_meta_data(self.source)
             self.assertEqual(v.frames, frames)
             self.assertAlmostEqual(v.frame_rate, fps, 3)
             self.assertAlmostEqual(float(v.duration), duration, 3)
@@ -288,32 +288,32 @@ class AnalyzerTestCase(MediaInfoMixin, BaseTestCase):
 
         with self.subTest("restore frames"):
             m['frames_count'] = 0
-            _, v = Analyzer().get_meta_data(self.source)
+            _, v = self.analyzer.get_meta_data(self.source)
             self.assertEqual(v.frames, frames)
         m['frames_count'] = frames
 
         with self.subTest("restore frame rate"):
             m['video_frame_rate'] = 0
-            _, v = Analyzer().get_meta_data(self.source)
+            _, v = self.analyzer.get_meta_data(self.source)
             self.assertAlmostEqual(v.frame_rate, fps, 3)
         m['video_frame_rate'] = fps
 
         with self.subTest("restore duration"):
             m['video_duration'] = 0
-            _, v = Analyzer().get_meta_data(self.source)
+            _, v = self.analyzer.get_meta_data(self.source)
             self.assertAlmostEqual(v.duration, duration, 3)
         m['video_duration'] = duration
 
         with self.subTest("only frames"):
             m['video_duration'] = m['video_frame_rate'] = 0
             with self.assertRaises(AssertionError):
-                Analyzer().get_meta_data(self.source)
+                self.analyzer.get_meta_data(self.source)
         m['video_duration'] = duration
         m['video_frame_rate'] = fps
 
         with self.subTest("only frame rate"):
             m['video_duration'] = m['frames_count'] = 0
-            _, v = Analyzer().get_meta_data(self.source)
+            _, v = self.analyzer.get_meta_data(self.source)
             self.assertEqual(v.duration, 0)
             self.assertEqual(v.frames, 0)
         m['video_duration'] = duration
@@ -321,7 +321,7 @@ class AnalyzerTestCase(MediaInfoMixin, BaseTestCase):
 
         with self.subTest("only duration"):
             m['video_frame_rate'] = m['frames_count'] = 0
-            _, v = Analyzer().get_meta_data(self.source)
+            _, v = self.analyzer.get_meta_data(self.source)
             self.assertEqual(v.frames, 0)
             self.assertEqual(v.frame_rate, 0)
             self.assertAlmostEqual(float(v.duration), duration, 3)
@@ -330,7 +330,7 @@ class AnalyzerTestCase(MediaInfoMixin, BaseTestCase):
 
         with self.subTest("fix fps"):
             m['video_frame_rate'] *= 1.1
-            _, v = Analyzer().get_meta_data(self.source)
+            _, v = self.analyzer.get_meta_data(self.source)
             self.assertAlmostEqual(v.frame_rate, fps, 3)
 
     def test_restore_samples(self):
@@ -350,7 +350,7 @@ class AnalyzerTestCase(MediaInfoMixin, BaseTestCase):
 
         # Check that by default metadata parsed correctly
         try:
-            a, _ = Analyzer().get_meta_data(self.source)
+            a, _ = self.analyzer.get_meta_data(self.source)
             self.assertEqual(a.samples, samples)
             self.assertEqual(a.sampling_rate, sampling_rate)
             self.assertAlmostEqual(float(a.duration), duration, 3)
@@ -359,32 +359,32 @@ class AnalyzerTestCase(MediaInfoMixin, BaseTestCase):
 
         with self.subTest("restore samples"):
             m['samples_count'] = 0
-            a, _ = Analyzer().get_meta_data(self.source)
+            a, _ = self.analyzer.get_meta_data(self.source)
             self.assertEqual(a.samples, samples)
         m['samples_count'] = samples
 
         with self.subTest("restore sampling rate"):
             m['audio_sampling_rate'] = 0
-            a, _ = Analyzer().get_meta_data(self.source)
+            a, _ = self.analyzer.get_meta_data(self.source)
             self.assertAlmostEqual(a.sampling_rate, sampling_rate, 3)
         m['audio_sampling_rate'] = sampling_rate
 
         with self.subTest("restore duration"):
             m['audio_duration'] = 0
-            a, _ = Analyzer().get_meta_data(self.source)
+            a, _ = self.analyzer.get_meta_data(self.source)
             self.assertAlmostEqual(a.duration, duration, 3)
         m['audio_duration'] = duration
 
         with self.subTest("only samples"):
             m['audio_duration'] = m['audio_sampling_rate'] = 0
             with self.assertRaises(AssertionError):
-                Analyzer().get_meta_data(self.source)
+                self.analyzer.get_meta_data(self.source)
         m['audio_duration'] = duration
         m['audio_sampling_rate'] = sampling_rate
 
         with self.subTest("only sampling rate"):
             m['audio_duration'] = m['samples_count'] = 0
-            a, _ = Analyzer().get_meta_data(self.source)
+            a, _ = self.analyzer.get_meta_data(self.source)
             self.assertEqual(a.duration, 0)
             self.assertEqual(a.samples, 0)
         m['audio_duration'] = duration
@@ -392,7 +392,7 @@ class AnalyzerTestCase(MediaInfoMixin, BaseTestCase):
 
         with self.subTest("only duration"):
             m['audio_sampling_rate'] = m['samples_count'] = 0
-            a, _ = Analyzer().get_meta_data(self.source)
+            a, _ = self.analyzer.get_meta_data(self.source)
             self.assertEqual(a.samples, 0)
             self.assertEqual(a.sampling_rate, 0)
             self.assertEqual(a.duration, duration)
@@ -402,5 +402,5 @@ class AnalyzerTestCase(MediaInfoMixin, BaseTestCase):
         with self.subTest("fix sampling rate"):
             # Samples count is adjusted to sampling rate
             m['audio_sampling_rate'] *= 2
-            a, _ = Analyzer().get_meta_data(self.source)
+            a, _ = self.analyzer.get_meta_data(self.source)
             self.assertAlmostEqual(a.samples, samples * 2)
