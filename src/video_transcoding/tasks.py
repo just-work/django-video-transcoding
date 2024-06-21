@@ -10,7 +10,8 @@ import requests
 from billiard.exceptions import SoftTimeLimitExceeded
 from django.db.transaction import atomic
 
-from video_transcoding import models, transcoding, defaults
+from video_transcoding.transcoding import profiles, transcoder
+from video_transcoding import models, defaults
 from video_transcoding.celery import app
 from video_transcoding.utils import LoggerMixin
 
@@ -199,8 +200,8 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         """
         self.logger.info("Start transcoding %s to %s",
                          source, destination)
-        transcoder = transcoding.Transcoder(source, destination)
-        transcoder.transcode()
+        t = transcoder.Transcoder(source, destination, profiles.DEFAULT_PROFILE)
+        t.transcode()
         self.logger.info("Transcoding %s finished", source)
 
     def store(self, destination: str) -> None:
