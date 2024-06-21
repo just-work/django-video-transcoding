@@ -2,6 +2,7 @@ import dataclasses
 from pprint import pformat
 
 from fffw.encoding import FFMPEG, input_file, Stream, Scale, output_file
+from fffw.encoding.vector import SIMD
 from fffw.graph import VIDEO, AUDIO
 
 from video_transcoding.transcoding import codecs
@@ -66,47 +67,54 @@ class Transcoder(LoggerMixin):
         # Get source mediainfo to use in validation
         src = self.get_media_info(self.source)
 
-        gop = self.profile.video[0].gop_size
-        vrate = self.profile.video[0].frame_rate
-        arate = self.profile.audio[0].sample_rate
+        # Initialize source file descriptor with stream metadata
+        source = input_file(self.source,
+                            Stream(VIDEO, src.video),
+                            Stream(AUDIO, src.audio))
 
-        # Common ffmpeg flags
-        ff = FFMPEG(overwrite=True, loglevel='repeat+level+info')
-        # Init source file
-        ff < input_file(self.source,
-                        Stream(VIDEO, src.video),
-                        Stream(AUDIO, src.audio))
+        # Initialize output file with audio and codecs from profile tracks.
+        tracks = []
+        for video in self.profile.video:
+            tracks.append(codecs.VideoCodec(
+                codec=video.codec,
+                force_key_frames=video.force_key_frames,
+                constant_rate_factor=video.constant_rate_factor,
+                preset=video.preset,
+                max_rate=video.max_rate,
+                buf_size=video.buf_size,
+                profile=video.profile,
+                pix_fmt=video.pix_fmt,
+                gop=video.gop_size,
+                rate=video.frame_rate,
+            ))
+        for audio in self.profile.audio:
+            tracks.append(codecs.AudioCodec(
+                codec=audio.codec,
+                bitrate=audio.bitrate,
+                channels=audio.channels,
+                rate=audio.sample_rate,
+            ))
+        dst = output_file(self.destination, *tracks,
+                          format='mp4')
 
-        # Output codecs
-        video = self.profile.video[0]
-        cv0 = codecs.VideoCodec(
-            codec=video.codec,
-            force_key_frames=video.force_key_frames,
-            constant_rate_factor=video.constant_rate_factor,
-            preset=video.preset,
-            max_rate=video.max_rate,
-            buf_size=video.buf_size,
-            profile=video.profile,
-            pix_fmt=video.pix_fmt,
-            gop=gop,
-            rate=vrate,
-        )
-        audio = self.profile.audio[0]
-        ca0 = codecs.AudioCodec(
-            codec=audio.codec,
-            bitrate=audio.bitrate,
-            channels=audio.channels,
-            rate=arate,
-        )
+        # ffmpeg wrapper with vectorized processing capabilities
+        simd = SIMD(source, dst,
+                    overwrite=True, loglevel='repeat+level+info')
 
-        # Scaling
-        ff.video | Scale(width=video.width, height=video.height) > cv0
+        # per-video-track scaling
+        scaling_params = [
+            (video.width, video.height) for video in self.profile.video
+        ]
+        scaled_video = simd.video.connect(Scale, params=scaling_params)
 
-        # codecs, muxer and output path
-        ff > output_file(self.destination, cv0, ca0, format='mp4')
+        # connect scaled video streams to simd video codecs
+        scaled_video > simd
+
+        # pass audio as is to simd audio codecs
+        simd.audio > simd
 
         # Run ffmpeg
-        self.run(ff)
+        self.run(simd.ffmpeg)
 
         # Get result mediainfo
         dest_media_info = self.get_media_info(self.destination)
