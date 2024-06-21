@@ -69,21 +69,21 @@ class Transcoder(LoggerMixin):
         audio_meta, video_meta = Analyzer().get_meta_data(self.source)
 
         # Get source mediainfo to use in validation
-        source_media_info = self.get_media_info(video_meta, audio_meta)
+        src = self.get_media_info(video_meta, audio_meta)
 
         # set group of pixels length to segment size
-        gop = math.floor(video_meta.frame_rate * self.profile.video[0].gop_size)
+        gop = math.floor(src.video.frame_rate * self.profile.video[0].gop_size)
         # preserve original video FPS
-        vrate = video_meta.frame_rate
+        vrate = src.video.frame_rate
         # preserve source audio sampling rate
-        arate = audio_meta.sampling_rate
+        arate = src.audio.sampling_rate
 
         # Common ffmpeg flags
         ff = FFMPEG(overwrite=True, loglevel='repeat+level+info')
         # Init source file
         ff < input_file(self.source,
-                        Stream(VIDEO, video_meta),
-                        Stream(AUDIO, audio_meta))
+                        Stream(VIDEO, src.video),
+                        Stream(AUDIO, src.audio))
 
         # Output codecs
         video = self.profile.video[0]
@@ -121,7 +121,7 @@ class Transcoder(LoggerMixin):
         dest_media_info = self.get_media_info(video_meta, audio_meta)
 
         # Validate ffmpeg result
-        self.validate(source_media_info, dest_media_info)
+        self.validate(src, dest_media_info)
 
     @staticmethod
     def validate(source_media_info: Metadata,
