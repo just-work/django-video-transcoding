@@ -1,11 +1,8 @@
 import dataclasses
-import math
 from pprint import pformat
-from typing import Optional
 
 from fffw.encoding import FFMPEG, input_file, Stream, Scale, output_file
-from fffw.graph import VideoMeta, AudioMeta, VIDEO, AUDIO
-
+from fffw.graph import VIDEO, AUDIO
 
 from video_transcoding.transcoding import codecs
 from video_transcoding.transcoding.metadata import Metadata, Analyzer
@@ -41,15 +38,15 @@ class Transcoder(LoggerMixin):
         self.destination = destination
         self.profile = profile
 
-    def get_media_info(self, video: Optional[VideoMeta],
-                       audio: Optional[AudioMeta]) -> Metadata:
+    def get_media_info(self, filename: str) -> Metadata:
         """
         Transforms video and audio metadata to a dict
 
-        :param video: video stream metadata
-        :param audio: audio stream metadata
-        :returns: metadata single level dictionary
+        :param filename: analyzed media
+        :returns: metadata object with video and audio stream
         """
+        audio, video = Analyzer().get_meta_data(filename)
+
         if video is None:
             raise TranscodeError("missing video stream")
         if audio is None:
@@ -66,10 +63,8 @@ class Transcoder(LoggerMixin):
         * runs `ffmpeg`
         * validates result
         """
-        audio_meta, video_meta = Analyzer().get_meta_data(self.source)
-
         # Get source mediainfo to use in validation
-        src = self.get_media_info(video_meta, audio_meta)
+        src = self.get_media_info(self.source)
 
         gop = self.profile.video[0].gop_size
         vrate = self.profile.video[0].frame_rate
@@ -114,8 +109,7 @@ class Transcoder(LoggerMixin):
         self.run(ff)
 
         # Get result mediainfo
-        audio_meta, video_meta = Analyzer().get_meta_data(self.destination)
-        dest_media_info = self.get_media_info(video_meta, audio_meta)
+        dest_media_info = self.get_media_info(self.destination)
 
         # Validate ffmpeg result
         self.validate(src, dest_media_info)
