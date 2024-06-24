@@ -73,7 +73,50 @@ DEFAULT_PROFILE = Profile(
             force_key_frames=KEY_FRAMES.format(sec=SEGMENT_SIZE),
             gop_size=GOP_DURATION * FRAME_RATE,
             frame_rate=FRAME_RATE,
-        )
+        ),
+        VideoTrack(
+            codec='libx264',
+            profile='high',
+            preset='slow',
+            constant_rate_factor=23,
+            max_rate=3_000_000,
+            buf_size=6_000_000,
+            pix_fmt='yuv420p',
+            width=1280,
+            height=720,
+            force_key_frames=KEY_FRAMES.format(sec=SEGMENT_SIZE),
+            gop_size=GOP_DURATION * FRAME_RATE,
+            frame_rate=FRAME_RATE,
+        ),
+        VideoTrack(
+            codec='libx264',
+            profile='medium',
+            preset='slow',
+            constant_rate_factor=23,
+            max_rate=1_500_000,
+            buf_size=3_000_000,
+            pix_fmt='yuv420p',
+            width=854,
+            height=480,
+            force_key_frames=KEY_FRAMES.format(sec=SEGMENT_SIZE),
+            gop_size=GOP_DURATION * FRAME_RATE,
+            frame_rate=FRAME_RATE,
+        ),
+        VideoTrack(
+            codec='libx264',
+            profile='medium',
+            preset='slow',
+            constant_rate_factor=23,
+            max_rate=800_000,
+            buf_size=1_600_000,
+            pix_fmt='yuv420p',
+            width=640,
+            height=360,
+            force_key_frames=KEY_FRAMES.format(sec=SEGMENT_SIZE),
+            gop_size=GOP_DURATION * FRAME_RATE,
+            frame_rate=FRAME_RATE,
+        ),
+
     ],
     audio=[
         AudioTrack(
@@ -81,6 +124,12 @@ DEFAULT_PROFILE = Profile(
             bitrate=192000,
             channels=2,
             sample_rate=48000,
-        )
+        ),
+        AudioTrack(
+            codec='aac',
+            bitrate=96000,
+            channels=2,
+            sample_rate=48000,
+        ),
     ]
 )

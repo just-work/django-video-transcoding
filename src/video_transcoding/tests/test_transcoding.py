@@ -137,12 +137,23 @@ class TranscodingTestCase(MediaInfoMixin, BaseTestCase):
         ffmpeg arguments test.
         """
         self.transcoder.transcode()
+
+        filter_complex = ';'.join([
+            '[0:v:0]split=4[v:split0][v:split1][v:split2][v:split3]',
+            '[v:split0]scale=w=1920:h=1080[vout0]',
+            '[v:split1]scale=w=1280:h=720[vout1]',
+            '[v:split2]scale=w=854:h=480[vout2]',
+            '[v:split3]scale=w=640:h=360[vout3]',
+        ])
+
         ffmpeg_args = [
             'ffmpeg',
             '-loglevel', 'repeat+level+info',
             '-y',
             '-i', self.source,
-            '-filter_complex', '[0:v:0]scale=w=1920:h=1080[vout0]',
+
+            '-filter_complex', filter_complex,
+
             '-map', '[vout0]',
             '-c:v:0', 'libx264',
             '-force_key_frames:0',
@@ -155,11 +166,58 @@ class TranscodingTestCase(MediaInfoMixin, BaseTestCase):
             '-g:0', '60',
             '-r:0', '30',
             '-pix_fmt:0', 'yuv420p',
+
+            '-map', '[vout1]',
+            '-c:v:1', 'libx264',
+            '-force_key_frames:1',
+            'expr:if(isnan(prev_forced_t),1,gte(t,prev_forced_t+4))',
+            '-crf:1', '23',
+            '-preset:1', 'slow',
+            '-maxrate:1', '3000000',
+            '-bufsize:1', '6000000',
+            '-profile:v:1', 'high',
+            '-g:1', '60',
+            '-r:1', '30',
+            '-pix_fmt:1', 'yuv420p',
+
+            '-map', '[vout2]',
+            '-c:v:2', 'libx264',
+            '-force_key_frames:2',
+            'expr:if(isnan(prev_forced_t),1,gte(t,prev_forced_t+4))',
+            '-crf:2', '23',
+            '-preset:2', 'slow',
+            '-maxrate:2', '1500000',
+            '-bufsize:2', '3000000',
+            '-profile:v:2', 'medium',
+            '-g:2', '60',
+            '-r:2', '30',
+            '-pix_fmt:2', 'yuv420p',
+
+            '-map', '[vout3]',
+            '-c:v:3', 'libx264',
+            '-force_key_frames:3',
+            'expr:if(isnan(prev_forced_t),1,gte(t,prev_forced_t+4))',
+            '-crf:3', '23',
+            '-preset:3', 'slow',
+            '-maxrate:3', '800000',
+            '-bufsize:3', '1600000',
+            '-profile:v:3', 'medium',
+            '-g:3', '60',
+            '-r:3', '30',
+            '-pix_fmt:3', 'yuv420p',
+
             '-map', '0:a:0',
             '-c:a:0', 'aac',
             '-b:a:0', '192000',
             '-ar:0', '48000',
             '-ac:0', '2',
+
+            '-map', '0:a:0',
+            '-c:a:1', 'aac',
+            '-b:a:1', '96000',
+            '-ar:1', '48000',
+            '-ac:1', '2',
+
             '-f', 'mp4', self.dest,
         ]
         args, kwargs = self.ffmpeg_mock.call_args

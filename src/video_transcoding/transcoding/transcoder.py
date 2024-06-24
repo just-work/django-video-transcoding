@@ -2,7 +2,7 @@ import dataclasses
 from pprint import pformat
 
 from fffw.encoding import FFMPEG, input_file, Stream, Scale, output_file
-from fffw.encoding.vector import SIMD
+from fffw.encoding.vector import SIMD, Vector
 from fffw.graph import VIDEO, AUDIO
 
 from video_transcoding.transcoding import codecs
@@ -73,9 +73,9 @@ class Transcoder(LoggerMixin):
                             Stream(AUDIO, src.audio))
 
         # Initialize output file with audio and codecs from profile tracks.
-        tracks = []
+        video_tracks = []
         for video in self.profile.video:
-            tracks.append(codecs.VideoCodec(
+            video_tracks.append(codecs.VideoCodec(
                 codec=video.codec,
                 force_key_frames=video.force_key_frames,
                 constant_rate_factor=video.constant_rate_factor,
@@ -87,14 +87,17 @@ class Transcoder(LoggerMixin):
                 gop=video.gop_size,
                 rate=video.frame_rate,
             ))
+        audio_tracks = []
         for audio in self.profile.audio:
-            tracks.append(codecs.AudioCodec(
+            audio_tracks.append(codecs.AudioCodec(
                 codec=audio.codec,
                 bitrate=audio.bitrate,
                 channels=audio.channels,
                 rate=audio.sample_rate,
             ))
-        dst = output_file(self.destination, *tracks,
+        dst = output_file(self.destination,
+                          *video_tracks,
+                          *audio_tracks,
                           format='mp4')
 
         # ffmpeg wrapper with vectorized processing capabilities
@@ -108,10 +111,10 @@ class Transcoder(LoggerMixin):
         scaled_video = simd.video.connect(Scale, params=scaling_params)
 
         # connect scaled video streams to simd video codecs
-        scaled_video > simd
+        scaled_video | Vector(video_tracks)
 
         # pass audio as is to simd audio codecs
-        simd.audio > simd
+        simd.audio | Vector(audio_tracks)
 
         # Run ffmpeg
         self.run(simd.ffmpeg)
