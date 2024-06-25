@@ -212,7 +212,7 @@ class ProcessVideoTestCase(BaseTestCase):
             self.run_task()
         tmp.assert_called_once_with()
 
-        filename = f'{self.basename}1080p.mp4'
+        filename = f'{self.basename}.mp4'
         destination = os.path.join(tmp.return_value, filename)
         self.transcoder_mock.assert_called_once_with(
             self.video.source, destination, profiles.DEFAULT_PRESET)
@@ -223,6 +223,128 @@ class ProcessVideoTestCase(BaseTestCase):
         self.requests_mock.assert_called_once_with(
             'put', os.path.join(defaults.VIDEO_ORIGINS[0], filename),
             data=self.open_mock.return_value, timeout=timeout)
+
+    def test_pass_preset_to_transcoder(self):
+        """
+        Preset linked to a video is initialized and passed correctly to
+        transcoder.
+        """
+        preset = models.Preset.objects.create(name='preset')
+        vt1 = models.VideoTrack.objects.create(
+            preset=preset,
+            name='vt1',
+            params={
+                'codec': 'libx264',
+                'constant_rate_factor': 23,
+                'preset': 'slow',
+                'max_rate': 500_000,
+                'buf_size':1_000_000,
+                'profile': 'main',
+                'pix_fmt': 'yuv420p',
+                'width': 640,
+                'height': 360,
+                'frame_rate': 30.0,
+                'gop_size': 60,
+                'force_key_frames': profiles.KEY_FRAMES.format(sec=2),
+            }
+        )
+        vt2 = models.VideoTrack.objects.create(
+            preset=preset,
+            name='vt2',
+            params={
+                'codec': 'libx264',
+                'constant_rate_factor': 23,
+                'preset': 'slow',
+                'max_rate': 1_000_000,
+                'buf_size':2_000_000,
+                'profile': 'main',
+                'pix_fmt': 'yuv420p',
+                'width': 1280,
+                'height': 720,
+                'frame_rate': 30.0,
+                'gop_size': 60,
+                'force_key_frames': profiles.KEY_FRAMES.format(sec=2),
+            }
+        )
+        at1 = models.AudioTrack.objects.create(
+            preset=preset,
+            name='at1',
+            params={
+                'codec': 'libfdk_aac',
+                'bitrate': 96_000,
+                'channels': 2,
+                'sample_rate': 48_000,
+            }
+        )
+        at2 = models.AudioTrack.objects.create(
+            preset=preset,
+            name='at2',
+            params={
+                'codec': 'libfdk_aac',
+                'bitrate': 192_000,
+                'channels': 2,
+                'sample_rate': 48_000,
+            }
+        )
+        vp1 = models.VideoProfile.objects.create(
+            preset=preset,
+            name='vp1',
+            order_number=2,
+            condition={
+                'min_bitrate': 0,
+                'min_width': 0,
+                'min_height': 0,
+                'min_frame_rate': 0,
+            },
+        )
+        vp1.video.set([vt1])
+        vp1 = models.VideoProfile.objects.create(
+            preset=preset,
+            name='vp2',
+            order_number=1,
+            condition={
+                'min_bitrate': 1_000_000,
+                'min_width': 1280,
+                'min_height': 720,
+                'min_frame_rate': 0,
+            },
+        )
+        vp1.video.set([vt1, vt2])
+
+        ap1 = models.AudioProfile.objects.create(
+            preset=preset,
+            name='ap1',
+            order_number=2,
+            condition={
+                'min_bitrate': 0,
+                'min_sample_rate': 0,
+            }
+        )
+        ap1.audio.set([at1])
+        ap2 = models.AudioProfile.objects.create(
+            preset=preset,
+            name='ap2',
+            order_number=1,
+            condition={
+                'min_bitrate': 160_000,
+                'min_sample_rate': 0,
+            }
+        )
+        ap2.audio.set([at1, at2])
+
+        self.video.preset = preset
+        self.video.save(update_fields={'preset'})
+
+        with self.temp_dir_mock() as tmp:
+            self.run_task()
+
+        filename = f'{self.basename}.mp4'
+
+        destination = os.path.join(tmp.return_value, filename)
+
+        expected = tasks.TranscodeVideo.init_preset(preset)
+        self.transcoder_mock.assert_called_once_with(
+            self.video.source, destination, expected)
 
     def test_pass_downloaded_file_to_transcoder(self):
         """
@@ -235,7 +357,7 @@ class ProcessVideoTestCase(BaseTestCase):
         tmp.assert_called_once_with()
         tmp_dir = tmp.return_value
 
-        filename = f'{self.basename}1080p.mp4'
+        filename = f'{self.basename}.mp4'
         temp_file = os.path.join(tmp_dir, f'{self.basename}.src.bin')
         destination = os.path.join(tmp_dir, filename)
         self.transcoder_mock.assert_called_once_with(
