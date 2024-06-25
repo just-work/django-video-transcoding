@@ -168,7 +168,12 @@ class TranscodeVideo(LoggerMixin, celery.Task):
             checksum = hashlib.md5()  # type: Optional[hashlib._Hash]
         else:
             checksum = None
-        with requests.get(source, stream=True, timeout=timeout, allow_redirects=True) as response:
+        with requests.get(
+            source,
+            stream=True,
+            timeout=timeout,
+            allow_redirects=True,
+        ) as response:
             response.raise_for_status()
             with open(destination, 'wb') as f:
                 encoding = response.headers.get('transfer-encoding')
