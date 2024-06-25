@@ -8,7 +8,7 @@ from django.utils.functional import Promise
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 
-from video_transcoding import helpers, models, defaults
+from video_transcoding import helpers, models, defaults, forms
 
 C = TypeVar("C", bound=Callable)
 
@@ -73,12 +73,21 @@ class VideoAdmin(admin.ModelAdmin):
             self.fields = fields
 
 
-@admin.register(models.VideoTrack, models.AudioTrack)
 class TrackAdmin(admin.ModelAdmin):
     list_display = ('name', 'preset', 'created', 'modified')
     list_filter = ('preset',)
     readonly_fields = ('created', 'modified')
     search_fields = ('=name',)
+
+
+@admin.register(models.VideoTrack)
+class VideoTrackAdmin(TrackAdmin):
+    form = forms.VideoTrackForm
+
+
+@admin.register(models.AudioTrack)
+class AudioTrackAdmin(TrackAdmin):
+    form = forms.AudioTrackForm
 
 
 class ProfileTracksInline(admin.TabularInline):
@@ -106,11 +115,13 @@ class ProfileAdmin(admin.ModelAdmin):
 @admin.register(models.VideoProfile)
 class VideoProfileAdmin(ProfileAdmin):
     inlines = [VideoProfileTracksInline]
+    form = forms.VideoProfileForm
 
 
 @admin.register(models.AudioProfile)
 class AudioProfileAdmin(ProfileAdmin):
     inlines = [AudioProfileTracksInline]
+    form = forms.AudioProfileForm
 
 
 class ProfileInline(admin.TabularInline):
