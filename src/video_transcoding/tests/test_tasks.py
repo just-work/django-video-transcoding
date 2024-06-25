@@ -215,7 +215,7 @@ class ProcessVideoTestCase(BaseTestCase):
         filename = f'{self.basename}1080p.mp4'
         destination = os.path.join(tmp.return_value, filename)
         self.transcoder_mock.assert_called_once_with(
-            self.video.source, destination, profiles.DEFAULT_PROFILE)
+            self.video.source, destination, profiles.DEFAULT_PRESET)
 
         self.open_mock.assert_called_once_with(destination, 'rb')
 
@@ -239,7 +239,7 @@ class ProcessVideoTestCase(BaseTestCase):
         temp_file = os.path.join(tmp_dir, f'{self.basename}.src.bin')
         destination = os.path.join(tmp_dir, filename)
         self.transcoder_mock.assert_called_once_with(
-            temp_file, destination, profiles.DEFAULT_PROFILE,
+            temp_file, destination, profiles.DEFAULT_PRESET,
         )
 
     def test_download_source(self):
