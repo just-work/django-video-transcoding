@@ -200,7 +200,7 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         """
         self.logger.info("Start transcoding %s to %s",
                          source, destination)
-        t = transcoder.Transcoder(source, destination, profiles.DEFAULT_PROFILE)
+        t = transcoder.Transcoder(source, destination, profiles.DEFAULT_PRESET)
         t.transcode()
         self.logger.info("Transcoding %s finished", source)
 
