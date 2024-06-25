@@ -9,4 +9,4 @@ types-requests==2.28.9
 django-stubs==5.0.2
 billiard==4.2.0
 kombu==5.3.7
-importlib-metadata==7.1.0
+importlib-metadata==8.0.0
