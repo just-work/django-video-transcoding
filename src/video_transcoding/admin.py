@@ -71,3 +71,48 @@ class VideoAdmin(admin.ModelAdmin):
             return super().add_view(request, form_url, extra_context)
         finally:
             self.fields = fields
+
+
+@admin.register(models.VideoTrack, models.AudioTrack)
+class TrackAdmin(admin.ModelAdmin):
+    list_display = ('name', 'preset', 'created', 'modified')
+    readonly_fields = ('created', 'modified')
+    search_fields = ('=name',)
+
+
+class ProfileTracksInline(admin.TabularInline):
+    list_display = ('track', 'order_number')
+    extra = 0
+    autocomplete_fields = ('track',)
+
+
+class VideoProfileTracksInline(ProfileTracksInline):
+    model = models.VideoProfileTracks
+
+
+class AudioProfileTracksInline(ProfileTracksInline):
+    model = models.AudioProfileTracks
+
+
+class ProfileAdmin(admin.ModelAdmin):
+    list_display = ('name', 'preset', 'order_number', 'created', 'modified')
+    readonly_fields = ('created', 'modified')
+    search_fields = ('=name',)
+    ordering = ('preset', 'order_number',)
+
+
+@admin.register(models.VideoProfile)
+class VideoProfileAdmin(ProfileAdmin):
+    inlines = [VideoProfileTracksInline]
+
+
+@admin.register(models.AudioProfile)
+class AudioProfileAdmin(ProfileAdmin):
+    inlines = [AudioProfileTracksInline]
+
+
+@admin.register(models.Preset)
+class PresetAdmin(admin.ModelAdmin):
+    list_display = ('name', 'created', 'modified')
+    readonly_fields = ('created', 'modified')
+    search_fields = ('=name',)

@@ -4,10 +4,107 @@ from uuid import UUID
 
 from django.core.validators import URLValidator
 from django.db import models
+from django.db.models.fields import related_descriptors
 from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 
 from video_transcoding import defaults
+
+
+class Preset(TimeStampedModel):
+    """ Transcoding preset."""
+    video_tracks: related_descriptors.ReverseManyToOneDescriptor
+    audio_tracks: related_descriptors.ReverseManyToOneDescriptor
+    video_profiles: related_descriptors.ReverseManyToOneDescriptor
+    audio_profiles: related_descriptors.ReverseManyToOneDescriptor
+    name = models.SlugField(max_length=255, unique=True)
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class VideoTrack(TimeStampedModel):
+    """ Video stream transcoding parameters."""
+    name = models.SlugField(max_length=255, unique=False)
+    params = models.JSONField(default=dict)
+    preset = models.ForeignKey(Preset, models.CASCADE,
+                               related_name='video_tracks')
+
+    class Meta:
+        unique_together = (('name', 'preset'),)
+
+    def __str__(self) -> str:
+        return f'{self.name}@{self.preset}'
+
+
+class AudioTrack(TimeStampedModel):
+    """ Audio stream transcoding parameters."""
+    name = models.SlugField(max_length=255, unique=False)
+    params = models.JSONField(default=dict)
+    preset = models.ForeignKey(Preset, models.CASCADE,
+                               related_name='audio_tracks')
+
+    class Meta:
+        unique_together = (('name', 'preset'),)
+
+    def __str__(self) -> str:
+        return f'{self.name}@{self.preset}'
+
+
+class VideoProfile(TimeStampedModel):
+    """ Video transcoding profile."""
+    name = models.SlugField(max_length=255, unique=False)
+    order_number = models.SmallIntegerField(default=0)
+    condition = models.JSONField(default=dict)
+    preset = models.ForeignKey(Preset, models.CASCADE,
+                               related_name='video_profiles')
+
+    video = models.ManyToManyField(VideoTrack, through='VideoProfileTracks')
+
+    class Meta:
+        unique_together = (('name', 'preset'),)
+        ordering = ['order_number']
+
+    def __str__(self) -> str:
+        return f'{self.name}@{self.preset}'
+
+
+class VideoProfileTracks(models.Model):
+    profile = models.ForeignKey(VideoProfile, models.CASCADE)
+    track = models.ForeignKey(VideoTrack, models.CASCADE)
+    order_number = models.SmallIntegerField(default=0)
+
+    class Meta:
+        unique_together = (('profile', 'track'),)
+        ordering = ['order_number']
+
+
+class AudioProfile(TimeStampedModel):
+    """ Audio transcoding profile."""
+    name = models.SlugField(max_length=255, unique=False)
+    order_number = models.SmallIntegerField(default=0)
+    condition = models.JSONField(default=dict)
+    preset = models.ForeignKey(Preset, models.CASCADE,
+                               related_name='audio_profiles')
+
+    audio = models.ManyToManyField(AudioTrack, through='AudioProfileTracks')
+
+    class Meta:
+        unique_together = (('name', 'preset'),)
+        ordering = ['order_number']
+
+    def __str__(self) -> str:
+        return f'{self.name}@{self.preset}'
+
+
+class AudioProfileTracks(models.Model):
+    profile = models.ForeignKey(AudioProfile, models.CASCADE)
+    track = models.ForeignKey(AudioTrack, models.CASCADE)
+    order_number = models.SmallIntegerField(default=0)
+
+    class Meta:
+        unique_together = (('profile', 'track'),)
+        ordering = ['order_number']
 
 
 class Video(TimeStampedModel):
@@ -31,6 +128,7 @@ class Video(TimeStampedModel):
                                  URLValidator(schemes=('http', 'https'))])
     basename = models.UUIDField(blank=True, null=True,
                                 verbose_name=_('Basename'))
+    preset = models.ForeignKey(Preset, models.SET_NULL, blank=True, null=True)
 
     class Meta:
         app_label = 'video_transcoding'

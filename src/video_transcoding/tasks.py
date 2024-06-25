@@ -2,7 +2,7 @@ import io
 import os
 import shutil
 import tempfile
-from typing import Optional
+from typing import Optional, List
 from uuid import UUID, uuid4
 import hashlib
 import celery
@@ -151,7 +151,7 @@ class TranscodeVideo(LoggerMixin, celery.Task):
                 self.download(video.source, source)
             else:
                 source = video.source
-            self.transcode(source, destination)
+            self.transcode(source, destination, video)
             self.store(destination)
         self.logger.info("Processing done")
 
@@ -196,16 +196,22 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         if checksum:
             self.logger.info("Source file checksum: %s", checksum.hexdigest())
 
-    def transcode(self, source: str, destination: str) -> None:
+    def transcode(self, source: str, destination: str, video: models.Video
+                  ) -> None:
         """
         Starts video transcoding
 
         :param source: source file link (http/ftp or file path)
         :param destination: result temporary file path.
+        :param video: video object.
         """
         self.logger.info("Start transcoding %s to %s",
                          source, destination)
-        t = transcoder.Transcoder(source, destination, profiles.DEFAULT_PRESET)
+        if video.preset is None:
+            preset = profiles.DEFAULT_PRESET
+        else:
+            preset = self.init_preset(video.preset)
+        t = transcoder.Transcoder(source, destination, preset)
         t.transcode()
         self.logger.info("Transcoding %s finished", source)
 
@@ -226,6 +232,48 @@ class TranscodeVideo(LoggerMixin, celery.Task):
                 response.raise_for_status()
             self.logger.info("Uploaded to %s", url)
         self.logger.info("%s save finished", destination)
+
+    @staticmethod
+    def init_preset(preset: models.Preset) -> profiles.Preset:
+        """
+        Initializes preset entity from database objects.
+        """
+        video_tracks: List[profiles.VideoTrack] = []
+        for vt in preset.video_tracks.all():  # type: models.VideoTrack
+            kwargs = dict(**vt.params)
+            kwargs['id'] = vt.name
+            video_tracks.append(profiles.VideoTrack(**kwargs))
+
+        audio_tracks: List[profiles.AudioTrack] = []
+        for at in preset.audio_tracks.all():  # type: models.AudioTrack
+            kwargs = dict(**at.params)
+            kwargs['id'] = at.name
+            audio_tracks.append(profiles.AudioTrack(**kwargs))
+
+        video_profiles: List[profiles.VideoProfile] = []
+        for vp in preset.video_profiles.all():  # type: models.VideoProfile
+            vc = profiles.VideoCondition(**vp.condition)
+            tracks = [t.name for t in vp.video.all()]
+            video_profiles.append(profiles.VideoProfile(
+                condition=vc,
+                video=tracks,
+            ))
+
+        audio_profiles: List[profiles.AudioProfile] = []
+        for ap in preset.audio_profiles.all():  # type: models.AudioProfile
+            ac = profiles.AudioCondition(**ap.condition)
+            tracks = [t.name for t in ap.audio.all()]
+            audio_profiles.append(profiles.AudioProfile(
+                condition=ac,
+                audio=tracks,
+            ))
+
+        return profiles.Preset(
+            video_profiles=video_profiles,
+            audio_profiles=audio_profiles,
+            video=video_tracks,
+            audio=audio_tracks,
+        )
 
 
 transcode_video: TranscodeVideo = app.register_task(
