@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Any
 
 from django import forms
 
@@ -11,7 +11,7 @@ class NestedJSONForm(forms.ModelForm):
     json_field: str
     nested_fields: List[str]
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         try:
             data = self.initial[self.json_field]
@@ -23,7 +23,7 @@ class NestedJSONForm(forms.ModelForm):
             except KeyError:
                 pass
 
-    def clean(self):
+    def clean(self) -> dict[str, Any]:
         cd = self.cleaned_data
         cd[self.json_field] = {k: cd[f'_{k}'] for k in self.nested_fields}
         return cd

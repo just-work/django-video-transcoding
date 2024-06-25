@@ -59,7 +59,9 @@ class VideoProfile(TimeStampedModel):
     preset = models.ForeignKey(Preset, models.CASCADE,
                                related_name='video_profiles')
 
-    video = models.ManyToManyField(VideoTrack, through='VideoProfileTracks')
+    video = cast(
+        related_descriptors.ManyToManyDescriptor,
+        models.ManyToManyField(VideoTrack, through='VideoProfileTracks'))
 
     class Meta:
         unique_together = (('name', 'preset'),)
@@ -87,7 +89,9 @@ class AudioProfile(TimeStampedModel):
     preset = models.ForeignKey(Preset, models.CASCADE,
                                related_name='audio_profiles')
 
-    audio = models.ManyToManyField(AudioTrack, through='AudioProfileTracks')
+    audio = cast(
+        related_descriptors.ManyToManyDescriptor,
+        models.ManyToManyField(AudioTrack, through='AudioProfileTracks'))
 
     class Meta:
         unique_together = (('name', 'preset'),)
