@@ -1,14 +1,22 @@
+from typing import TYPE_CHECKING, Dict, Any
 from unittest import mock
 
 import pymediainfo
 from fffw.wrapper.helpers import ensure_text
 
-from video_transcoding import transcoding
 from video_transcoding.tests.base import BaseTestCase
+from video_transcoding.transcoding import transcoder
+from video_transcoding.transcoding.metadata import Analyzer
+from video_transcoding.transcoding.profiles import DEFAULT_PRESET
+
+if TYPE_CHECKING:
+    MediaInfoMixinTarget = BaseTestCase
+else:
+    MediaInfoMixinTarget = object
 
 
-class TranscodingTestCase(BaseTestCase):
-    """ Video file transcoding tests."""
+class MediaInfoMixin(MediaInfoMixinTarget):
+    """ Mixin to manipulate MediaInfo output."""
 
     # Minimal mediainfo output template to mock MediaInfo.parse result
     media_info_xml = """<?xml version="1.0" encoding="UTF-8"?>
@@ -41,37 +49,75 @@ class TranscodingTestCase(BaseTestCase):
 
     # Default video file metadata
     metadata = {
-        transcoding.WIDTH: 1920,
-        transcoding.HEIGHT: 1080,
-        transcoding.DAR: 1.778,
-        transcoding.PAR: 1.0,
+        'width': 1920,
+        'height': 1080,
+        'aspect': 1.778,
+        'par': 1.0,
 
         'video_bitrate': 5000000,
 
-        transcoding.VIDEO_DURATION: 3600.22,
-        transcoding.VIDEO_FRAME_RATE: 24.97,
-        transcoding.FRAMES_COUNT: round(3600.22 * 24.97),
+        'video_duration': 3600.22,
+        'video_frame_rate': 24.97,
+        'frames_count': round(3600.22 * 24.97),
 
         'audio_bitrate': 192000,
 
-        transcoding.AUDIO_DURATION: 3600.22,
-        transcoding.AUDIO_SAMPLING_RATE: 48000,
-        transcoding.SAMPLES_COUNT: round(3600.22 * 48000),
+        'audio_duration': 3600.22,
+        'audio_sampling_rate': 48000,
+        'samples_count': round(3600.22 * 48000),
     }
+
+    def setUp(self):
+        super().setUp()
+        self.media_info_patcher = mock.patch.object(
+            pymediainfo.MediaInfo, 'parse', side_effect=self.get_media_info)
+        self.media_info_mock = self.media_info_patcher.start()
+        self.media_info: Dict[str, Dict[str, Any]] = {}
+
+    def tearDown(self):
+        self.media_info_patcher.stop()
+
+    def get_media_info(self, filename: str) -> pymediainfo.MediaInfo:
+        """ Prepares mediainfo result for file."""
+        metadata = self.media_info[filename].copy()
+        rate = metadata['audio_sampling_rate']
+        audio_duration = metadata.pop('audio_duration')
+        fps = metadata['video_frame_rate']
+        video_duration = metadata.pop('video_duration')
+        xml = self.media_info_xml.format(
+            filename=filename,
+            audio_samples=metadata.get('samples_count',
+                                       int(rate * audio_duration)),
+            video_frames=metadata.get('frames_count',
+                                      int(fps * video_duration)),
+            audio_duration=audio_duration * 1000,  # ms
+            video_duration=video_duration * 1000,  # ms
+            **metadata)
+        return pymediainfo.MediaInfo(xml)
+
+    def prepare_metadata(self, **kwargs):
+        """
+        Modifies metadata template with new values.
+        """
+        media_info = self.metadata.copy()
+        media_info.update(kwargs)
+        return media_info
+
+
+class TranscodingTestCase(MediaInfoMixin, BaseTestCase):
+    """ Video file transcoding tests."""
 
     def setUp(self):
         self.source = 'http://ya.ru/source.mp4'
         self.dest = '/tmp/result.mp4'
+        super().setUp()
         self.media_info = {
             self.source: self.prepare_metadata(),
             self.dest: self.prepare_metadata()
         }
 
-        self.transcoder = transcoding.Transcoder(self.source, self.dest)
-
-        self.media_info_patcher = mock.patch.object(
-            pymediainfo.MediaInfo, 'parse', side_effect=self.get_media_info)
-        self.media_info_mock = self.media_info_patcher.start()
+        self.transcoder = transcoder.Transcoder(self.source, self.dest,
+                                                DEFAULT_PRESET)
 
         self.runner_mock = mock.MagicMock(
             return_value=(0, '', '')
@@ -83,44 +129,31 @@ class TranscodingTestCase(BaseTestCase):
         self.ffmpeg_mock = self.runner_patcher.start()
 
     def tearDown(self):
-        self.media_info_patcher.stop()
+        super().tearDown()
         self.runner_patcher.stop()
-
-    def prepare_metadata(self, **kwargs):
-        """
-        Modifies metadata template with new values.
-        """
-        media_info = self.metadata.copy()
-        media_info.update(kwargs)
-        return media_info
-
-    def get_media_info(self, filename) -> pymediainfo.MediaInfo:
-        """ Prepares mediainfo result for file."""
-        metadata = self.media_info[filename].copy()
-        rate = metadata[transcoding.AUDIO_SAMPLING_RATE]
-        audio_duration = metadata.pop(transcoding.AUDIO_DURATION)
-        fps = metadata[transcoding.VIDEO_FRAME_RATE]
-        video_duration = metadata.pop(transcoding.VIDEO_DURATION)
-        xml = self.media_info_xml.format(
-            filename=filename,
-            audio_samples=metadata.get(transcoding.SAMPLES_COUNT, int(rate * audio_duration)),
-            video_frames=metadata.get(transcoding.FRAMES_COUNT, int(fps * video_duration)),
-            audio_duration=audio_duration * 1000,  # ms
-            video_duration=video_duration * 1000,  # ms
-            **metadata)
-        return pymediainfo.MediaInfo(xml)
 
     def test_smoke(self):
         """
         ffmpeg arguments test.
         """
         self.transcoder.transcode()
+
+        filter_complex = ';'.join([
+            '[0:v:0]split=4[v:split0][v:split1][v:split2][v:split3]',
+            '[v:split0]scale=w=1920:h=1080[vout0]',
+            '[v:split1]scale=w=1280:h=720[vout1]',
+            '[v:split2]scale=w=854:h=480[vout2]',
+            '[v:split3]scale=w=640:h=360[vout3]',
+        ])
+
         ffmpeg_args = [
             'ffmpeg',
             '-loglevel', 'repeat+level+info',
             '-y',
             '-i', self.source,
-            '-filter_complex', '[0:v:0]scale=w=1920:h=1080[vout0]',
+
+            '-filter_complex', filter_complex,
+
             '-map', '[vout0]',
             '-c:v:0', 'libx264',
             '-force_key_frames:0',
@@ -130,31 +163,100 @@ class TranscodingTestCase(BaseTestCase):
             '-maxrate:0', '5000000',
             '-bufsize:0', '10000000',
             '-profile:v:0', 'high',
-            '-g:0', '49',
-            '-r:0', '24.97',
+            '-g:0', '60',
+            '-r:0', '30',
             '-pix_fmt:0', 'yuv420p',
+
+            '-map', '[vout1]',
+            '-c:v:1', 'libx264',
+            '-force_key_frames:1',
+            'expr:if(isnan(prev_forced_t),1,gte(t,prev_forced_t+4))',
+            '-crf:1', '23',
+            '-preset:1', 'slow',
+            '-maxrate:1', '3000000',
+            '-bufsize:1', '6000000',
+            '-profile:v:1', 'high',
+            '-g:1', '60',
+            '-r:1', '30',
+            '-pix_fmt:1', 'yuv420p',
+
+            '-map', '[vout2]',
+            '-c:v:2', 'libx264',
+            '-force_key_frames:2',
+            'expr:if(isnan(prev_forced_t),1,gte(t,prev_forced_t+4))',
+            '-crf:2', '23',
+            '-preset:2', 'slow',
+            '-maxrate:2', '1500000',
+            '-bufsize:2', '3000000',
+            '-profile:v:2', 'medium',
+            '-g:2', '60',
+            '-r:2', '30',
+            '-pix_fmt:2', 'yuv420p',
+
+            '-map', '[vout3]',
+            '-c:v:3', 'libx264',
+            '-force_key_frames:3',
+            'expr:if(isnan(prev_forced_t),1,gte(t,prev_forced_t+4))',
+            '-crf:3', '23',
+            '-preset:3', 'slow',
+            '-maxrate:3', '800000',
+            '-bufsize:3', '1600000',
+            '-profile:v:3', 'medium',
+            '-g:3', '60',
+            '-r:3', '30',
+            '-pix_fmt:3', 'yuv420p',
+
             '-map', '0:a:0',
             '-c:a:0', 'aac',
             '-b:a:0', '192000',
             '-ar:0', '48000',
             '-ac:0', '2',
+
+            '-map', '0:a:0',
+            '-c:a:1', 'aac',
+            '-b:a:1', '96000',
+            '-ar:1', '48000',
+            '-ac:1', '2',
+
             '-f', 'mp4', self.dest,
         ]
         args, kwargs = self.ffmpeg_mock.call_args
         self.assertEqual(ensure_text(args), tuple(ffmpeg_args))
 
+    def test_select_profile(self):
+        """
+        select another set of video and audio tracks to transcode.
+        """
+        src = self.transcoder.get_media_info(self.source)
+        p = self.transcoder.select_profile(src)
+        self.assertEqual(len(p.video), 4)
+        self.assertEqual(len(p.audio), 2)
+
+        mi = self.media_info[self.source]
+        vb = DEFAULT_PRESET.video_profiles[0].condition.min_bitrate
+        mi['video_bitrate'] = vb - 1
+        ab = DEFAULT_PRESET.audio_profiles[0].condition.min_bitrate
+        mi['audio_bitrate'] = ab - 1
+
+        src = self.transcoder.get_media_info(self.source)
+        p = self.transcoder.select_profile(src)
+        self.assertEqual(len(p.video), 3)
+        self.assertEqual(len(p.audio), 1)
+
     def test_handle_stderr_errors(self):
-        self.runner_mock.return_value = (0, 'stdout', '[error] a warning captured')
+        self.runner_mock.return_value = (
+            0, 'stdout', '[error] a warning captured',
+        )
         try:
             self.transcoder.transcode()
-        except transcoding.TranscodeError:  # pragma: no cover
+        except transcoder.TranscodeError:  # pragma: no cover
             self.fail("False positive error")
 
     def test_handle_return_code_from_stderr(self):
         error = '[error] a warning captured'
         self.runner_mock.return_value = (1, 'stdout', error)
 
-        with self.assertRaises(transcoding.TranscodeError) as ctx:
+        with self.assertRaises(transcoder.TranscodeError) as ctx:
             self.transcoder.transcode()
 
         self.assertEqual(ctx.exception.message, error)
@@ -162,10 +264,20 @@ class TranscodingTestCase(BaseTestCase):
     def test_handle_return_code(self):
         self.runner_mock.return_value = (-9, '', '')
 
-        with self.assertRaises(transcoding.TranscodeError) as ctx:
+        with self.assertRaises(transcoder.TranscodeError) as ctx:
             self.transcoder.transcode()
 
         self.assertEqual(ctx.exception.message, "invalid ffmpeg return code -9")
+
+
+class AnalyzerTestCase(MediaInfoMixin, BaseTestCase):
+    """ Media analyzer tests."""
+
+    def setUp(self):
+        super().setUp()
+        self.source = 'http://ya.ru/source.mp4'
+        self.analyzer = Analyzer()
+        self.media_info[self.source] = self.prepare_metadata()
 
     def test_restore_video_aspect(self):
         """
@@ -173,20 +285,20 @@ class TranscodingTestCase(BaseTestCase):
 
         * DAR = Width / Height * PAR
         """
-        dar = round(21/9, 3)
+        dar = round(21 / 9, 3)
         width = 1600
         height = 1200
         par = round(dar / (width / height), 3)
 
         m = self.media_info[self.source]
-        m[transcoding.DAR] = dar
-        m[transcoding.WIDTH] = width
-        m[transcoding.HEIGHT] = height
-        m[transcoding.PAR] = par
+        m['aspect'] = dar
+        m['width'] = width
+        m['height'] = height
+        m['par'] = par
 
         # Check that by default metadata parsed correctly
         try:
-            _, v = self.transcoder.get_meta_data(self.source)
+            _, v = self.analyzer.get_meta_data(self.source)
             self.assertEqual(v.dar, dar)
             self.assertEqual(v.par, par)
             self.assertEqual(v.width, width)
@@ -196,37 +308,37 @@ class TranscodingTestCase(BaseTestCase):
 
         with self.subTest("fix par"):
             # wrong PAR in source metadata
-            m[transcoding.PAR] *= 1.1
-            _, v = self.transcoder.get_meta_data(self.source)
+            m['par'] *= 1.1
+            _, v = self.analyzer.get_meta_data(self.source)
             self.assertAlmostEqual(v.par, par, 3)
-        m[transcoding.PAR] = par
+        m['par'] = par
 
         with self.subTest("restore par from dar"):
-            m[transcoding.PAR] = 0
-            _, v = self.transcoder.get_meta_data(self.source)
+            m['par'] = 0
+            _, v = self.analyzer.get_meta_data(self.source)
             self.assertAlmostEqual(v.par, par, 3)
-        m[transcoding.PAR] = par
+        m['par'] = par
 
         with self.subTest("restore dar from par"):
-            m[transcoding.DAR] = 0
-            _, v = self.transcoder.get_meta_data(self.source)
+            m['aspect'] = 0
+            _, v = self.analyzer.get_meta_data(self.source)
             self.assertAlmostEqual(v.dar, dar, 3)
-        m[transcoding.DAR] = dar
+        m['aspect'] = dar
 
         with self.subTest("default dar and par"):
-            m[transcoding.DAR] = m[transcoding.PAR] = 0
-            _, v = self.transcoder.get_meta_data(self.source)
+            m['aspect'] = m['par'] = 0
+            _, v = self.analyzer.get_meta_data(self.source)
             self.assertAlmostEqual(v.dar, width / height, 3)
             self.assertAlmostEqual(v.par, 1.0, 3)
-        m[transcoding.PAR] = par
-        m[transcoding.DAR] = dar
+        m['par'] = par
+        m['aspect'] = dar
 
         with self.subTest("missing width or height"):
-            m[transcoding.WIDTH] = 0
-            m[transcoding.HEIGHT] = 0
+            m['width'] = 0
+            m['height'] = 0
             with self.assertRaises(AssertionError):
                 # without W and H we can't restore initial metadata
-                self.transcoder.get_meta_data(self.source)
+                self.analyzer.get_meta_data(self.source)
 
     def test_restore_frames(self):
         """
@@ -239,13 +351,13 @@ class TranscodingTestCase(BaseTestCase):
         duration = frames / fps
 
         m = self.media_info[self.source]
-        m[transcoding.VIDEO_DURATION] = duration
-        m[transcoding.VIDEO_FRAME_RATE] = fps
-        m[transcoding.FRAMES_COUNT] = frames
+        m['video_duration'] = duration
+        m['video_frame_rate'] = fps
+        m['frames_count'] = frames
 
         # Check that by default metadata parsed correctly
         try:
-            _, v = self.transcoder.get_meta_data(self.source)
+            _, v = self.analyzer.get_meta_data(self.source)
             self.assertEqual(v.frames, frames)
             self.assertAlmostEqual(v.frame_rate, fps, 3)
             self.assertAlmostEqual(float(v.duration), duration, 3)
@@ -253,50 +365,50 @@ class TranscodingTestCase(BaseTestCase):
             self.fail(exc)
 
         with self.subTest("restore frames"):
-            m[transcoding.FRAMES_COUNT] = 0
-            _, v = self.transcoder.get_meta_data(self.source)
+            m['frames_count'] = 0
+            _, v = self.analyzer.get_meta_data(self.source)
             self.assertEqual(v.frames, frames)
-        m[transcoding.FRAMES_COUNT] = frames
+        m['frames_count'] = frames
 
         with self.subTest("restore frame rate"):
-            m[transcoding.VIDEO_FRAME_RATE] = 0
-            _, v = self.transcoder.get_meta_data(self.source)
+            m['video_frame_rate'] = 0
+            _, v = self.analyzer.get_meta_data(self.source)
             self.assertAlmostEqual(v.frame_rate, fps, 3)
-        m[transcoding.VIDEO_FRAME_RATE] = fps
+        m['video_frame_rate'] = fps
 
         with self.subTest("restore duration"):
-            m[transcoding.VIDEO_DURATION] = 0
-            _, v = self.transcoder.get_meta_data(self.source)
+            m['video_duration'] = 0
+            _, v = self.analyzer.get_meta_data(self.source)
             self.assertAlmostEqual(v.duration, duration, 3)
-        m[transcoding.VIDEO_DURATION] = duration
+        m['video_duration'] = duration
 
         with self.subTest("only frames"):
-            m[transcoding.VIDEO_DURATION] = m[transcoding.VIDEO_FRAME_RATE] = 0
+            m['video_duration'] = m['video_frame_rate'] = 0
             with self.assertRaises(AssertionError):
-                self.transcoder.get_meta_data(self.source)
-        m[transcoding.VIDEO_DURATION] = duration
-        m[transcoding.VIDEO_FRAME_RATE] = fps
+                self.analyzer.get_meta_data(self.source)
+        m['video_duration'] = duration
+        m['video_frame_rate'] = fps
 
         with self.subTest("only frame rate"):
-            m[transcoding.VIDEO_DURATION] = m[transcoding.FRAMES_COUNT] = 0
-            _, v = self.transcoder.get_meta_data(self.source)
+            m['video_duration'] = m['frames_count'] = 0
+            _, v = self.analyzer.get_meta_data(self.source)
             self.assertEqual(v.duration, 0)
             self.assertEqual(v.frames, 0)
-        m[transcoding.VIDEO_DURATION] = duration
-        m[transcoding.FRAMES_COUNT] = frames
+        m['video_duration'] = duration
+        m['frames_count'] = frames
 
         with self.subTest("only duration"):
-            m[transcoding.VIDEO_FRAME_RATE] = m[transcoding.FRAMES_COUNT] = 0
-            _, v = self.transcoder.get_meta_data(self.source)
+            m['video_frame_rate'] = m['frames_count'] = 0
+            _, v = self.analyzer.get_meta_data(self.source)
             self.assertEqual(v.frames, 0)
             self.assertEqual(v.frame_rate, 0)
             self.assertAlmostEqual(float(v.duration), duration, 3)
-        m[transcoding.FRAMES_COUNT] = frames
-        m[transcoding.VIDEO_FRAME_RATE] = fps
+        m['frames_count'] = frames
+        m['video_frame_rate'] = fps
 
         with self.subTest("fix fps"):
-            m[transcoding.VIDEO_FRAME_RATE] *= 1.1
-            _, v = self.transcoder.get_meta_data(self.source)
+            m['video_frame_rate'] *= 1.1
+            _, v = self.analyzer.get_meta_data(self.source)
             self.assertAlmostEqual(v.frame_rate, fps, 3)
 
     def test_restore_samples(self):
@@ -310,13 +422,13 @@ class TranscodingTestCase(BaseTestCase):
         samples = round(sampling_rate * duration)
 
         m = self.media_info[self.source]
-        m[transcoding.AUDIO_DURATION] = duration
-        m[transcoding.AUDIO_SAMPLING_RATE] = sampling_rate
-        m[transcoding.SAMPLES_COUNT] = samples
+        m['audio_duration'] = duration
+        m['audio_sampling_rate'] = sampling_rate
+        m['samples_count'] = samples
 
         # Check that by default metadata parsed correctly
         try:
-            a, _ = self.transcoder.get_meta_data(self.source)
+            a, _ = self.analyzer.get_meta_data(self.source)
             self.assertEqual(a.samples, samples)
             self.assertEqual(a.sampling_rate, sampling_rate)
             self.assertAlmostEqual(float(a.duration), duration, 3)
@@ -324,49 +436,49 @@ class TranscodingTestCase(BaseTestCase):
             self.fail(exc)
 
         with self.subTest("restore samples"):
-            m[transcoding.SAMPLES_COUNT] = 0
-            a, _ = self.transcoder.get_meta_data(self.source)
+            m['samples_count'] = 0
+            a, _ = self.analyzer.get_meta_data(self.source)
             self.assertEqual(a.samples, samples)
-        m[transcoding.SAMPLES_COUNT] = samples
+        m['samples_count'] = samples
 
         with self.subTest("restore sampling rate"):
-            m[transcoding.AUDIO_SAMPLING_RATE] = 0
-            a, _ = self.transcoder.get_meta_data(self.source)
+            m['audio_sampling_rate'] = 0
+            a, _ = self.analyzer.get_meta_data(self.source)
             self.assertAlmostEqual(a.sampling_rate, sampling_rate, 3)
-        m[transcoding.AUDIO_SAMPLING_RATE] = sampling_rate
+        m['audio_sampling_rate'] = sampling_rate
 
         with self.subTest("restore duration"):
-            m[transcoding.AUDIO_DURATION] = 0
-            a, _ = self.transcoder.get_meta_data(self.source)
+            m['audio_duration'] = 0
+            a, _ = self.analyzer.get_meta_data(self.source)
             self.assertAlmostEqual(a.duration, duration, 3)
-        m[transcoding.AUDIO_DURATION] = duration
+        m['audio_duration'] = duration
 
         with self.subTest("only samples"):
-            m[transcoding.AUDIO_DURATION] = m[transcoding.AUDIO_SAMPLING_RATE] = 0
+            m['audio_duration'] = m['audio_sampling_rate'] = 0
             with self.assertRaises(AssertionError):
-                self.transcoder.get_meta_data(self.source)
-        m[transcoding.AUDIO_DURATION] = duration
-        m[transcoding.AUDIO_SAMPLING_RATE] = sampling_rate
+                self.analyzer.get_meta_data(self.source)
+        m['audio_duration'] = duration
+        m['audio_sampling_rate'] = sampling_rate
 
         with self.subTest("only sampling rate"):
-            m[transcoding.AUDIO_DURATION] = m[transcoding.SAMPLES_COUNT] = 0
-            a, _ = self.transcoder.get_meta_data(self.source)
+            m['audio_duration'] = m['samples_count'] = 0
+            a, _ = self.analyzer.get_meta_data(self.source)
             self.assertEqual(a.duration, 0)
             self.assertEqual(a.samples, 0)
-        m[transcoding.AUDIO_DURATION] = duration
-        m[transcoding.SAMPLES_COUNT] = samples
+        m['audio_duration'] = duration
+        m['samples_count'] = samples
 
         with self.subTest("only duration"):
-            m[transcoding.AUDIO_SAMPLING_RATE] = m[transcoding.SAMPLES_COUNT] = 0
-            a, _ = self.transcoder.get_meta_data(self.source)
+            m['audio_sampling_rate'] = m['samples_count'] = 0
+            a, _ = self.analyzer.get_meta_data(self.source)
             self.assertEqual(a.samples, 0)
             self.assertEqual(a.sampling_rate, 0)
             self.assertEqual(a.duration, duration)
-        m[transcoding.SAMPLES_COUNT] = samples
-        m[transcoding.AUDIO_SAMPLING_RATE] = sampling_rate
+        m['samples_count'] = samples
+        m['audio_sampling_rate'] = sampling_rate
 
         with self.subTest("fix sampling rate"):
             # Samples count is adjusted to sampling rate
-            m[transcoding.AUDIO_SAMPLING_RATE] *= 2
-            a, _ = self.transcoder.get_meta_data(self.source)
+            m['audio_sampling_rate'] *= 2
+            a, _ = self.analyzer.get_meta_data(self.source)
             self.assertAlmostEqual(a.samples, samples * 2)

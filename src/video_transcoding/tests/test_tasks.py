@@ -11,8 +11,10 @@ from celery.platforms import EX_OK
 from celery.signals import worker_shutting_down
 from django.test import TestCase
 
-from video_transcoding import models, tasks, transcoding, defaults
+from video_transcoding import models, tasks, defaults
 from video_transcoding.tests.base import BaseTestCase
+from video_transcoding.transcoding import profiles
+from video_transcoding.transcoding.transcoder import TranscodeError
 
 
 class TranscodeTaskVideoStateTestCase(BaseTestCase):
@@ -65,7 +67,7 @@ class TranscodeTaskVideoStateTestCase(BaseTestCase):
         """
         Video transcoding failed with ERROR status and error message saved.
         """
-        error = transcoding.TranscodeError("my error " * 100)
+        error = TranscodeError("my error " * 100)
         self.handle_mock.side_effect = error
 
         self.run_task()
@@ -169,7 +171,7 @@ class ProcessVideoTestCase(BaseTestCase):
         self.basename = uuid4().hex
 
         self.transcoder_patcher = mock.patch(
-            'video_transcoding.transcoding.Transcoder')
+            'video_transcoding.transcoding.transcoder.Transcoder')
         self.transcoder_mock = self.transcoder_patcher.start()
         self.open_patcher = mock.patch('builtins.open', mock.mock_open(
             read_data=b'video_result'))
@@ -213,7 +215,7 @@ class ProcessVideoTestCase(BaseTestCase):
         filename = f'{self.basename}1080p.mp4'
         destination = os.path.join(tmp.return_value, filename)
         self.transcoder_mock.assert_called_once_with(
-            self.video.source, destination)
+            self.video.source, destination, profiles.DEFAULT_PRESET)
 
         self.open_mock.assert_called_once_with(destination, 'rb')
 
@@ -236,7 +238,9 @@ class ProcessVideoTestCase(BaseTestCase):
         filename = f'{self.basename}1080p.mp4'
         temp_file = os.path.join(tmp_dir, f'{self.basename}.src.bin')
         destination = os.path.join(tmp_dir, filename)
-        self.transcoder_mock.assert_called_once_with(temp_file, destination)
+        self.transcoder_mock.assert_called_once_with(
+            temp_file, destination, profiles.DEFAULT_PRESET,
+        )
 
     def test_download_source(self):
         """

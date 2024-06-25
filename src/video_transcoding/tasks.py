@@ -10,7 +10,8 @@ import requests
 from billiard.exceptions import SoftTimeLimitExceeded
 from django.db.transaction import atomic
 
-from video_transcoding import models, transcoding, defaults
+from video_transcoding.transcoding import profiles, transcoder
+from video_transcoding import models, defaults
 from video_transcoding.celery import app
 from video_transcoding.utils import LoggerMixin
 
@@ -167,7 +168,12 @@ class TranscodeVideo(LoggerMixin, celery.Task):
             checksum = hashlib.md5()  # type: Optional[hashlib._Hash]
         else:
             checksum = None
-        with requests.get(source, stream=True, timeout=timeout, allow_redirects=True) as response:
+        with requests.get(
+            source,
+            stream=True,
+            timeout=timeout,
+            allow_redirects=True,
+        ) as response:
             response.raise_for_status()
             with open(destination, 'wb') as f:
                 encoding = response.headers.get('transfer-encoding')
@@ -199,8 +205,8 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         """
         self.logger.info("Start transcoding %s to %s",
                          source, destination)
-        transcoder = transcoding.Transcoder(source, destination)
-        transcoder.transcode()
+        t = transcoder.Transcoder(source, destination, profiles.DEFAULT_PRESET)
+        t.transcode()
         self.logger.info("Transcoding %s finished", source)
 
     def store(self, destination: str) -> None:
