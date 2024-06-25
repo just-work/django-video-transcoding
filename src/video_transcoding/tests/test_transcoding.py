@@ -223,6 +223,26 @@ class TranscodingTestCase(MediaInfoMixin, BaseTestCase):
         args, kwargs = self.ffmpeg_mock.call_args
         self.assertEqual(ensure_text(args), tuple(ffmpeg_args))
 
+    def test_select_profile(self):
+        """
+        select another set of video and audio tracks to transcode.
+        """
+        src = self.transcoder.get_media_info(self.source)
+        p = self.transcoder.select_profile(src)
+        self.assertEqual(len(p.video), 4)
+        self.assertEqual(len(p.audio), 2)
+
+        mi = self.media_info[self.source]
+        vb = DEFAULT_PRESET.video_profiles[0].condition.min_bitrate
+        mi['video_bitrate'] = vb - 1
+        ab = DEFAULT_PRESET.audio_profiles[0].condition.min_bitrate
+        mi['audio_bitrate'] = ab - 1
+
+        src = self.transcoder.get_media_info(self.source)
+        p = self.transcoder.select_profile(src)
+        self.assertEqual(len(p.video), 3)
+        self.assertEqual(len(p.audio), 1)
+
     def test_handle_stderr_errors(self):
         self.runner_mock.return_value = (
             0, 'stdout', '[error] a warning captured',

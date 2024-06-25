@@ -7,7 +7,7 @@ from fffw.graph import VIDEO, AUDIO
 
 from video_transcoding.transcoding import codecs
 from video_transcoding.transcoding.metadata import Metadata, Analyzer
-from video_transcoding.transcoding.profiles import Preset
+from video_transcoding.transcoding.profiles import Preset, Profile
 from video_transcoding.utils import LoggerMixin
 
 # Allowed duration difference between source and result
@@ -69,7 +69,7 @@ class Transcoder(LoggerMixin):
         src = self.get_media_info(self.source)
 
         # Select transcoding profile from source metadata
-        profile = self.preset.select_profile(src.video, src.audio)
+        profile = self.select_profile(src)
 
         # Initialize source file descriptor with stream metadata
         source = input_file(self.source,
@@ -128,6 +128,14 @@ class Transcoder(LoggerMixin):
 
         # Validate ffmpeg result
         self.validate(src, dest_media_info)
+
+    def select_profile(self, src: Metadata) -> Profile:
+        """
+        :param src: source metadata
+        :return: selected transcoding profile
+        """
+        profile = self.preset.select_profile(src.video, src.audio)
+        return profile
 
     @staticmethod
     def validate(source_media_info: Metadata,
