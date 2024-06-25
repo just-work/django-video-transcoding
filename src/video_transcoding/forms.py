@@ -23,7 +23,7 @@ class NestedJSONForm(forms.ModelForm):
             except KeyError:
                 pass
 
-    def clean(self) -> dict[str, Any]:
+    def clean(self) -> Dict[str, Any]:
         cd = self.cleaned_data
         cd[self.json_field] = {k: cd[f'_{k}'] for k in self.nested_fields}
         return cd
