@@ -15,7 +15,7 @@ from video_transcoding import models, defaults
 from video_transcoding.celery import app
 from video_transcoding.utils import LoggerMixin
 
-DESTINATION_FILENAME = '{basename}1080p.mp4'
+DESTINATION_FILENAME = '{basename}.mp4'
 
 CONNECT_TIMEOUT = 1
 DOWNLOAD_TIMEOUT = 60 * 60
@@ -145,7 +145,7 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         """
         with tempfile.TemporaryDirectory(dir=defaults.VIDEO_TEMP_DIR,
                                          prefix=f'video-{video.pk}-') as d:
-            destination = os.path.join(d, f'{basename}1080p.mp4')
+            destination = os.path.join(d, f'{basename}.mp4')
             if download:
                 source = os.path.join(d, f'{basename}.src.bin')
                 self.download(video.source, source)
