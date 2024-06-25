@@ -7,7 +7,7 @@ from fffw.wrapper.helpers import ensure_text
 from video_transcoding.tests.base import BaseTestCase
 from video_transcoding.transcoding import transcoder
 from video_transcoding.transcoding.metadata import Analyzer
-from video_transcoding.transcoding.profiles import DEFAULT_PROFILE
+from video_transcoding.transcoding.profiles import DEFAULT_PRESET
 
 if TYPE_CHECKING:
     MediaInfoMixinTarget = BaseTestCase
@@ -117,7 +117,7 @@ class TranscodingTestCase(MediaInfoMixin, BaseTestCase):
         }
 
         self.transcoder = transcoder.Transcoder(self.source, self.dest,
-                                                DEFAULT_PROFILE)
+                                                DEFAULT_PRESET)
 
         self.runner_mock = mock.MagicMock(
             return_value=(0, '', '')

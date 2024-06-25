@@ -7,7 +7,7 @@ from fffw.graph import VIDEO, AUDIO
 
 from video_transcoding.transcoding import codecs
 from video_transcoding.transcoding.metadata import Metadata, Analyzer
-from video_transcoding.transcoding.profiles import Profile
+from video_transcoding.transcoding.profiles import Preset
 from video_transcoding.utils import LoggerMixin
 
 # Allowed duration difference between source and result
@@ -29,15 +29,16 @@ class Transcoder(LoggerMixin):
     >>> t.transcode()
     """
 
-    def __init__(self, source: str, destination: str, profile: Profile):
+    def __init__(self, source: str, destination: str, preset: Preset):
         """
         :param source: source file link (http/ftp or file path)
         :param destination: result file path
+        :param preset: transcoding preset
         """
         super().__init__()
         self.source = source
         self.destination = destination
-        self.profile = profile
+        self.preset = preset
 
     def get_media_info(self, filename: str) -> Metadata:
         """
@@ -67,6 +68,9 @@ class Transcoder(LoggerMixin):
         # Get source mediainfo to use in validation
         src = self.get_media_info(self.source)
 
+        # Select transcoding profile from source metadata
+        profile = self.preset.select_profile(src.video, src.audio)
+
         # Initialize source file descriptor with stream metadata
         source = input_file(self.source,
                             Stream(VIDEO, src.video),
@@ -74,7 +78,7 @@ class Transcoder(LoggerMixin):
 
         # Initialize output file with audio and codecs from profile tracks.
         video_tracks = []
-        for video in self.profile.video:
+        for video in profile.video:
             video_tracks.append(codecs.VideoCodec(
                 codec=video.codec,
                 force_key_frames=video.force_key_frames,
@@ -88,7 +92,7 @@ class Transcoder(LoggerMixin):
                 rate=video.frame_rate,
             ))
         audio_tracks = []
-        for audio in self.profile.audio:
+        for audio in profile.audio:
             audio_tracks.append(codecs.AudioCodec(
                 codec=audio.codec,
                 bitrate=audio.bitrate,
@@ -106,7 +110,7 @@ class Transcoder(LoggerMixin):
 
         # per-video-track scaling
         scaling_params = [
-            (video.width, video.height) for video in self.profile.video
+            (video.width, video.height) for video in profile.video
         ]
         scaled_video = simd.video.connect(Scale, params=scaling_params)
 
