@@ -76,6 +76,7 @@ class VideoAdmin(admin.ModelAdmin):
 @admin.register(models.VideoTrack, models.AudioTrack)
 class TrackAdmin(admin.ModelAdmin):
     list_display = ('name', 'preset', 'created', 'modified')
+    list_filter = ('preset',)
     readonly_fields = ('created', 'modified')
     search_fields = ('=name',)
 
@@ -96,6 +97,7 @@ class AudioProfileTracksInline(ProfileTracksInline):
 
 class ProfileAdmin(admin.ModelAdmin):
     list_display = ('name', 'preset', 'order_number', 'created', 'modified')
+    list_filter = ('preset',)
     readonly_fields = ('created', 'modified')
     search_fields = ('=name',)
     ordering = ('preset', 'order_number',)
@@ -111,8 +113,24 @@ class AudioProfileAdmin(ProfileAdmin):
     inlines = [AudioProfileTracksInline]
 
 
+class ProfileInline(admin.TabularInline):
+    list_display = ('name',)
+    extra = 0
+    readonly_fields = ('condition',)
+
+
+class VideoProfileInline(ProfileInline):
+    model = models.VideoProfile
+
+
+class AudioProfileInline(ProfileInline):
+    model = models.AudioProfile
+
+
 @admin.register(models.Preset)
 class PresetAdmin(admin.ModelAdmin):
     list_display = ('name', 'created', 'modified')
     readonly_fields = ('created', 'modified')
     search_fields = ('=name',)
+
+    inlines = [VideoProfileInline, AudioProfileInline]
