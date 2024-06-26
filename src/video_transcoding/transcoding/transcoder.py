@@ -47,13 +47,13 @@ class Transcoder(LoggerMixin):
         :param filename: analyzed media
         :returns: metadata object with video and audio stream
         """
-        audio, video = Analyzer().get_meta_data(filename)
+        audios, videos = Analyzer().get_meta_data(filename)
 
-        if video is None:
+        if videos is None:
             raise TranscodeError("missing video stream")
-        if audio is None:
+        if audios is None:
             raise TranscodeError("missing audio stream")
-        media_info = Metadata(video=video, audio=audio)
+        media_info = Metadata(videos=videos, audios=audios)
         self.logger.info("Parsed media info:\n%s",
                          pformat(dataclasses.asdict(media_info)))
         return media_info

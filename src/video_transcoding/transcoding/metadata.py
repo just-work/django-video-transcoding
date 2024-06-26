@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Tuple, Optional
+from typing import Tuple, List, cast
 
 import pymediainfo
 from fffw.graph.meta import VideoMeta, AudioMeta, from_media_info, VIDEO, AUDIO
@@ -9,13 +9,21 @@ from video_transcoding.utils import LoggerMixin
 
 @dataclass
 class Metadata:
-    video: VideoMeta
-    audio: AudioMeta
+    videos: List[VideoMeta]
+    audios: List[AudioMeta]
+
+    @property
+    def video(self) -> VideoMeta:
+        return self.videos[0]
+
+    @property
+    def audio(self) -> AudioMeta:
+        return self.audios[0]
 
 
 class Analyzer(LoggerMixin):
     def get_meta_data(self, filename: str
-                      ) -> Tuple[Optional[AudioMeta], Optional[VideoMeta]]:
+                      ) -> Tuple[List[AudioMeta], List[VideoMeta]]:
         result: pymediainfo.MediaInfo = pymediainfo.MediaInfo.parse(filename)
         for t in result.tracks:
             if t.track_type in ('Video', 'Image'):
@@ -24,13 +32,13 @@ class Analyzer(LoggerMixin):
             elif t.track_type == 'Audio':
                 self.fix_samples(t)
         metadata = from_media_info(result)
-        video_meta = None
-        audio_meta = None
+        video_meta: List[VideoMeta] = []
+        audio_meta: List[AudioMeta] = []
         for m in metadata:
-            if m.kind == VIDEO and video_meta is None:
-                video_meta = m
-            if m.kind == AUDIO and audio_meta is None:
-                audio_meta = m
+            if m.kind == VIDEO:
+                video_meta.append(cast(VideoMeta, m))
+            if m.kind == AUDIO:
+                audio_meta.append(cast(AudioMeta, m))
         return audio_meta, video_meta
 
     def fix_par(self, t: pymediainfo.Track) -> None:
