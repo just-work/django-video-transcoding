@@ -8,7 +8,7 @@ from django.utils.functional import Promise
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 
-from video_transcoding import helpers, models, defaults
+from video_transcoding import helpers, models, defaults, forms
 
 C = TypeVar("C", bound=Callable)
 
@@ -71,3 +71,77 @@ class VideoAdmin(admin.ModelAdmin):
             return super().add_view(request, form_url, extra_context)
         finally:
             self.fields = fields
+
+
+class TrackAdmin(admin.ModelAdmin):
+    list_display = ('name', 'preset', 'created', 'modified')
+    list_filter = ('preset',)
+    readonly_fields = ('created', 'modified')
+    search_fields = ('=name',)
+
+
+@admin.register(models.VideoTrack)
+class VideoTrackAdmin(TrackAdmin):
+    form = forms.VideoTrackForm
+
+
+@admin.register(models.AudioTrack)
+class AudioTrackAdmin(TrackAdmin):
+    form = forms.AudioTrackForm
+
+
+class ProfileTracksInline(admin.TabularInline):
+    list_display = ('track', 'order_number')
+    extra = 0
+    autocomplete_fields = ('track',)
+
+
+class VideoProfileTracksInline(ProfileTracksInline):
+    model = models.VideoProfileTracks
+
+
+class AudioProfileTracksInline(ProfileTracksInline):
+    model = models.AudioProfileTracks
+
+
+class ProfileAdmin(admin.ModelAdmin):
+    list_display = ('name', 'preset', 'order_number', 'created', 'modified')
+    list_filter = ('preset',)
+    readonly_fields = ('created', 'modified')
+    search_fields = ('=name',)
+    ordering = ('preset', 'order_number',)
+
+
+@admin.register(models.VideoProfile)
+class VideoProfileAdmin(ProfileAdmin):
+    inlines = [VideoProfileTracksInline]
+    form = forms.VideoProfileForm
+
+
+@admin.register(models.AudioProfile)
+class AudioProfileAdmin(ProfileAdmin):
+    inlines = [AudioProfileTracksInline]
+    form = forms.AudioProfileForm
+
+
+class ProfileInline(admin.TabularInline):
+    list_display = ('name',)
+    extra = 0
+    readonly_fields = ('condition',)
+
+
+class VideoProfileInline(ProfileInline):
+    model = models.VideoProfile
+
+
+class AudioProfileInline(ProfileInline):
+    model = models.AudioProfile
+
+
+@admin.register(models.Preset)
+class PresetAdmin(admin.ModelAdmin):
+    list_display = ('name', 'created', 'modified')
+    readonly_fields = ('created', 'modified')
+    search_fields = ('=name',)
+
+    inlines = [VideoProfileInline, AudioProfileInline]
