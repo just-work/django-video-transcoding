@@ -238,7 +238,7 @@ DEFAULT_PRESET = Preset(
         VideoTrack(
             id='480p',
             codec='libx264',
-            profile='medium',
+            profile='main',
             preset='slow',
             constant_rate_factor=23,
             max_rate=1_500_000,
@@ -253,7 +253,7 @@ DEFAULT_PRESET = Preset(
         VideoTrack(
             id='360p',
             codec='libx264',
-            profile='medium',
+            profile='main',
             preset='slow',
             constant_rate_factor=23,
             max_rate=800_000,
