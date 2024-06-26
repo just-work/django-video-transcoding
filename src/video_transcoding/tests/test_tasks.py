@@ -14,6 +14,7 @@ from django.test import TestCase
 from video_transcoding import models, tasks, defaults
 from video_transcoding.tests.base import BaseTestCase
 from video_transcoding.transcoding import profiles
+from video_transcoding.transcoding.metadata import Metadata
 from video_transcoding.transcoding.transcoder import TranscodeError
 
 
@@ -27,7 +28,8 @@ class TranscodeTaskVideoStateTestCase(BaseTestCase):
             task_id=uuid4(),
             source='ftp://ya.ru/1.mp4')
         self.handle_patcher = mock.patch(
-            'video_transcoding.tasks.TranscodeVideo.process_video')
+            'video_transcoding.tasks.TranscodeVideo.process_video',
+            return_value={})
         self.handle_mock: mock.MagicMock = self.handle_patcher.start()
         self.retry_patcher = mock.patch('celery.Task.retry',
                                         side_effect=Retry)
@@ -173,6 +175,9 @@ class ProcessVideoTestCase(BaseTestCase):
         self.transcoder_patcher = mock.patch(
             'video_transcoding.transcoding.transcoder.Transcoder')
         self.transcoder_mock = self.transcoder_patcher.start()
+        self.transcoder_mock.return_value.transcode.return_value = Metadata(
+            videos=[], audios=[],
+        )
         self.open_patcher = mock.patch('builtins.open', mock.mock_open(
             read_data=b'video_result'))
         self.open_mock = self.open_patcher.start()
@@ -238,7 +243,7 @@ class ProcessVideoTestCase(BaseTestCase):
                 'constant_rate_factor': 23,
                 'preset': 'slow',
                 'max_rate': 500_000,
-                'buf_size':1_000_000,
+                'buf_size': 1_000_000,
                 'profile': 'main',
                 'pix_fmt': 'yuv420p',
                 'width': 640,
@@ -256,7 +261,7 @@ class ProcessVideoTestCase(BaseTestCase):
                 'constant_rate_factor': 23,
                 'preset': 'slow',
                 'max_rate': 1_000_000,
-                'buf_size':2_000_000,
+                'buf_size': 2_000_000,
                 'profile': 'main',
                 'pix_fmt': 'yuv420p',
                 'width': 1280,
