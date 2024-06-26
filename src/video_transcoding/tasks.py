@@ -111,7 +111,7 @@ class TranscodeVideo(LoggerMixin, celery.Task):
 
     @atomic
     def unlock_video(self, video_id: int, status: int, error: Optional[str],
-                     basename: Optional[str], metadata: Optional[Metadata],
+                     basename: Optional[str], metadata: Optional[dict],
                      ) -> None:
         """
         Marks video with final status.
