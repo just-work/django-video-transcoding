@@ -2,7 +2,7 @@ import io
 import os
 import shutil
 import tempfile
-from typing import Optional
+from typing import Optional, List
 from uuid import UUID, uuid4
 import hashlib
 import celery
@@ -10,11 +10,12 @@ import requests
 from billiard.exceptions import SoftTimeLimitExceeded
 from django.db.transaction import atomic
 
-from video_transcoding import models, transcoding, defaults
+from video_transcoding.transcoding import profiles, transcoder
+from video_transcoding import models, defaults
 from video_transcoding.celery import app
 from video_transcoding.utils import LoggerMixin
 
-DESTINATION_FILENAME = '{basename}1080p.mp4'
+DESTINATION_FILENAME = '{basename}.mp4'
 
 CONNECT_TIMEOUT = 1
 DOWNLOAD_TIMEOUT = 60 * 60
@@ -144,13 +145,13 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         """
         with tempfile.TemporaryDirectory(dir=defaults.VIDEO_TEMP_DIR,
                                          prefix=f'video-{video.pk}-') as d:
-            destination = os.path.join(d, f'{basename}1080p.mp4')
+            destination = os.path.join(d, f'{basename}.mp4')
             if download:
                 source = os.path.join(d, f'{basename}.src.bin')
                 self.download(video.source, source)
             else:
                 source = video.source
-            self.transcode(source, destination)
+            self.transcode(source, destination, video)
             self.store(destination)
         self.logger.info("Processing done")
 
@@ -167,7 +168,12 @@ class TranscodeVideo(LoggerMixin, celery.Task):
             checksum = hashlib.md5()  # type: Optional[hashlib._Hash]
         else:
             checksum = None
-        with requests.get(source, stream=True, timeout=timeout, allow_redirects=True) as response:
+        with requests.get(
+            source,
+            stream=True,
+            timeout=timeout,
+            allow_redirects=True,
+        ) as response:
             response.raise_for_status()
             with open(destination, 'wb') as f:
                 encoding = response.headers.get('transfer-encoding')
@@ -190,17 +196,23 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         if checksum:
             self.logger.info("Source file checksum: %s", checksum.hexdigest())
 
-    def transcode(self, source: str, destination: str) -> None:
+    def transcode(self, source: str, destination: str, video: models.Video
+                  ) -> None:
         """
         Starts video transcoding
 
         :param source: source file link (http/ftp or file path)
         :param destination: result temporary file path.
+        :param video: video object.
         """
         self.logger.info("Start transcoding %s to %s",
                          source, destination)
-        transcoder = transcoding.Transcoder(source, destination)
-        transcoder.transcode()
+        if video.preset is None:
+            preset = profiles.DEFAULT_PRESET
+        else:
+            preset = self.init_preset(video.preset)
+        t = transcoder.Transcoder(source, destination, preset)
+        t.transcode()
         self.logger.info("Transcoding %s finished", source)
 
     def store(self, destination: str) -> None:
@@ -220,6 +232,48 @@ class TranscodeVideo(LoggerMixin, celery.Task):
                 response.raise_for_status()
             self.logger.info("Uploaded to %s", url)
         self.logger.info("%s save finished", destination)
+
+    @staticmethod
+    def init_preset(preset: models.Preset) -> profiles.Preset:
+        """
+        Initializes preset entity from database objects.
+        """
+        video_tracks: List[profiles.VideoTrack] = []
+        for vt in preset.video_tracks.all():  # type: models.VideoTrack
+            kwargs = dict(**vt.params)
+            kwargs['id'] = vt.name
+            video_tracks.append(profiles.VideoTrack(**kwargs))
+
+        audio_tracks: List[profiles.AudioTrack] = []
+        for at in preset.audio_tracks.all():  # type: models.AudioTrack
+            kwargs = dict(**at.params)
+            kwargs['id'] = at.name
+            audio_tracks.append(profiles.AudioTrack(**kwargs))
+
+        video_profiles: List[profiles.VideoProfile] = []
+        for vp in preset.video_profiles.all():  # type: models.VideoProfile
+            vc = profiles.VideoCondition(**vp.condition)
+            tracks = [t.name for t in vp.video.all()]
+            video_profiles.append(profiles.VideoProfile(
+                condition=vc,
+                video=tracks,
+            ))
+
+        audio_profiles: List[profiles.AudioProfile] = []
+        for ap in preset.audio_profiles.all():  # type: models.AudioProfile
+            ac = profiles.AudioCondition(**ap.condition)
+            tracks = [t.name for t in ap.audio.all()]
+            audio_profiles.append(profiles.AudioProfile(
+                condition=ac,
+                audio=tracks,
+            ))
+
+        return profiles.Preset(
+            video_profiles=video_profiles,
+            audio_profiles=audio_profiles,
+            video=video_tracks,
+            audio=audio_tracks,
+        )
 
 
 transcode_video: TranscodeVideo = app.register_task(
