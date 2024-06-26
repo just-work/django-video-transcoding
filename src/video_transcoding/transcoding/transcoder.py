@@ -58,12 +58,14 @@ class Transcoder(LoggerMixin):
                          pformat(dataclasses.asdict(media_info)))
         return media_info
 
-    def transcode(self) -> None:
+    def transcode(self) -> Metadata:
         """ Transcodes video
 
         * checks source mediainfo
         * runs `ffmpeg`
         * validates result
+
+        :returns: metadata with all video and audio stream in resulting file
         """
         # Get source mediainfo to use in validation
         src = self.get_media_info(self.source)
@@ -128,6 +130,8 @@ class Transcoder(LoggerMixin):
 
         # Validate ffmpeg result
         self.validate(src, dest_media_info)
+
+        return dest_media_info
 
     def select_profile(self, src: Metadata) -> Profile:
         """

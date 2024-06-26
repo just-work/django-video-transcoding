@@ -2,6 +2,7 @@ import io
 import os
 import shutil
 import tempfile
+from dataclasses import asdict
 from typing import Optional, List
 from uuid import UUID, uuid4
 import hashlib
@@ -13,6 +14,7 @@ from django.db.transaction import atomic
 from video_transcoding.transcoding import profiles, transcoder
 from video_transcoding import models, defaults
 from video_transcoding.celery import app
+from video_transcoding.transcoding.metadata import Metadata
 from video_transcoding.utils import LoggerMixin
 
 DESTINATION_FILENAME = '{basename}.mp4'
@@ -40,11 +42,11 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         :param download: Download source file to tmp dir before processing.
         """
         status = models.Video.DONE
-        error = basename = None
+        error = basename = metadata = None
         video = self.lock_video(video_id)
         try:
             basename = uuid4().hex
-            self.process_video(video, basename, download=download)
+            metadata = self.process_video(video, basename, download=download)
         except SoftTimeLimitExceeded as e:
             # celery graceful shutdown
             status = models.Video.QUEUED
@@ -56,7 +58,7 @@ class TranscodeVideo(LoggerMixin, celery.Task):
             status = models.Video.ERROR
             error = repr(e)
         finally:
-            self.unlock_video(video_id, status, error, basename)
+            self.unlock_video(video_id, status, error, basename, metadata)
         return error
 
     def select_for_update(self, video_id: int, status: int) -> models.Video:
@@ -109,7 +111,8 @@ class TranscodeVideo(LoggerMixin, celery.Task):
 
     @atomic
     def unlock_video(self, video_id: int, status: int, error: Optional[str],
-                     basename: Optional[str]) -> None:
+                     basename: Optional[str], metadata: Optional[Metadata],
+                     ) -> None:
         """
         Marks video with final status.
 
@@ -117,6 +120,7 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         :param status: final video status (Video.DONE, Video.ERROR)
         :param error: error message
         :param basename: UUID-like result file identifier
+        :param metadata: resulting media metadata
         :raises RuntimeError: in case of unexpected video status or task id
         """
         try:
@@ -127,10 +131,11 @@ class TranscodeVideo(LoggerMixin, celery.Task):
             raise RuntimeError("Can't unlock locked video %s: %s",
                                video_id, repr(e))
 
-        video.change_status(status, error=error, basename=basename)
+        video.change_status(status, error=error, basename=basename,
+                            metadata=metadata)
 
     def process_video(self, video: models.Video, basename: str,
-                      download: bool = False) -> None:
+                      download: bool = False) -> dict:
         """
         Video processing workflow.
 
@@ -142,6 +147,7 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         :param video: Video object
         :param basename: video files common base name
         :param download: download source to temp dir
+        :returns: resulting file metadata.
         """
         with tempfile.TemporaryDirectory(dir=defaults.VIDEO_TEMP_DIR,
                                          prefix=f'video-{video.pk}-') as d:
@@ -151,9 +157,11 @@ class TranscodeVideo(LoggerMixin, celery.Task):
                 self.download(video.source, source)
             else:
                 source = video.source
-            self.transcode(source, destination, video)
+            metadata = self.transcode(source, destination, video)
             self.store(destination)
+
         self.logger.info("Processing done")
+        return asdict(metadata)
 
     def download(self, source: str, destination: str) -> None:
         """
@@ -197,13 +205,14 @@ class TranscodeVideo(LoggerMixin, celery.Task):
             self.logger.info("Source file checksum: %s", checksum.hexdigest())
 
     def transcode(self, source: str, destination: str, video: models.Video
-                  ) -> None:
+                  ) -> Metadata:
         """
         Starts video transcoding
 
         :param source: source file link (http/ftp or file path)
         :param destination: result temporary file path.
         :param video: video object.
+        :returns: resulting media metadata.
         """
         self.logger.info("Start transcoding %s to %s",
                          source, destination)
@@ -212,8 +221,9 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         else:
             preset = self.init_preset(video.preset)
         t = transcoder.Transcoder(source, destination, preset)
-        t.transcode()
+        metadata = t.transcode()
         self.logger.info("Transcoding %s finished", source)
+        return metadata
 
     def store(self, destination: str) -> None:
         """
