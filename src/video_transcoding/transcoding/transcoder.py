@@ -47,23 +47,25 @@ class Transcoder(LoggerMixin):
         :param filename: analyzed media
         :returns: metadata object with video and audio stream
         """
-        audio, video = Analyzer().get_meta_data(filename)
+        audios, videos = Analyzer().get_meta_data(filename)
 
-        if video is None:
+        if videos is None:
             raise TranscodeError("missing video stream")
-        if audio is None:
+        if audios is None:
             raise TranscodeError("missing audio stream")
-        media_info = Metadata(video=video, audio=audio)
+        media_info = Metadata(videos=videos, audios=audios)
         self.logger.info("Parsed media info:\n%s",
                          pformat(dataclasses.asdict(media_info)))
         return media_info
 
-    def transcode(self) -> None:
+    def transcode(self) -> Metadata:
         """ Transcodes video
 
         * checks source mediainfo
         * runs `ffmpeg`
         * validates result
+
+        :returns: metadata with all video and audio stream in resulting file
         """
         # Get source mediainfo to use in validation
         src = self.get_media_info(self.source)
@@ -128,6 +130,8 @@ class Transcoder(LoggerMixin):
 
         # Validate ffmpeg result
         self.validate(src, dest_media_info)
+
+        return dest_media_info
 
     def select_profile(self, src: Metadata) -> Profile:
         """
