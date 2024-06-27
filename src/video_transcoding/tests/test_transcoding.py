@@ -189,7 +189,7 @@ class TranscodingTestCase(MediaInfoMixin, BaseTestCase):
             '-preset:2', 'slow',
             '-maxrate:2', '1500000',
             '-bufsize:2', '3000000',
-            '-profile:v:2', 'medium',
+            '-profile:v:2', 'main',
             '-g:2', '60',
             '-r:2', '30',
             '-pix_fmt:2', 'yuv420p',
@@ -202,7 +202,7 @@ class TranscodingTestCase(MediaInfoMixin, BaseTestCase):
             '-preset:3', 'slow',
             '-maxrate:3', '800000',
             '-bufsize:3', '1600000',
-            '-profile:v:3', 'medium',
+            '-profile:v:3', 'main',
             '-g:3', '60',
             '-r:3', '30',
             '-pix_fmt:3', 'yuv420p',
@@ -212,12 +212,6 @@ class TranscodingTestCase(MediaInfoMixin, BaseTestCase):
             '-b:a:0', '192000',
             '-ar:0', '48000',
             '-ac:0', '2',
-
-            '-map', '0:a:0',
-            '-c:a:1', 'aac',
-            '-b:a:1', '96000',
-            '-ar:1', '48000',
-            '-ac:1', '2',
 
             '-f', 'mp4', self.dest,
         ]
@@ -231,13 +225,11 @@ class TranscodingTestCase(MediaInfoMixin, BaseTestCase):
         src = self.transcoder.get_media_info(self.source)
         p = self.transcoder.select_profile(src)
         self.assertEqual(len(p.video), 4)
-        self.assertEqual(len(p.audio), 2)
+        self.assertEqual(len(p.audio), 1)
 
         mi = self.media_info[self.source]
         vb = DEFAULT_PRESET.video_profiles[0].condition.min_bitrate
         mi['video_bitrate'] = vb - 1
-        ab = DEFAULT_PRESET.audio_profiles[0].condition.min_bitrate
-        mi['audio_bitrate'] = ab - 1
 
         src = self.transcoder.get_media_info(self.source)
         p = self.transcoder.select_profile(src)

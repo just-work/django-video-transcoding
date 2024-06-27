@@ -274,12 +274,5 @@ DEFAULT_PRESET = Preset(
             channels=2,
             sample_rate=48000,
         ),
-        AudioTrack(
-            id='96k',
-            codec='aac',
-            bitrate=96000,
-            channels=2,
-            sample_rate=48000,
-        ),
     ]
 )
