@@ -1,3 +1,4 @@
+import dataclasses
 import os
 from dataclasses import asdict
 from typing import Optional, List
@@ -159,7 +160,8 @@ class TranscodeVideo(LoggerMixin, celery.Task):
             destination = ws.get_absolute_uri(dst)
 
             transcode = transcoder.Transcoder(
-                video.source, destination.geturl(), profile,
+                video.source, destination.geturl(),
+                profile=profile,
             )
             dst = transcode()
             self.store(destination.path)
@@ -238,3 +240,92 @@ class TranscodeVideo(LoggerMixin, celery.Task):
 
 transcode_video: TranscodeVideo = app.register_task(
     TranscodeVideo())  # type: ignore
+
+
+class ChunkedTranscodeVideo(TranscodeVideo):
+    def process_video(self, video: models.Video, basename: str) -> dict:
+        src = metadata.Analyzer().get_meta_data(video.source)
+        preset = self.init_preset(video.preset)
+        profile = preset.select_profile(
+            src.video, src.audio,
+            container=profiles.Container(
+                format='m3u8',
+                segment_duration=10),
+        )
+
+        root = defaults.VIDEO_TEMP_URI.rstrip('/')
+        base = f'{root}/{basename}/'
+        ws = workspace.WebDAVWorkspace(base)
+
+        root = defaults.VIDEO_ORIGINS[0].rstrip('/')
+        base = f'{root}/{basename}/'
+        store = workspace.WebDAVWorkspace(base)
+        try:
+            sources = ws.ensure_collection('sources')
+            dst = sources.file(f'source.m3u8')
+            destination = ws.get_absolute_uri(dst)
+
+            split = transcoder.Splitter(
+                video.source, destination.geturl(),
+                profile=profile,
+            )
+
+            meta = split()
+            self.logger.debug("Split: %s", meta)
+
+            concat = ['ffconcat version 1.0']
+            segments = []
+            playlist = ws.read(dst)
+            for line in playlist.splitlines(keepends=False):
+                if line.startswith('#'):
+                    continue
+                segments.append(line)
+                concat.append(f"file '{line}'")
+
+            results = ws.ensure_collection('results')
+
+            f = results.file('concat.ffconcat')
+            ws.write(f, '\n'.join(concat))
+
+            profile.container = profiles.Container(
+                format='mpegts',
+                copyts=True,
+            )
+
+            for fn in segments:
+                src = sources.file(fn)
+                dst = results.file(fn)
+                transcode = transcoder.Transcoder(
+                    ws.get_absolute_uri(src).geturl(),
+                    ws.get_absolute_uri(dst).geturl(),
+                    profile=profile,
+                )
+
+                meta = transcode()
+                self.logger.debug("Transcoded: %s", meta)
+
+            profile.container = profiles.Container(
+                format='m3u8',
+                segment_duration=defaults.VIDEO_SEGMENT_DURATION,
+            )
+
+            destination = store.root.file('master.m3u8')
+            segment = transcoder.HLSSegmentor(
+                ws.get_absolute_uri(f).geturl(),
+                store.get_absolute_uri(destination).geturl(),
+                profile=profile,
+                meta=meta,
+            )
+
+            result = segment()
+            return dataclasses.asdict(result)
+        except Exception as e:
+            self.logger.exception("Error %s", repr(e))
+            raise
+        finally:
+            self.logger.error('cleanup %s', ws.root)
+            ws.delete_collection(ws.root)
+
+
+parallel_transcode: ChunkedTranscodeVideo = app.register_task(
+    ChunkedTranscodeVideo())

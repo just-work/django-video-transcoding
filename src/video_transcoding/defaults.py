@@ -25,7 +25,7 @@ VIDEO_TRANSCODING_CELERY_CONF = {
 # Directory for large output files
 VIDEO_TEMP_DIR = '/tmp'
 # URI for shared files
-VIDEO_TEMP_URI = e('VIDEO_SHARED_URI', 'http://storage.localhost:8080/tmp/')
+VIDEO_TEMP_URI = e('VIDEO_TEMP_URI', 'http://storage.localhost:8080/tmp/')
 
 # A list of WebDAV endpoints for storing video results
 VIDEO_ORIGINS = e('VIDEO_ORIGINS',
@@ -43,9 +43,8 @@ VIDEO_REQUEST_TIMEOUT = float(e('VIDEO_REQUEST_TIMEOUT', 1))
 VIDEO_DOWNLOAD_TIMEOUT = float(e('VIDEO_DOWNLOAD_TIMEOUT', 60 * 60))
 VIDEO_UPLOAD_TIMEOUT = float(e('VIDEO_UPLOAD_TIMEOUT', 60 * 60))
 
-# Accuracy between source and result duration.
-# 1 = exact match, 0.95 - 5% difference.
-VIDEO_DURATION_TOLERANCE = float(e('VIDEO_DURATION_TOLERANCE', 0.95))
-
 # Processing segment duration
-VIDEO_SEGMENT_DURATION = int(e('VIDEO_SEGMENT_DURATION', 60))
+VIDEO_CHUNK_DURATION = int(e('VIDEO_CHUNK_DURATION', 60))
+
+# HLS playlists segment duration
+VIDEO_SEGMENT_DURATION = int(e('VIDEO_SEGMENT_DURATION', 2))
