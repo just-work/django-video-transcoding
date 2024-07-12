@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Optional, Any
 
 from fffw.graph import VideoMeta, AudioMeta
 
@@ -23,6 +23,10 @@ class VideoTrack:
     gop_size: int
     force_key_frames: str
 
+    @classmethod
+    def from_native(cls, data: dict[str, Any]) -> "VideoTrack":
+        return cls(**data)
+
 
 @dataclass
 class AudioTrack:
@@ -34,6 +38,10 @@ class AudioTrack:
     bitrate: int
     channels: int
     sample_rate: int
+
+    @classmethod
+    def from_native(cls, data: dict[str, Any]) -> "AudioTrack":
+        return cls(**data)
 
 
 @dataclass
@@ -106,6 +114,10 @@ class Container:
     segment_duration: Optional[float] = None
     copyts: bool = False
 
+    @classmethod
+    def from_native(cls, data: dict[str, Any]) -> "Container":
+        return cls(**data)
+
 
 @dataclass
 class Profile:
@@ -115,6 +127,14 @@ class Profile:
     video: List[VideoTrack]
     audio: List[AudioTrack]
     container: Container
+
+    @classmethod
+    def from_native(cls, data: dict[str, Any]) -> "Profile":
+        return cls(
+            video=list(map(VideoTrack.from_native, data['video'])),
+            audio=list(map(AudioTrack.from_native, data['audio'])),
+            container=Container.from_native(data['container']),
+        )
 
 
 @dataclass
