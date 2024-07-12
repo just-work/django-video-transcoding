@@ -27,9 +27,6 @@ VIDEO_TEMP_DIR = '/tmp'
 # URI for shared files
 VIDEO_TEMP_URI = e('VIDEO_SHARED_URI', 'http://storage.localhost:8080/tmp/')
 
-# Download source before processing
-VIDEO_DOWNLOAD_SOURCE = bool(int(e('VIDEO_DOWNLOAD_SOURCE', 0)))
-
 # A list of WebDAV endpoints for storing video results
 VIDEO_ORIGINS = e('VIDEO_ORIGINS',
                   'http://storage.localhost:8080/videos/').split(',')
@@ -40,11 +37,12 @@ VIDEO_EDGES = e('VIDEO_EDGES', 'http://storage.localhost:8080/').split(',')
 # Edge video manifest url template
 VIDEO_URL = '{edge}/hls/{filename}1080p.mp4/index.m3u8'
 
-# Output source files checksum
-CHECKSUM_SOURCE = bool(int(e('CHECKSUM_SOURCE', 0)))
-
 # HTTP Request timeouts
 VIDEO_CONNECT_TIMEOUT = float(e('VIDEO_CONNECT_TIMEOUT', 1))
 VIDEO_REQUEST_TIMEOUT = float(e('VIDEO_REQUEST_TIMEOUT', 1))
 VIDEO_DOWNLOAD_TIMEOUT = float(e('VIDEO_DOWNLOAD_TIMEOUT', 60 * 60))
 VIDEO_UPLOAD_TIMEOUT = float(e('VIDEO_UPLOAD_TIMEOUT', 60 * 60))
+
+# Accuracy between source and result duration.
+# 1 = exact match, 0.95 - 5% difference.
+VIDEO_DURATION_TOLERANCE = float(e('VIDEO_DURATION_TOLERANCE', 0.95))
