@@ -168,6 +168,7 @@ class Video(TimeStampedModel):
                                blank=True,
                                null=True)
     metadata = models.JSONField(verbose_name=_('metadata'), blank=True, null=True)
+    profile = models.JSONField(blank=True, null=True)
 
     class Meta:
         app_label = 'video_transcoding'
