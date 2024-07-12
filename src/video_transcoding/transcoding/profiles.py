@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List
+from typing import List, Dict, Any, Optional
 
 from fffw.graph import VideoMeta, AudioMeta
 
@@ -98,12 +98,22 @@ class AudioProfile:
 
 
 @dataclass
+class Container:
+    """
+    Output file format
+    """
+    format: str
+    options: Optional[Dict[str, Any]] = None
+
+
+@dataclass
 class Profile:
     """
     Selected transcoding profile containing a number of audio and video streams.
     """
     video: List[VideoTrack]
     audio: List[AudioTrack]
+    container: Container
 
 
 @dataclass
@@ -116,7 +126,10 @@ class Preset:
     video: List[VideoTrack]
     audio: List[AudioTrack]
 
-    def select_profile(self, video: VideoMeta, audio: AudioMeta) -> Profile:
+    def select_profile(self,
+                       video: VideoMeta,
+                       audio: AudioMeta,
+                       container: Container) -> Profile:
         video_profile = None
         for vp in self.video_profiles:
             if vp.condition.is_valid(video):
@@ -136,6 +149,7 @@ class Preset:
         return Profile(
             video=[v for v in self.video if v.id in video_profile.video],
             audio=[a for a in self.audio if a.id in audio_profile.audio],
+            container=container,
         )
 
 
