@@ -1,7 +1,8 @@
 from dataclasses import dataclass
-from typing import Tuple, List, cast
+from typing import List, cast
 
 import pymediainfo
+from fffw.encoding import Stream
 from fffw.graph.meta import VideoMeta, AudioMeta, from_media_info, VIDEO, AUDIO
 
 from video_transcoding.utils import LoggerMixin
@@ -9,6 +10,7 @@ from video_transcoding.utils import LoggerMixin
 
 @dataclass
 class Metadata:
+    uri: str
     videos: List[VideoMeta]
     audios: List[AudioMeta]
 
@@ -20,11 +22,19 @@ class Metadata:
     def audio(self) -> AudioMeta:
         return self.audios[0]
 
+    @property
+    def streams(self) -> List[Stream]:
+        streams = []
+        for vm in self.videos:
+            streams.append(Stream(VIDEO, vm))
+        for am in self.audios:
+            streams.append(Stream(AUDIO, am))
+        return streams
+
 
 class Analyzer(LoggerMixin):
-    def get_meta_data(self, filename: str
-                      ) -> Tuple[List[AudioMeta], List[VideoMeta]]:
-        result: pymediainfo.MediaInfo = pymediainfo.MediaInfo.parse(filename)
+    def get_meta_data(self, uri: str) -> Metadata:
+        result: pymediainfo.MediaInfo = pymediainfo.MediaInfo.parse(uri)
         for t in result.tracks:
             if t.track_type in ('Video', 'Image'):
                 self.fix_par(t)
@@ -39,7 +49,11 @@ class Analyzer(LoggerMixin):
                 video_meta.append(cast(VideoMeta, m))
             if m.kind == AUDIO:
                 audio_meta.append(cast(AudioMeta, m))
-        return audio_meta, video_meta
+        return Metadata(
+            uri=uri,
+            videos=video_meta,
+            audios=audio_meta,
+        )
 
     def fix_par(self, t: pymediainfo.Track) -> None:
         """
