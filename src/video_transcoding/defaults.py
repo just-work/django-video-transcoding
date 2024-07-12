@@ -24,6 +24,8 @@ VIDEO_TRANSCODING_CELERY_CONF = {
 
 # Directory for large output files
 VIDEO_TEMP_DIR = '/tmp'
+# URI for shared files
+VIDEO_TEMP_URI = e('VIDEO_SHARED_URI', 'http://storage.localhost:8080/tmp/')
 
 # Download source before processing
 VIDEO_DOWNLOAD_SOURCE = bool(int(e('VIDEO_DOWNLOAD_SOURCE', 0)))
@@ -40,3 +42,9 @@ VIDEO_URL = '{edge}/hls/{filename}1080p.mp4/index.m3u8'
 
 # Output source files checksum
 CHECKSUM_SOURCE = bool(int(e('CHECKSUM_SOURCE', 0)))
+
+# HTTP Request timeouts
+VIDEO_CONNECT_TIMEOUT = float(e('VIDEO_CONNECT_TIMEOUT', 1))
+VIDEO_REQUEST_TIMEOUT = float(e('VIDEO_REQUEST_TIMEOUT', 1))
+VIDEO_DOWNLOAD_TIMEOUT = float(e('VIDEO_DOWNLOAD_TIMEOUT', 60 * 60))
+VIDEO_UPLOAD_TIMEOUT = float(e('VIDEO_UPLOAD_TIMEOUT', 60 * 60))
