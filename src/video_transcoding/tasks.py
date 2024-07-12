@@ -1,20 +1,18 @@
-import io
 import os
-import shutil
-import tempfile
 from dataclasses import asdict
 from typing import Optional, List
 from uuid import UUID, uuid4
-import hashlib
+
 import celery
 import requests
 from billiard.exceptions import SoftTimeLimitExceeded
 from django.db.transaction import atomic
 
-from video_transcoding.transcoding import profiles, transcoder
 from video_transcoding import models, defaults
 from video_transcoding.celery import app
-from video_transcoding.transcoding.metadata import Metadata
+from video_transcoding.transcoding import (
+    profiles, transcoder, workspace, metadata,
+)
 from video_transcoding.utils import LoggerMixin
 
 DESTINATION_FILENAME = '{basename}.mp4'
@@ -42,11 +40,11 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         :param download: Download source file to tmp dir before processing.
         """
         status = models.Video.DONE
-        error = basename = metadata = None
+        error = basename = meta = None
         video = self.lock_video(video_id)
         try:
             basename = uuid4().hex
-            metadata = self.process_video(video, basename, download=download)
+            meta = self.process_video(video, basename)
         except SoftTimeLimitExceeded as e:
             # celery graceful shutdown
             status = models.Video.QUEUED
@@ -58,7 +56,7 @@ class TranscodeVideo(LoggerMixin, celery.Task):
             status = models.Video.ERROR
             error = repr(e)
         finally:
-            self.unlock_video(video_id, status, error, basename, metadata)
+            self.unlock_video(video_id, status, error, basename, meta)
         return error
 
     def select_for_update(self, video_id: int, status: int) -> models.Video:
@@ -111,7 +109,7 @@ class TranscodeVideo(LoggerMixin, celery.Task):
 
     @atomic
     def unlock_video(self, video_id: int, status: int, error: Optional[str],
-                     basename: Optional[str], metadata: Optional[dict],
+                     basename: Optional[str], meta: Optional[dict],
                      ) -> None:
         """
         Marks video with final status.
@@ -120,7 +118,7 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         :param status: final video status (Video.DONE, Video.ERROR)
         :param error: error message
         :param basename: UUID-like result file identifier
-        :param metadata: resulting media metadata
+        :param meta: resulting media metadata
         :raises RuntimeError: in case of unexpected video status or task id
         """
         try:
@@ -132,10 +130,9 @@ class TranscodeVideo(LoggerMixin, celery.Task):
                                video_id, repr(e))
 
         video.change_status(status, error=error, basename=basename,
-                            metadata=metadata)
+                            metadata=meta)
 
-    def process_video(self, video: models.Video, basename: str,
-                      download: bool = False) -> dict:
+    def process_video(self, video: models.Video, basename: str) -> dict:
         """
         Video processing workflow.
 
@@ -146,84 +143,32 @@ class TranscodeVideo(LoggerMixin, celery.Task):
 
         :param video: Video object
         :param basename: video files common base name
-        :param download: download source to temp dir
         :returns: resulting file metadata.
         """
-        with tempfile.TemporaryDirectory(dir=defaults.VIDEO_TEMP_DIR,
-                                         prefix=f'video-{video.pk}-') as d:
-            destination = os.path.join(d, f'{basename}.mp4')
-            if download:
-                source = os.path.join(d, f'{basename}.src.bin')
-                self.download(video.source, source)
-            else:
-                source = video.source
-            metadata = self.transcode(source, destination, video)
-            self.store(destination)
+        src = metadata.Analyzer().get_meta_data(video.source)
+        preset = self.init_preset(video.preset)
+        profile = preset.select_profile(
+            src.video, src.audio,
+            container=profiles.Container(format='mp4'))
 
-        self.logger.info("Processing done")
-        return asdict(metadata)
+        tmp_dir_name = os.path.join(defaults.VIDEO_TEMP_DIR, basename)
+        ws = workspace.FileSystemWorkspace(tmp_dir_name)
+        try:
+            ws.create_collection(ws.root)
+            dst = ws.root.file(f'{basename}.mp4')
+            destination = ws.get_absolute_uri(dst)
 
-    def download(self, source: str, destination: str) -> None:
-        """
-        Downloads source to temporary directory
-        :param source: source file link
-        :param destination: path to downloaded file
-        """
-        self.logger.info("Start downloading %s to %s", source, destination)
-        timeout = (CONNECT_TIMEOUT, DOWNLOAD_TIMEOUT)
-        if defaults.CHECKSUM_SOURCE:
-            # noinspection PyUnresolvedReferences,PyProtectedMember
-            checksum = hashlib.md5()  # type: Optional[hashlib._Hash]
-        else:
-            checksum = None
-        with requests.get(
-            source,
-            stream=True,
-            timeout=timeout,
-            allow_redirects=True,
-        ) as response:
-            response.raise_for_status()
-            with open(destination, 'wb') as f:
-                encoding = response.headers.get('transfer-encoding')
-                if encoding or checksum:
-                    self.logger.warning(
-                        "Transfer-encoding is %s, not fastest one",
-                        encoding or checksum)
-                    for chunk in response.iter_content(io.DEFAULT_BUFFER_SIZE):
-                        f.write(chunk)
-                        if checksum:
-                            checksum.update(chunk)
-                else:
-                    shutil.copyfileobj(response.raw, f)
-                content_length = response.headers.get('Content-Length')
-                if content_length is not None:
-                    size = f.tell()
-                    if size != int(content_length):
-                        raise ValueError("Partial file", size)
-        self.logger.info("Downloading %s finished", source)
-        if checksum:
-            self.logger.info("Source file checksum: %s", checksum.hexdigest())
-
-    def transcode(self, source: str, destination: str, video: models.Video
-                  ) -> Metadata:
-        """
-        Starts video transcoding
-
-        :param source: source file link (http/ftp or file path)
-        :param destination: result temporary file path.
-        :param video: video object.
-        :returns: resulting media metadata.
-        """
-        self.logger.info("Start transcoding %s to %s",
-                         source, destination)
-        if video.preset is None:
-            preset = profiles.DEFAULT_PRESET
-        else:
-            preset = self.init_preset(video.preset)
-        t = transcoder.Transcoder(source, destination, preset)
-        metadata = t.transcode()
-        self.logger.info("Transcoding %s finished", source)
-        return metadata
+            transcode = transcoder.Transcoder(
+                video.source, destination.geturl(), profile,
+            )
+            dst = transcode()
+            self.store(destination.path)
+            return asdict(dst)
+        except Exception as e:
+            self.logger.exception("Error %s", repr(e))
+            raise
+        finally:
+            ws.delete_collection(ws.root)
 
     def store(self, destination: str) -> None:
         """
@@ -235,7 +180,10 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         filename = os.path.basename(destination)
         timeout = (CONNECT_TIMEOUT, UPLOAD_TIMEOUT)
         for origin in defaults.VIDEO_ORIGINS:
-            url = os.path.join(origin, filename)
+            ws = workspace.WebDAVWorkspace(origin)
+            ws.create_collection(ws.root)
+            f = ws.root.file(filename)
+            url = ws.get_absolute_uri(f).geturl()
             self.logger.debug("Uploading %s to %s", destination, url)
             with open(destination, 'rb') as f:
                 response = requests.put(url, data=f, timeout=timeout)
@@ -244,10 +192,12 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         self.logger.info("%s save finished", destination)
 
     @staticmethod
-    def init_preset(preset: models.Preset) -> profiles.Preset:
+    def init_preset(preset: Optional[models.Preset]) -> profiles.Preset:
         """
         Initializes preset entity from database objects.
         """
+        if preset is None:
+            return profiles.DEFAULT_PRESET
         video_tracks: List[profiles.VideoTrack] = []
         for vt in preset.video_tracks.all():  # type: models.VideoTrack
             kwargs = dict(**vt.params)
