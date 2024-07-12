@@ -133,6 +133,7 @@ class Video(TimeStampedModel):
     basename = models.UUIDField(blank=True, null=True,
                                 verbose_name=_('Basename'))
     preset = models.ForeignKey(Preset, models.SET_NULL, blank=True, null=True)
+    profile = models.JSONField(blank=True, null=True)
     metadata = models.JSONField(blank=True, null=True)
 
     class Meta:
