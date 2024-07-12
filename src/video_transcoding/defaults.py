@@ -46,3 +46,6 @@ VIDEO_UPLOAD_TIMEOUT = float(e('VIDEO_UPLOAD_TIMEOUT', 60 * 60))
 # Accuracy between source and result duration.
 # 1 = exact match, 0.95 - 5% difference.
 VIDEO_DURATION_TOLERANCE = float(e('VIDEO_DURATION_TOLERANCE', 0.95))
+
+# Processing segment duration
+VIDEO_SEGMENT_DURATION = int(e('VIDEO_SEGMENT_DURATION', 60))
