@@ -2,7 +2,7 @@ import dataclasses
 import os
 from dataclasses import asdict
 from typing import Optional, List
-from uuid import UUID, uuid4
+from uuid import UUID
 
 import celery
 import requests
@@ -25,10 +25,9 @@ UPLOAD_TIMEOUT = 60 * 60
 
 class TranscodeVideo(LoggerMixin, celery.Task):
     """ Video processing task."""
-    name = 'video.transcode'
     routing_key = 'video_transcoding'
 
-    def run(self, video_id: int, download: bool = False) -> Optional[str]:
+    def run(self, video_id: int) -> Optional[str]:
         """
         Process video.
 
@@ -38,26 +37,22 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         4. On errors changes video status ERROR, stores error message
 
         :param video_id: Video id.
-        :param download: Download source file to tmp dir before processing.
         """
         status = models.Video.DONE
-        error = basename = meta = None
+        error = meta = None
         video = self.lock_video(video_id)
         try:
-            basename = uuid4().hex
-            meta = self.process_video(video, basename)
+            meta = self.process_video(video)
         except SoftTimeLimitExceeded as e:
             # celery graceful shutdown
             status = models.Video.QUEUED
-            basename = None
             error = repr(e)
             raise self.retry(countdown=10)
         except Exception as e:
-            basename = None
             status = models.Video.ERROR
             error = repr(e)
         finally:
-            self.unlock_video(video_id, status, error, basename, meta)
+            self.unlock_video(video_id, status, error, meta)
         return error
 
     def select_for_update(self, video_id: int, status: int) -> models.Video:
@@ -104,13 +99,12 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         except (models.Video.DoesNotExist, ValueError) as e:
             # if video is locked or task_id is not equal to current task, retry.
             raise self.retry(exc=e)
-
         video.change_status(models.Video.PROCESS)
         return video
 
     @atomic
     def unlock_video(self, video_id: int, status: int, error: Optional[str],
-                     basename: Optional[str], meta: Optional[dict],
+                     meta: Optional[dict],
                      ) -> None:
         """
         Marks video with final status.
@@ -118,7 +112,6 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         :param video_id: Video primary key
         :param status: final video status (Video.DONE, Video.ERROR)
         :param error: error message
-        :param basename: UUID-like result file identifier
         :param meta: resulting media metadata
         :raises RuntimeError: in case of unexpected video status or task id
         """
@@ -130,10 +123,9 @@ class TranscodeVideo(LoggerMixin, celery.Task):
             raise RuntimeError("Can't unlock locked video %s: %s",
                                video_id, repr(e))
 
-        video.change_status(status, error=error, basename=basename,
-                            metadata=meta)
+        video.change_status(status, error=error, metadata=meta)
 
-    def process_video(self, video: models.Video, basename: str) -> dict:
+    def process_video(self, video: models.Video) -> dict:
         """
         Video processing workflow.
 
@@ -143,7 +135,6 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         4. Cleanup temporary directory
 
         :param video: Video object
-        :param basename: video files common base name
         :returns: resulting file metadata.
         """
         src = metadata.Analyzer().get_meta_data(video.source)
@@ -152,7 +143,11 @@ class TranscodeVideo(LoggerMixin, celery.Task):
             src.video, src.audio,
             container=profiles.Container(format='mp4'))
 
-        tmp_dir_name = os.path.join(defaults.VIDEO_TEMP_DIR, basename)
+        basename = video.basename
+        if basename is None:  # pragma: no cover
+            raise RuntimeError("basename for video not set")
+
+        tmp_dir_name = os.path.join(defaults.VIDEO_TEMP_DIR, basename.hex)
         ws = workspace.FileSystemWorkspace(tmp_dir_name)
         try:
             ws.create_collection(ws.root)
@@ -242,8 +237,8 @@ transcode_video: TranscodeVideo = app.register_task(
     TranscodeVideo())  # type: ignore
 
 
-class ChunkedTranscodeVideo(TranscodeVideo):
-    def process_video(self, video: models.Video, basename: str) -> dict:
+class ResumableTranscodeVideo(TranscodeVideo):
+    def process_video(self, video: models.Video) -> dict:
         src = metadata.Analyzer().get_meta_data(video.source)
         preset = self.init_preset(video.preset)
         profile = preset.select_profile(
@@ -254,11 +249,11 @@ class ChunkedTranscodeVideo(TranscodeVideo):
         )
 
         root = defaults.VIDEO_TEMP_URI.rstrip('/')
-        base = f'{root}/{basename}/'
+        base = f'{root}/{video.basename.hex}/'
         ws = workspace.WebDAVWorkspace(base)
 
         root = defaults.VIDEO_ORIGINS[0].rstrip('/')
-        base = f'{root}/{basename}/'
+        base = f'{root}/{video.basename.hex}/'
         store = workspace.WebDAVWorkspace(base)
         try:
             sources = ws.ensure_collection('sources')
@@ -327,5 +322,5 @@ class ChunkedTranscodeVideo(TranscodeVideo):
             ws.delete_collection(ws.root)
 
 
-parallel_transcode: ChunkedTranscodeVideo = app.register_task(
-    ChunkedTranscodeVideo())
+resumable_transcode: ResumableTranscodeVideo = app.register_task(
+    ResumableTranscodeVideo())
