@@ -1,4 +1,5 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
+from pprint import pformat
 from typing import List, cast
 
 import pymediainfo
@@ -8,7 +9,7 @@ from fffw.graph.meta import VideoMeta, AudioMeta, from_media_info, VIDEO, AUDIO
 from video_transcoding.utils import LoggerMixin
 
 
-@dataclass
+@dataclass(repr=False)
 class Metadata:
     uri: str
     videos: List[VideoMeta]
@@ -30,6 +31,9 @@ class Metadata:
         for am in self.audios:
             streams.append(Stream(AUDIO, am))
         return streams
+
+    def __repr__(self):
+        return f'{self.__class__.__name__}\n{pformat(asdict(self))}'
 
 
 class Analyzer(LoggerMixin):

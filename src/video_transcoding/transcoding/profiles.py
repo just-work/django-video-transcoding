@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Dict, Any, Optional
+from typing import List, Optional
 
 from fffw.graph import VideoMeta, AudioMeta
 
@@ -103,7 +103,8 @@ class Container:
     Output file format
     """
     format: str
-    options: Optional[Dict[str, Any]] = None
+    segment_duration: Optional[float] = None
+    copyts: bool = False
 
 
 @dataclass

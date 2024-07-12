@@ -1,48 +1,30 @@
-from typing import List
+import abc
+import os.path
+from itertools import product
+from typing import List, Dict, Any, Optional
+from urllib.parse import urljoin
 
 from fffw import encoding
 from fffw.encoding.vector import SIMD, Vector
+from fffw.graph import VIDEO
 
-from video_transcoding import defaults
-from video_transcoding.transcoding import codecs
-from video_transcoding.transcoding.metadata import Metadata, Analyzer
+from video_transcoding.transcoding import codecs, outputs
+from video_transcoding.transcoding.metadata import Metadata
 from video_transcoding.transcoding.profiles import Profile
-from video_transcoding.utils import LoggerMixin
+from video_transcoding.transcoding.strategy import Processor
 
 
-class Transcoder(LoggerMixin):
+class FFMPEGProcessor(Processor, abc.ABC):
     """
-    Source transcoding logic.
+    Base class for ffmpeg-based processing blocks.
     """
 
-    def __init__(self, src: str, dst: str, profile: Profile):
-        super().__init__()
-        self.src = src
-        self.dst = dst
+    def __init__(self, src: str, dst: str, *,
+                 profile: Profile,
+                 meta: Optional[Metadata] = None) -> None:
+        super().__init__(src, dst)
         self.profile = profile
-
-    def __call__(self) -> Metadata:
-        """
-        Performs source file processing.
-
-        :return: result metadata
-        """
-        return self.process()
-
-    def get_media_info(self, filename: str) -> Metadata:
-        """
-        Transforms video and audio metadata to a dict
-
-        :param filename: analyzed media
-        :returns: metadata object with video and audio stream
-        """
-        self.logger.debug("Analyzing %s", filename)
-        mi = Analyzer().get_meta_data(filename)
-        if not mi.videos:
-            raise ValueError("missing video stream")
-        if not mi.audios:
-            raise ValueError("missing audio stream")
-        return mi
+        self.meta = meta
 
     @staticmethod
     def run(ff: encoding.FFMPEG) -> None:
@@ -53,34 +35,24 @@ class Transcoder(LoggerMixin):
             error = error or f"invalid ffmpeg return code {return_code}"
             raise RuntimeError(error)
 
-    @staticmethod
-    def validate(source_media_info: Metadata,
-                 dest_media_info: Metadata) -> None:
-        """
-        Validate video transcoding result.
-
-        :param source_media_info: source metadata
-        :param dest_media_info: result metadata
-        """
-        src_duration = max(source_media_info.video.duration,
-                           source_media_info.audio.duration)
-        dst_duration = min(dest_media_info.video.duration,
-                           dest_media_info.audio.duration)
-        if dst_duration < defaults.VIDEO_DURATION_TOLERANCE * src_duration:
-            # Check whether result duration corresponds to source duration
-            # (damaged source files may be processed successfully but result
-            # is shorter)
-            raise RuntimeError(f"incomplete file: {dst_duration}")
-
     def process(self) -> Metadata:
-        src = self.get_media_info(self.src)
-        ff = self.prepare_ffmpeg(src)
+        if self.meta is None:
+            self.meta = self.get_media_info(self.src)
+        ff = self.prepare_ffmpeg(self.meta)
         self.run(ff)
         # Get result mediainfo
         dst = self.get_media_info(self.dst)
-        # Validate ffmpeg result
-        self.validate(src, dst)
         return dst
+
+    @abc.abstractmethod
+    def prepare_ffmpeg(self, src: Metadata) -> encoding.FFMPEG:
+        raise NotImplementedError
+
+
+class Transcoder(FFMPEGProcessor):
+    """
+    Source transcoding logic.
+    """
 
     def prepare_ffmpeg(self, src: Metadata) -> encoding.FFMPEG:
         """
@@ -122,10 +94,10 @@ class Transcoder(LoggerMixin):
                        audio_codecs: List[encoding.AudioCodec],
                        video_codecs: List[encoding.VideoCodec],
                        ) -> encoding.Output:
-        return encoding.output_file(
-            self.dst,
-            *video_codecs,
-            *audio_codecs,
+        return outputs.FileOutput(
+            output_file=self.dst,
+            method='PUT',
+            codecs=[*video_codecs, *audio_codecs],
             format=self.profile.container.format
         )
 
@@ -156,3 +128,69 @@ class Transcoder(LoggerMixin):
                 rate=video.frame_rate,
             ))
         return video_codecs
+
+
+class Splitter(FFMPEGProcessor):
+    """
+    Source splitting logic.
+    """
+
+    def prepare_ffmpeg(self, src: Metadata) -> encoding.FFMPEG:
+        source = encoding.input_file(self.src, *src.streams)
+        codecs_list = []
+        for s in source.streams:
+            codecs_list.append(s > encoding.Copy(kind=s.kind))
+        out = self.prepare_output(codecs_list)
+        return encoding.FFMPEG(input=source, output=out, loglevel='level+info')
+
+    def prepare_output(self,
+                       codecs_list: List[encoding.Codec]
+                       ) -> encoding.Output:
+        return outputs.HLSOutput(
+            **self.get_output_kwargs(codecs_list)
+        )
+
+    def get_output_kwargs(self,
+                          codecs_list: List[encoding.Codec]
+                          ) -> Dict[str, Any]:
+        return dict(
+            output_file=self.dst,
+            hls_time=self.profile.container.segment_duration,
+            hls_playlist_type='vod',
+            codecs=codecs_list,
+        )
+
+
+class HLSSegmentor(Splitter):
+    """
+    Result segmentation logic.
+    """
+
+    def get_output_kwargs(self,
+                          codecs_list: List[encoding.Codec]
+                          ) -> Dict[str, Any]:
+        kwargs = super().get_output_kwargs(codecs_list)
+        kwargs.update(
+            output_file=urljoin(self.dst, 'playlist-%v.m3u8'),
+            hls_segment_filename=urljoin(self.dst, 'segment-%v-%05d.ts'),
+            master_pl_name=os.path.basename(self.dst),
+            var_stream_map=self.get_var_stream_map(codecs_list)
+        )
+        return kwargs
+
+    @staticmethod
+    def get_var_stream_map(codecs_list: List[encoding.Codec]) -> str:
+        audios = []
+        videos = []
+        for c in codecs_list:
+            if c.kind == VIDEO:
+                videos.append(c)
+            else:
+                audios.append(c)
+        vsm = []
+        for i, a in enumerate(audios):
+            vsm.append(f'a:{i},agroup:a{i}')
+        for (i, a), (j, v) in product(enumerate(audios), enumerate(videos)):
+            vsm.append(f'v:{j},agroup:a{i}')
+        var_stream_map = ' '.join(vsm)
+        return var_stream_map

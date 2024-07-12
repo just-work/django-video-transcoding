@@ -100,6 +100,14 @@ class Workspace(LoggerMixin, abc.ABC):
     def delete_collection(self, c: Collection) -> None:
         raise NotImplementedError
 
+    @abc.abstractmethod
+    def read(self, f: "File") -> str:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def write(self, f: "File", content: str) -> None:
+        raise NotImplementedError
+
     def get_absolute_uri(self, r: Resource) -> ParseResult:
         path = '/'.join((*Path(self.uri.path.lstrip('/')).parts, *r.parts))
         return self.uri._replace(path='/' + path + r.trailing_slash)
@@ -121,6 +129,18 @@ class FileSystemWorkspace(Workspace):
         self.logger.debug("rmtree %s", uri.path)
         shutil.rmtree(uri.path)
 
+    def read(self, f: "File") -> str:
+        uri = self.get_absolute_uri(f)
+        self.logger.debug("read %s", uri.path)
+        with open(uri.path, 'r') as f:
+            return f.read()
+
+    def write(self, f: File, content: str) -> None:
+        uri = self.get_absolute_uri(f)
+        self.logger.debug("write %s", uri.path)
+        with open(uri.path, 'w') as f:
+            f.write(content)
+
 
 class WebDAVWorkspace(Workspace):
     def __init__(self, base: str) -> None:
@@ -135,7 +155,25 @@ class WebDAVWorkspace(Workspace):
             self._mkcol(tmp)
 
     def delete_collection(self, c: Collection) -> None:
-        self._delete(c)
+        uri = self.get_absolute_uri(c)
+        self.logger.debug("delete %s", uri)
+        timeout = (defaults.VIDEO_CONNECT_TIMEOUT,
+                   defaults.VIDEO_REQUEST_TIMEOUT,)
+        r = self.session.request("DELETE", uri.geturl(), timeout=timeout)
+        r.raise_for_status()
+
+    def read(self, f: "File") -> str:
+        uri = self.get_absolute_uri(f)
+        self.logger.debug("get %s", uri.geturl())
+        r = self.session.request("GET", uri.geturl())
+        r.raise_for_status()
+        return r.text
+
+    def write(self, f: File, content: str) -> None:
+        uri = self.get_absolute_uri(f)
+        self.logger.debug("put %s", uri.geturl())
+        r = self.session.request("PUT", uri.geturl(), data=content)
+        r.raise_for_status()
 
     def _mkcol(self, c: Collection) -> None:
         uri = self.get_absolute_uri(c)
@@ -149,11 +187,3 @@ class WebDAVWorkspace(Workspace):
             # MKCOL returns 405 if collection already exists and
             # 409 if existing resource is not a collection
             r.raise_for_status()
-
-    def _delete(self, c: Collection) -> None:
-        uri = self.get_absolute_uri(c)
-        self.logger.debug("delete %s", uri)
-        timeout = (defaults.VIDEO_CONNECT_TIMEOUT,
-                   defaults.VIDEO_REQUEST_TIMEOUT,)
-        r = self.session.request("DELETE", uri.geturl(), timeout=timeout)
-        r.raise_for_status()
