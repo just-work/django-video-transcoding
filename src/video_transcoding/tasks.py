@@ -6,12 +6,10 @@ from uuid import UUID, uuid4
 import celery
 from billiard.exceptions import SoftTimeLimitExceeded
 from django.db.transaction import atomic
-from requests.compat import basestring
 
 from video_transcoding import models, strategy
 from video_transcoding.celery import app
-from video_transcoding.transcoding import (
-    profiles, )
+from video_transcoding.transcoding import profiles
 from video_transcoding.utils import LoggerMixin
 
 DESTINATION_FILENAME = '{basename}.mp4'
