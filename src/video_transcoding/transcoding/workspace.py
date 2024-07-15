@@ -74,6 +74,30 @@ class File(Resource):
 
 class Workspace(LoggerMixin, abc.ABC):
 
+    @abc.abstractmethod
+    def create_collection(self, c: Collection) -> None:
+        raise NotImplementedError
+
+    def get_absolute_uri(self, r: Resource) -> ParseResult:
+        path = '/'.join((*Path(self.uri.path.lstrip('/')).parts, *r.parts))
+        return self.uri._replace(path='/' + path + r.trailing_slash)
+
+    @abc.abstractmethod
+    def delete_collection(self, c: Collection) -> None:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def read(self, f: "File") -> str:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def write(self, f: "File", content: str) -> None:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def exists(self, r: Resource) -> bool:
+        raise NotImplementedError
+
     def __init__(self, uri: ParseResult) -> None:
         super().__init__()
         self.uri = uri._replace(path=uri.path.rstrip('/'))
@@ -88,30 +112,6 @@ class Workspace(LoggerMixin, abc.ABC):
         c = self.root.collection(*Path(path).parts)
         self.create_collection(c)
         return c
-
-    @abc.abstractmethod
-    def create_collection(self, c: Collection) -> None:
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def delete_collection(self, c: Collection) -> None:
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def read(self, f: "File") -> str:
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def write(self, f: "File", content: str) -> None:
-        raise NotImplementedError
-
-    def get_absolute_uri(self, r: Resource) -> ParseResult:
-        path = '/'.join((*Path(self.uri.path.lstrip('/')).parts, *r.parts))
-        return self.uri._replace(path='/' + path + r.trailing_slash)
-
-    @abc.abstractmethod
-    def exists(self, r: Resource) -> bool:
-        raise NotImplementedError
 
 
 class FileSystemWorkspace(Workspace):
