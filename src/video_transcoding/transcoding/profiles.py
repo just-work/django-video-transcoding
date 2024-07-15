@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional, Any, Dict
 
 from fffw.graph import VideoMeta, AudioMeta
 
@@ -23,6 +23,10 @@ class VideoTrack:
     gop_size: int
     force_key_frames: str
 
+    @classmethod
+    def from_native(cls, data: Dict[str, Any]) -> "VideoTrack":
+        return cls(**data)
+
 
 @dataclass
 class AudioTrack:
@@ -34,6 +38,10 @@ class AudioTrack:
     bitrate: int
     channels: int
     sample_rate: int
+
+    @classmethod
+    def from_native(cls, data: Dict[str, Any]) -> "AudioTrack":
+        return cls(**data)
 
 
 @dataclass
@@ -98,12 +106,35 @@ class AudioProfile:
 
 
 @dataclass
+class Container:
+    """
+    Output file format
+    """
+    format: str
+    segment_duration: Optional[float] = None
+    copyts: bool = False
+
+    @classmethod
+    def from_native(cls, data: Dict[str, Any]) -> "Container":
+        return cls(**data)
+
+
+@dataclass
 class Profile:
     """
     Selected transcoding profile containing a number of audio and video streams.
     """
     video: List[VideoTrack]
     audio: List[AudioTrack]
+    container: Container
+
+    @classmethod
+    def from_native(cls, data: Dict[str, Any]) -> "Profile":
+        return cls(
+            video=list(map(VideoTrack.from_native, data['video'])),
+            audio=list(map(AudioTrack.from_native, data['audio'])),
+            container=Container.from_native(data['container']),
+        )
 
 
 @dataclass
@@ -116,7 +147,10 @@ class Preset:
     video: List[VideoTrack]
     audio: List[AudioTrack]
 
-    def select_profile(self, video: VideoMeta, audio: AudioMeta) -> Profile:
+    def select_profile(self,
+                       video: VideoMeta,
+                       audio: AudioMeta,
+                       container: Container) -> Profile:
         video_profile = None
         for vp in self.video_profiles:
             if vp.condition.is_valid(video):
@@ -136,6 +170,7 @@ class Preset:
         return Profile(
             video=[v for v in self.video if v.id in video_profile.video],
             audio=[a for a in self.audio if a.id in audio_profile.audio],
+            container=container,
         )
 
 

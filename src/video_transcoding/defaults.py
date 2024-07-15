@@ -24,9 +24,8 @@ VIDEO_TRANSCODING_CELERY_CONF = {
 
 # Directory for large output files
 VIDEO_TEMP_DIR = '/tmp'
-
-# Download source before processing
-VIDEO_DOWNLOAD_SOURCE = bool(int(e('VIDEO_DOWNLOAD_SOURCE', 0)))
+# URI for shared files
+VIDEO_TEMP_URI = e('VIDEO_TEMP_URI', 'http://storage.localhost:8080/tmp/')
 
 # A list of WebDAV endpoints for storing video results
 VIDEO_ORIGINS = e('VIDEO_ORIGINS',
@@ -38,5 +37,12 @@ VIDEO_EDGES = e('VIDEO_EDGES', 'http://storage.localhost:8080/').split(',')
 # Edge video manifest url template
 VIDEO_URL = '{edge}/hls/{filename}1080p.mp4/index.m3u8'
 
-# Output source files checksum
-CHECKSUM_SOURCE = bool(int(e('CHECKSUM_SOURCE', 0)))
+# HTTP Request timeouts
+VIDEO_CONNECT_TIMEOUT = float(e('VIDEO_CONNECT_TIMEOUT', 1))
+VIDEO_REQUEST_TIMEOUT = float(e('VIDEO_REQUEST_TIMEOUT', 1))
+
+# Processing segment duration
+VIDEO_CHUNK_DURATION = int(e('VIDEO_CHUNK_DURATION', 60))
+
+# HLS playlists segment duration
+VIDEO_SEGMENT_DURATION = int(e('VIDEO_SEGMENT_DURATION', 2))

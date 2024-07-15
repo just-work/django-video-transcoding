@@ -134,6 +134,7 @@ class Video(TimeStampedModel):
                                 verbose_name=_('Basename'))
     preset = models.ForeignKey(Preset, models.SET_NULL, blank=True, null=True)
     metadata = models.JSONField(blank=True, null=True)
+    duration = models.DurationField(blank=True, null=True)
 
     class Meta:
         app_label = 'video_transcoding'
