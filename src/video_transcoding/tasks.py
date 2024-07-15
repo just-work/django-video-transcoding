@@ -47,6 +47,7 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         except Exception as e:
             status = models.Video.ERROR
             error = repr(e)
+            self.logger.exception("Processing error %s", error)
         finally:
             self.unlock_video(video_id, status, error, meta)
         return error

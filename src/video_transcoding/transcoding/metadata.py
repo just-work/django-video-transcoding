@@ -1,35 +1,58 @@
+from copy import deepcopy
 from dataclasses import dataclass, asdict
 from pprint import pformat
 from typing import List, cast
 
 import pymediainfo
 from fffw.encoding import Stream
-from fffw.graph.meta import VideoMeta, AudioMeta, from_media_info, VIDEO, AUDIO
+from fffw.graph import meta
 
 from video_transcoding.utils import LoggerMixin
+
+
+def get_meta_kwargs(data: dict) -> dict:
+    kwargs = deepcopy(data)
+    kwargs['scenes'] = [meta.Scene(**s) for s in data['scenes']]
+    return kwargs
+
+
+def video_meta_from_native(data: dict) -> meta.VideoMeta:
+    return meta.VideoMeta(**get_meta_kwargs(data))
+
+
+def audio_meta_from_native(data: dict) -> meta.AudioMeta:
+    return meta.AudioMeta(**get_meta_kwargs(data))
 
 
 @dataclass(repr=False)
 class Metadata:
     uri: str
-    videos: List[VideoMeta]
-    audios: List[AudioMeta]
+    videos: List[meta.VideoMeta]
+    audios: List[meta.AudioMeta]
+
+    @classmethod
+    def from_native(cls, data: dict) -> 'Metadata':
+        return cls(
+            videos=list(map(video_meta_from_native, data['videos'])),
+            audios=list(map(audio_meta_from_native, data['audios'])),
+            uri=data['uri'],
+        )
 
     @property
-    def video(self) -> VideoMeta:
+    def video(self) -> meta.VideoMeta:
         return self.videos[0]
 
     @property
-    def audio(self) -> AudioMeta:
+    def audio(self) -> meta.AudioMeta:
         return self.audios[0]
 
     @property
     def streams(self) -> List[Stream]:
         streams = []
         for vm in self.videos:
-            streams.append(Stream(VIDEO, vm))
+            streams.append(Stream(meta.VIDEO, vm))
         for am in self.audios:
-            streams.append(Stream(AUDIO, am))
+            streams.append(Stream(meta.AUDIO, am))
         return streams
 
     def __repr__(self):
@@ -45,14 +68,14 @@ class Analyzer(LoggerMixin):
                 self.fix_frames(t)
             elif t.track_type == 'Audio':
                 self.fix_samples(t)
-        metadata = from_media_info(result)
-        video_meta: List[VideoMeta] = []
-        audio_meta: List[AudioMeta] = []
+        metadata = meta.from_media_info(result)
+        video_meta: List[meta.VideoMeta] = []
+        audio_meta: List[meta.AudioMeta] = []
         for m in metadata:
-            if m.kind == VIDEO:
-                video_meta.append(cast(VideoMeta, m))
-            if m.kind == AUDIO:
-                audio_meta.append(cast(AudioMeta, m))
+            if m.kind == meta.VIDEO:
+                video_meta.append(cast(meta.VideoMeta, m))
+            if m.kind == meta.AUDIO:
+                audio_meta.append(cast(meta.AudioMeta, m))
         return Metadata(
             uri=uri,
             videos=video_meta,

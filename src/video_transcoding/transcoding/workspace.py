@@ -39,6 +39,9 @@ class Resource(abc.ABC):
             return None
         return Collection(*self.parts[:-1])
 
+    def __repr__(self):
+        return self.path
+
 
 class Collection(Resource):
     """
@@ -112,6 +115,10 @@ class Workspace(LoggerMixin, abc.ABC):
         path = '/'.join((*Path(self.uri.path.lstrip('/')).parts, *r.parts))
         return self.uri._replace(path='/' + path + r.trailing_slash)
 
+    @abc.abstractmethod
+    def exists(self, r: Resource) -> bool:
+        raise NotImplementedError
+
 
 class FileSystemWorkspace(Workspace):
 
@@ -127,7 +134,15 @@ class FileSystemWorkspace(Workspace):
     def delete_collection(self, c: Collection) -> None:
         uri = self.get_absolute_uri(c)
         self.logger.debug("rmtree %s", uri.path)
-        shutil.rmtree(uri.path)
+        try:
+            shutil.rmtree(uri.path)
+        except FileNotFoundError:
+            self.logger.warning("dir not found: %s", uri.path)
+
+    def exists(self, r: Resource) -> bool:
+        uri = self.get_absolute_uri(r)
+        self.logger.debug("exists %s", uri.path)
+        return os.path.exists(uri.path)
 
     def read(self, f: "File") -> str:
         uri = self.get_absolute_uri(f)
@@ -160,7 +175,19 @@ class WebDAVWorkspace(Workspace):
         timeout = (defaults.VIDEO_CONNECT_TIMEOUT,
                    defaults.VIDEO_REQUEST_TIMEOUT,)
         r = self.session.request("DELETE", uri.geturl(), timeout=timeout)
+        if r.status_code == http.HTTPStatus.NOT_FOUND:
+            self.logger.warning("collection not found: %s", uri.geturl())
+            return
         r.raise_for_status()
+
+    def exists(self, r: Resource) -> bool:
+        uri = self.get_absolute_uri(r)
+        self.logger.debug("exists %s", uri.geturl())
+        r = self.session.request("HEAD", uri.geturl())
+        if r.status_code == http.HTTPStatus.NOT_FOUND:
+            return False
+        r.raise_for_status()
+        return True
 
     def read(self, f: "File") -> str:
         uri = self.get_absolute_uri(f)
