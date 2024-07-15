@@ -144,14 +144,14 @@ class FileSystemWorkspace(Workspace):
         self.logger.debug("exists %s", uri.path)
         return os.path.exists(uri.path)
 
-    def read(self, f: "File") -> str:
-        uri = self.get_absolute_uri(f)
+    def read(self, r: "File") -> str:
+        uri = self.get_absolute_uri(r)
         self.logger.debug("read %s", uri.path)
         with open(uri.path, 'r') as f:
             return f.read()
 
-    def write(self, f: File, content: str) -> None:
-        uri = self.get_absolute_uri(f)
+    def write(self, r: File, content: str) -> None:
+        uri = self.get_absolute_uri(r)
         self.logger.debug("write %s", uri.path)
         with open(uri.path, 'w') as f:
             f.write(content)
@@ -174,33 +174,33 @@ class WebDAVWorkspace(Workspace):
         self.logger.debug("delete %s", uri)
         timeout = (defaults.VIDEO_CONNECT_TIMEOUT,
                    defaults.VIDEO_REQUEST_TIMEOUT,)
-        r = self.session.request("DELETE", uri.geturl(), timeout=timeout)
-        if r.status_code == http.HTTPStatus.NOT_FOUND:
+        resp = self.session.request("DELETE", uri.geturl(), timeout=timeout)
+        if resp.status_code == http.HTTPStatus.NOT_FOUND:
             self.logger.warning("collection not found: %s", uri.geturl())
             return
-        r.raise_for_status()
+        resp.raise_for_status()
 
     def exists(self, r: Resource) -> bool:
         uri = self.get_absolute_uri(r)
         self.logger.debug("exists %s", uri.geturl())
-        r = self.session.request("HEAD", uri.geturl())
-        if r.status_code == http.HTTPStatus.NOT_FOUND:
+        resp = self.session.request("HEAD", uri.geturl())
+        if resp.status_code == http.HTTPStatus.NOT_FOUND:
             return False
-        r.raise_for_status()
+        resp.raise_for_status()
         return True
 
-    def read(self, f: "File") -> str:
-        uri = self.get_absolute_uri(f)
+    def read(self, r: "File") -> str:
+        uri = self.get_absolute_uri(r)
         self.logger.debug("get %s", uri.geturl())
-        r = self.session.request("GET", uri.geturl())
-        r.raise_for_status()
-        return r.text
+        resp = self.session.request("GET", uri.geturl())
+        resp.raise_for_status()
+        return resp.text
 
-    def write(self, f: File, content: str) -> None:
-        uri = self.get_absolute_uri(f)
+    def write(self, r: File, content: str) -> None:
+        uri = self.get_absolute_uri(r)
         self.logger.debug("put %s", uri.geturl())
-        r = self.session.request("PUT", uri.geturl(), data=content)
-        r.raise_for_status()
+        resp = self.session.request("PUT", uri.geturl(), data=content)
+        resp.raise_for_status()
 
     def _mkcol(self, c: Collection) -> None:
         uri = self.get_absolute_uri(c)
@@ -209,8 +209,8 @@ class WebDAVWorkspace(Workspace):
         self.logger.debug("mkcol %s", uri.geturl())
         timeout = (defaults.VIDEO_CONNECT_TIMEOUT,
                    defaults.VIDEO_REQUEST_TIMEOUT,)
-        r = self.session.request("MKCOL", uri.geturl(), timeout=timeout)
-        if r.status_code != http.HTTPStatus.METHOD_NOT_ALLOWED:
+        resp = self.session.request("MKCOL", uri.geturl(), timeout=timeout)
+        if resp.status_code != http.HTTPStatus.METHOD_NOT_ALLOWED:
             # MKCOL returns 405 if collection already exists and
             # 409 if existing resource is not a collection
-            r.raise_for_status()
+            resp.raise_for_status()
