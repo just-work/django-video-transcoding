@@ -16,7 +16,7 @@ app.autodiscover_tasks(lambda: settings.INSTALLED_APPS)
 
 # noinspection PyUnusedLocal
 @signals.worker_init.connect
-def set_same_process_group(**kwargs) -> None:
+def set_same_process_group(**kwargs: Any) -> None:
     logger = get_logger(app.__module__)
     os.setpgrp()
     logger.info("Set process group to %s for %s",

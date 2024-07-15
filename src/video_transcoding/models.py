@@ -1,5 +1,5 @@
 import os
-from typing import Any, cast, Optional
+from typing import Any, cast
 from uuid import UUID
 
 from django.core.validators import URLValidator
@@ -130,8 +130,8 @@ class Video(TimeStampedModel):
     source = models.URLField(verbose_name=_('Source'),
                              validators=[
                                  URLValidator(schemes=('http', 'https'))])
-    basename: Optional[UUID] = models.UUIDField(blank=True, null=True,
-                                                verbose_name=_('Basename'))
+    basename = models.UUIDField(blank=True, null=True,
+                                verbose_name=_('Basename'))
     preset = models.ForeignKey(Preset, models.SET_NULL, blank=True, null=True)
     metadata = models.JSONField(blank=True, null=True)
     duration = models.DurationField(blank=True, null=True)

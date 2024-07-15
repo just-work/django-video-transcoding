@@ -6,6 +6,7 @@ from uuid import UUID, uuid4
 import celery
 from billiard.exceptions import SoftTimeLimitExceeded
 from django.db.transaction import atomic
+from requests.compat import basestring
 
 from video_transcoding import models, strategy
 from video_transcoding.celery import app
@@ -136,9 +137,12 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         Makes an HLS adaptation set from video source.
         """
         preset = self.init_preset(video.preset)
+        basename = video.basename
+        if basename is None:
+            raise RuntimeError("basename not set")
         s = self.init_strategy(
             source_uri=video.source,
-            basename=video.basename.hex,
+            basename=basename.hex,
             preset=preset,
         )
         output_meta = s()
