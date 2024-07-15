@@ -1,6 +1,6 @@
 -r ../requirements.txt
 
-sphinx==7.3.7
+sphinx==7.4.3
 sphinxcontrib-blockdiag==3.0.0
 sphinxcontrib-seqdiag==3.0.0
 recommonmark==0.7.1
