@@ -98,7 +98,8 @@ class Transcoder(FFMPEGProcessor):
             output_file=self.dst,
             method='PUT',
             codecs=[*video_codecs, *audio_codecs],
-            format=self.profile.container.format
+            format=self.profile.container.format,
+            muxdelay='0',
         )
 
     def prepre_audio_codecs(self) -> List[codecs.AudioCodec]:
@@ -158,6 +159,7 @@ class Splitter(FFMPEGProcessor):
             hls_time=self.profile.container.segment_duration,
             hls_playlist_type='vod',
             codecs=codecs_list,
+            muxdelay='0',
         )
 
 

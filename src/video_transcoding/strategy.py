@@ -5,8 +5,12 @@ from types import TracebackType
 from typing import Type, List, Optional
 
 from video_transcoding import defaults
-from video_transcoding.transcoding import workspace, profiles, metadata, \
-    transcoder
+from video_transcoding.transcoding import (
+    workspace,
+    profiles,
+    metadata,
+    transcoder,
+)
 from video_transcoding.utils import LoggerMixin
 
 
@@ -94,8 +98,8 @@ class ResumableStrategy(Strategy):
     def cleanup(self, is_error: bool) -> None:
         if is_error:
             self.store.delete_collection(self.store.root)
-        else:
-            self.ws.delete_collection(self.ws.root)
+        # else:
+        #     self.ws.delete_collection(self.ws.root)
 
     def process(self) -> metadata.Metadata:
         self.profile = self.select_profile()
@@ -241,7 +245,7 @@ class ResumableStrategy(Strategy):
             meta=meta,
         )
         result = segment()
-        return result
+        return replace(meta, uri=result.uri)
 
     def write_concat_file(self, segments: List[str]) -> str:
         """
