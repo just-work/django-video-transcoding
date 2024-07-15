@@ -22,7 +22,7 @@ class Processor(LoggerMixin, abc.ABC):
     def __init__(self, src: str, dst: str, *,
                  profile: Profile,
                  meta: Optional[Metadata] = None) -> None:
-        super().__init__(src, dst)
+        super().__init__()
         self.src = src
         self.dst = dst
         self.profile = profile
