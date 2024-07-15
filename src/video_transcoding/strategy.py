@@ -247,9 +247,22 @@ class ResumableStrategy(Strategy):
 
     def split(self) -> List[str]:
         """
-        Downloads source file and split it to chunks at shared webdav.
-
+        Splits source file to chunks at shared webdav
         :return: a list of chunk filenames.
+        """
+        if self.ws.exists(self.playlist_file):
+            # m3u8 playlist already written after split finished, reuse it
+            self.logger.debug("Source already downloaded to %s",
+                              self.playlist_file)
+            return self.get_segment_list()
+
+        self._split()
+
+        return self.get_segment_list()
+
+    def _split(self) -> None:
+        """
+        Downloads source file and split it to chunks at shared webdav.
         """
         destination = self.ws.get_absolute_uri(self.playlist_file)
         container = replace(self.profile.container,
@@ -261,10 +274,6 @@ class ResumableStrategy(Strategy):
             profile=profile,
         )
         split()
-
-        segments = self.get_segment_list()
-
-        return segments
 
     def get_segment_list(self) -> List[str]:
         """
