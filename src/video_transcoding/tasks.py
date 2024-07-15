@@ -1,19 +1,15 @@
 import dataclasses
-import os
-from dataclasses import asdict
 from typing import Optional, List
 from uuid import UUID
 
 import celery
-import requests
 from billiard.exceptions import SoftTimeLimitExceeded
 from django.db.transaction import atomic
 
-from video_transcoding import models, defaults
+from video_transcoding import models, strategy
 from video_transcoding.celery import app
 from video_transcoding.transcoding import (
-    profiles, transcoder, workspace, metadata,
-)
+    profiles, )
 from video_transcoding.utils import LoggerMixin
 
 DESTINATION_FILENAME = '{basename}.mp4'
@@ -127,66 +123,28 @@ class TranscodeVideo(LoggerMixin, celery.Task):
 
     def process_video(self, video: models.Video) -> dict:
         """
-        Video processing workflow.
-
-        1. Create temporary directory
-        2. Transcode source file
-        3. Upload resulting file to origins
-        4. Cleanup temporary directory
-
-        :param video: Video object
-        :returns: resulting file metadata.
+        Makes an HLS adaptation set from video source.
         """
-        src = metadata.Analyzer().get_meta_data(video.source)
         preset = self.init_preset(video.preset)
-        profile = preset.select_profile(
-            src.video, src.audio,
-            container=profiles.Container(format='mp4'))
+        s = self.init_strategy(
+            source_uri=video.source,
+            basename=video.basename.hex,
+            preset=preset,
+        )
+        output_meta = s()
+        return dataclasses.asdict(output_meta)
 
-        basename = video.basename
-        if basename is None:  # pragma: no cover
-            raise RuntimeError("basename for video not set")
-
-        tmp_dir_name = os.path.join(defaults.VIDEO_TEMP_DIR, basename.hex)
-        ws = workspace.FileSystemWorkspace(tmp_dir_name)
-        try:
-            ws.create_collection(ws.root)
-            dst = ws.root.file(f'{basename}.mp4')
-            destination = ws.get_absolute_uri(dst)
-
-            transcode = transcoder.Transcoder(
-                video.source, destination.geturl(),
-                profile=profile,
-            )
-            dst = transcode()
-            self.store(destination.path)
-            return asdict(dst)
-        except Exception as e:
-            self.logger.exception("Error %s", repr(e))
-            raise
-        finally:
-            ws.delete_collection(ws.root)
-
-    def store(self, destination: str) -> None:
-        """
-        Stores transcoded video to origin list
-
-        :param destination: transcoded video path.
-        """
-        self.logger.info("Start saving %s to origins", destination)
-        filename = os.path.basename(destination)
-        timeout = (CONNECT_TIMEOUT, UPLOAD_TIMEOUT)
-        for origin in defaults.VIDEO_ORIGINS:
-            ws = workspace.WebDAVWorkspace(origin)
-            ws.create_collection(ws.root)
-            f = ws.root.file(filename)
-            url = ws.get_absolute_uri(f).geturl()
-            self.logger.debug("Uploading %s to %s", destination, url)
-            with open(destination, 'rb') as f:
-                response = requests.put(url, data=f, timeout=timeout)
-                response.raise_for_status()
-            self.logger.info("Uploaded to %s", url)
-        self.logger.info("%s save finished", destination)
+    @staticmethod
+    def init_strategy(
+        source_uri: str,
+        basename: str,
+        preset: profiles.Preset
+    ) -> strategy.Strategy:
+        return strategy.ResumableStrategy(
+            source_uri=source_uri,
+            basename=basename,
+            preset=preset,
+        )
 
     @staticmethod
     def init_preset(preset: Optional[models.Preset]) -> profiles.Preset:
@@ -235,92 +193,3 @@ class TranscodeVideo(LoggerMixin, celery.Task):
 
 transcode_video: TranscodeVideo = app.register_task(
     TranscodeVideo())  # type: ignore
-
-
-class ResumableTranscodeVideo(TranscodeVideo):
-    def process_video(self, video: models.Video) -> dict:
-        src = metadata.Analyzer().get_meta_data(video.source)
-        preset = self.init_preset(video.preset)
-        profile = preset.select_profile(
-            src.video, src.audio,
-            container=profiles.Container(
-                format='m3u8',
-                segment_duration=10),
-        )
-
-        root = defaults.VIDEO_TEMP_URI.rstrip('/')
-        base = f'{root}/{video.basename.hex}/'
-        ws = workspace.WebDAVWorkspace(base)
-
-        root = defaults.VIDEO_ORIGINS[0].rstrip('/')
-        base = f'{root}/{video.basename.hex}/'
-        store = workspace.WebDAVWorkspace(base)
-        try:
-            sources = ws.ensure_collection('sources')
-            dst = sources.file(f'source.m3u8')
-            destination = ws.get_absolute_uri(dst)
-
-            split = transcoder.Splitter(
-                video.source, destination.geturl(),
-                profile=profile,
-            )
-
-            meta = split()
-            self.logger.debug("Split: %s", meta)
-
-            concat = ['ffconcat version 1.0']
-            segments = []
-            playlist = ws.read(dst)
-            for line in playlist.splitlines(keepends=False):
-                if line.startswith('#'):
-                    continue
-                segments.append(line)
-                concat.append(f"file '{line}'")
-
-            results = ws.ensure_collection('results')
-
-            f = results.file('concat.ffconcat')
-            ws.write(f, '\n'.join(concat))
-
-            profile.container = profiles.Container(
-                format='mpegts',
-                copyts=True,
-            )
-
-            for fn in segments:
-                src = sources.file(fn)
-                dst = results.file(fn)
-                transcode = transcoder.Transcoder(
-                    ws.get_absolute_uri(src).geturl(),
-                    ws.get_absolute_uri(dst).geturl(),
-                    profile=profile,
-                )
-
-                meta = transcode()
-                self.logger.debug("Transcoded: %s", meta)
-
-            profile.container = profiles.Container(
-                format='m3u8',
-                segment_duration=defaults.VIDEO_SEGMENT_DURATION,
-            )
-
-            destination = store.root.file('master.m3u8')
-            segment = transcoder.HLSSegmentor(
-                ws.get_absolute_uri(f).geturl(),
-                store.get_absolute_uri(destination).geturl(),
-                profile=profile,
-                meta=meta,
-            )
-
-            result = segment()
-            return dataclasses.asdict(result)
-        except Exception as e:
-            self.logger.exception("Error %s", repr(e))
-            raise
-        finally:
-            self.logger.error('cleanup %s', ws.root)
-            ws.delete_collection(ws.root)
-
-
-resumable_transcode: ResumableTranscodeVideo = app.register_task(
-    ResumableTranscodeVideo())
