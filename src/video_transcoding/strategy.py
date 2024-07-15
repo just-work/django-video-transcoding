@@ -120,6 +120,8 @@ class ResumableStrategy(Strategy):
         base = f'{root}/{basename}/'
         self.ws = workspace.WebDAVWorkspace(base)
 
+        if len(defaults.VIDEO_ORIGINS) > 1:
+            raise RuntimeError("More that origin not supported yet")
         root = defaults.VIDEO_ORIGINS[0].rstrip('/')
         base = f'{root}/{basename}/'
         self.store = workspace.WebDAVWorkspace(base)
