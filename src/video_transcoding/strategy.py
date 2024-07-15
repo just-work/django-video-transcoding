@@ -1,5 +1,6 @@
 import abc
-from dataclasses import replace
+import json
+from dataclasses import replace, asdict
 from types import TracebackType
 from typing import Type, List, Optional
 
@@ -71,13 +72,20 @@ class ResumableStrategy(Strategy):
         self.store = workspace.WebDAVWorkspace(base)
 
     @property
-    def playlist(self) -> workspace.File:
-        return self.sources.file(f'source.m3u8')
+    def playlist_file(self) -> workspace.File:
+        return self.sources.file('source.m3u8')
 
     @property
     def manifest_uri(self) -> str:
         f = self.store.root.file('master.m3u8')
         return self.store.get_absolute_uri(f).geturl()
+
+    @property
+    def profile_file(self) -> workspace.File:
+        return self.sources.file('profile.json')
+
+    def metadata_file(self, fn: str) -> workspace.File:
+        return self.results.file(f'{fn}.json')
 
     def initialize(self) -> None:
         self.sources = self.ws.ensure_collection('sources')
@@ -93,17 +101,56 @@ class ResumableStrategy(Strategy):
         self.profile = self.select_profile()
 
         segments = self.split()
-        meta: Optional[metadata.Metadata] = None
+        result_meta: Optional[metadata.Metadata] = None
         for fn in segments:
-            meta = self.process_segment(fn)
+            segment_meta = self.process_segment(fn)
+            result_meta = self.merge_metadata(result_meta, segment_meta)
 
-        if meta is None:
+        if result_meta is None:
             raise RuntimeError("no segments")
 
-        self.merge(segments, meta=meta)
-        return meta
+        self.merge(segments, meta=result_meta)
+        return result_meta
+
+    @staticmethod
+    def merge_metadata(result_meta: metadata.Metadata,
+                       segment_meta: metadata.Metadata,
+                       ) -> metadata.Metadata:
+        if result_meta is None:
+            return segment_meta
+        pairs = zip(result_meta.audios, segment_meta.audios)
+        for i, (r, s) in enumerate(pairs):
+            r = replace(r,
+                        duration=r.duration + s.duration,
+                        samples=r.samples + s.samples,
+                        scenes=r.scenes + s.scenes,
+                        )
+            result_meta.audios[i] = r
+        pairs = zip(result_meta.videos, segment_meta.videos)
+        for i, (r, s) in enumerate(pairs):
+            r = replace(r,
+                        duration=r.duration + s.duration,
+                        frames=r.frames + s.frames,
+                        scenes=r.scenes + s.scenes,
+                        )
+            result_meta.videos[i] = r
+        return result_meta
 
     def select_profile(self) -> profiles.Profile:
+        if self.ws.exists(self.profile_file):
+            self.logger.debug("Using previous profile %s", self.profile_file)
+            content = self.ws.read(self.profile_file)
+            data = json.loads(content)
+            return profiles.Profile.from_native(data)
+
+        profile = self._select_profile()
+
+        content = json.dumps(asdict(profile))
+        self.ws.write(self.profile_file, content)
+
+        return profile
+
+    def _select_profile(self) -> profiles.Profile:
         src = metadata.Analyzer().get_meta_data(self.source_uri)
         profile = self.preset.select_profile(
             src.video, src.audio,
@@ -112,7 +159,7 @@ class ResumableStrategy(Strategy):
         return profile
 
     def split(self) -> List[str]:
-        destination = self.ws.get_absolute_uri(self.playlist)
+        destination = self.ws.get_absolute_uri(self.playlist_file)
         container = replace(self.profile.container,
                             segment_duration=defaults.VIDEO_CHUNK_DURATION)
         profile = replace(self.profile, container=container)
@@ -129,7 +176,7 @@ class ResumableStrategy(Strategy):
 
     def get_segment_list(self) -> List[str]:
         segments = []
-        content = self.ws.read(self.playlist)
+        content = self.ws.read(self.playlist_file)
         for line in content.splitlines(keepends=False):
             if line.startswith('#'):
                 continue
@@ -137,6 +184,21 @@ class ResumableStrategy(Strategy):
         return segments
 
     def process_segment(self, fn: str) -> metadata.Metadata:
+        f = self.metadata_file(fn)
+        if self.ws.exists(f):
+            self.logger.debug("Skip %s, using metadata from %s", fn, f)
+            content = self.ws.read(f)
+            data = json.loads(content)
+            meta = metadata.Metadata.from_native(data)
+            return meta
+
+        meta = self._process_segment(fn)
+
+        content = json.dumps(asdict(meta))
+        self.ws.write(f, content)
+        return meta
+
+    def _process_segment(self, fn: str) -> metadata.Metadata:
         self.logger.debug("Processing %s", fn)
         profile = replace(self.profile,
                           container=profiles.Container(
