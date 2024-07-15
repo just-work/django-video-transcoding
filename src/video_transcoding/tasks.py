@@ -1,7 +1,7 @@
 import dataclasses
 from datetime import timedelta
 from typing import Optional, List
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import celery
 from billiard.exceptions import SoftTimeLimitExceeded
@@ -42,6 +42,7 @@ class TranscodeVideo(LoggerMixin, celery.Task):
             meta = self.process_video(video)
             duration = timedelta(seconds=meta['duration'])
         except SoftTimeLimitExceeded as e:
+            self.logger.debug("Received SIGUSR1, return video to queue")
             # celery graceful shutdown
             status = models.Video.QUEUED
             error = repr(e)
@@ -98,7 +99,9 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         except (models.Video.DoesNotExist, ValueError) as e:
             # if video is locked or task_id is not equal to current task, retry.
             raise self.retry(exc=e)
-        video.change_status(models.Video.PROCESS)
+        if video.basename is None:
+            video.basename = uuid4()
+        video.change_status(models.Video.PROCESS, basename=video.basename)
         return video
 
     @atomic
