@@ -116,7 +116,7 @@ class ResumableStrategy(Strategy):
         return self.merge(segments, meta=result_meta)
 
     @staticmethod
-    def merge_metadata(result_meta: metadata.Metadata,
+    def merge_metadata(result_meta: Optional[metadata.Metadata],
                        segment_meta: metadata.Metadata,
                        ) -> metadata.Metadata:
         if result_meta is None:

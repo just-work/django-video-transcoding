@@ -1,5 +1,5 @@
 import os
-from typing import Any, cast, Optional
+from typing import Any, cast
 from uuid import UUID
 
 from django.core.validators import URLValidator
@@ -168,7 +168,7 @@ class Video(TimeStampedModel):
                                blank=True,
                                null=True)
     metadata = models.JSONField(verbose_name=_('metadata'), blank=True, null=True)
-    duration = models.DurationField(blank=True, null=True)
+    duration = models.DurationField(verbose_name=_('duration'), blank=True, null=True)
 
     class Meta:
         app_label = 'video_transcoding'

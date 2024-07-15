@@ -39,7 +39,7 @@ class Resource(abc.ABC):
             return None
         return Collection(*self.parts[:-1])
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.path
 
 
@@ -48,7 +48,7 @@ class Collection(Resource):
     Directory in a workspace
     """
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return '/'.join((self.path, ''))
 
     def __truediv__(self, other: str) -> "Collection":

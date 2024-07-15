@@ -55,7 +55,7 @@ class Metadata:
             streams.append(Stream(meta.AUDIO, am))
         return streams
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'{self.__class__.__name__}\n{pformat(asdict(self))}'
 
 
