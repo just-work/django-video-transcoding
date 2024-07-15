@@ -51,12 +51,6 @@ class Collection(Resource):
     def __repr__(self) -> str:
         return '/'.join((self.path, ''))
 
-    def __truediv__(self, other: str) -> "Collection":
-        return self.collection(other)
-
-    def __floordiv__(self, other: str) -> "File":
-        return self.file(other)
-
     @property
     def trailing_slash(self) -> str:
         return '/'
