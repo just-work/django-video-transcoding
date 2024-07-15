@@ -87,11 +87,11 @@ class Workspace(LoggerMixin, abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def read(self, f: "File") -> str:
+    def read(self, f: File) -> str:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def write(self, f: "File", content: str) -> None:
+    def write(self, f: File, content: str) -> None:
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -138,7 +138,7 @@ class FileSystemWorkspace(Workspace):
         self.logger.debug("exists %s", uri.path)
         return os.path.exists(uri.path)
 
-    def read(self, r: "File") -> str:
+    def read(self, r: File) -> str:
         uri = self.get_absolute_uri(r)
         self.logger.debug("read %s", uri.path)
         with open(uri.path, 'r') as f:
@@ -183,7 +183,7 @@ class WebDAVWorkspace(Workspace):
         resp.raise_for_status()
         return True
 
-    def read(self, r: "File") -> str:
+    def read(self, r: File) -> str:
         uri = self.get_absolute_uri(r)
         self.logger.debug("get %s", uri.geturl())
         resp = self.session.request("GET", uri.geturl())
