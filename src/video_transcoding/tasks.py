@@ -1,4 +1,5 @@
 import dataclasses
+from datetime import timedelta
 from typing import Optional, List
 from uuid import UUID
 
@@ -35,10 +36,11 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         :param video_id: Video id.
         """
         status = models.Video.DONE
-        error = meta = None
+        error = meta = duration = None
         video = self.lock_video(video_id)
         try:
             meta = self.process_video(video)
+            duration = timedelta(seconds=meta['duration'])
         except SoftTimeLimitExceeded as e:
             # celery graceful shutdown
             status = models.Video.QUEUED
@@ -49,7 +51,7 @@ class TranscodeVideo(LoggerMixin, celery.Task):
             error = repr(e)
             self.logger.exception("Processing error %s", error)
         finally:
-            self.unlock_video(video_id, status, error, meta)
+            self.unlock_video(video_id, status, error, meta, duration)
         return error
 
     def select_for_update(self, video_id: int, status: int) -> models.Video:
@@ -101,7 +103,7 @@ class TranscodeVideo(LoggerMixin, celery.Task):
 
     @atomic
     def unlock_video(self, video_id: int, status: int, error: Optional[str],
-                     meta: Optional[dict],
+                     meta: Optional[dict], duration: Optional[timedelta],
                      ) -> None:
         """
         Marks video with final status.
@@ -110,6 +112,7 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         :param status: final video status (Video.DONE, Video.ERROR)
         :param error: error message
         :param meta: resulting media metadata
+        :param duration: media duration
         :raises RuntimeError: in case of unexpected video status or task id
         """
         try:
@@ -120,7 +123,10 @@ class TranscodeVideo(LoggerMixin, celery.Task):
             raise RuntimeError("Can't unlock locked video %s: %s",
                                video_id, repr(e))
 
-        video.change_status(status, error=error, metadata=meta)
+        video.change_status(status,
+                            error=error,
+                            metadata=meta,
+                            duration=duration)
 
     def process_video(self, video: models.Video) -> dict:
         """
@@ -133,7 +139,20 @@ class TranscodeVideo(LoggerMixin, celery.Task):
             preset=preset,
         )
         output_meta = s()
-        return dataclasses.asdict(output_meta)
+
+        data = dataclasses.asdict(output_meta)
+        duration = None
+        # cleanup internal metadata and compute duration
+        for stream in data['audios'] + data['videos']:
+            del stream['scenes']
+            del stream['streams']
+            if duration is None:
+                duration = stream['duration']
+            else:
+                duration = min(duration, stream['duration'])
+        data['duration'] = duration
+
+        return data
 
     @staticmethod
     def init_strategy(

@@ -109,8 +109,7 @@ class ResumableStrategy(Strategy):
         if result_meta is None:
             raise RuntimeError("no segments")
 
-        self.merge(segments, meta=result_meta)
-        return result_meta
+        return self.merge(segments, meta=result_meta)
 
     @staticmethod
     def merge_metadata(result_meta: metadata.Metadata,
