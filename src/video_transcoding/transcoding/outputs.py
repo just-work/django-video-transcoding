@@ -12,9 +12,11 @@ class HLSOutput(Output):
     var_stream_map: Optional[str] = None
     hls_segment_filename: Optional[str] = None
     master_pl_name: Optional[str] = None
+    muxdelay: Optional[str] = None
 
 
 @dataclass
 class FileOutput(Output):
     method: Optional[str] = param(default=None)
     copyts: bool = param(default=False)
+    muxdelay: Optional[str] = None
