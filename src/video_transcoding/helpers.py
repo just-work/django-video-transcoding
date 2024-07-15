@@ -1,9 +1,7 @@
-import os
-
 from celery.result import AsyncResult
 
-from video_transcoding import tasks, defaults
 from video_transcoding import models
+from video_transcoding import tasks
 
 
 def send_transcode_task(video: models.Video) -> AsyncResult:
