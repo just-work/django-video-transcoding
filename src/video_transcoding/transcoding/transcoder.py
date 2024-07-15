@@ -9,31 +9,27 @@ from fffw.encoding.vector import SIMD, Vector
 from fffw.graph import VIDEO
 
 from video_transcoding.transcoding import codecs, outputs
-from video_transcoding.transcoding.metadata import Metadata
+from video_transcoding.transcoding.metadata import Metadata, Analyzer
 from video_transcoding.transcoding.profiles import Profile
-from video_transcoding.transcoding.strategy import Processor
+from video_transcoding.utils import LoggerMixin
 
 
-class FFMPEGProcessor(Processor, abc.ABC):
+class Processor(LoggerMixin, abc.ABC):
     """
-    Base class for ffmpeg-based processing blocks.
+    A single processing step abstract class.
     """
 
     def __init__(self, src: str, dst: str, *,
                  profile: Profile,
                  meta: Optional[Metadata] = None) -> None:
         super().__init__(src, dst)
+        self.src = src
+        self.dst = dst
         self.profile = profile
         self.meta = meta
 
-    @staticmethod
-    def run(ff: encoding.FFMPEG) -> None:
-        """ Starts ffmpeg process and captures errors from it's logs"""
-        return_code, output, error = ff.run()
-        if return_code != 0:
-            # Check return code and error messages
-            error = error or f"invalid ffmpeg return code {return_code}"
-            raise RuntimeError(error)
+    def __call__(self) -> Metadata:
+        return self.process()
 
     def process(self) -> Metadata:
         if self.meta is None:
@@ -44,12 +40,36 @@ class FFMPEGProcessor(Processor, abc.ABC):
         dst = self.get_media_info(self.dst)
         return dst
 
+    def get_media_info(self, uri: str) -> Metadata:
+        """
+        Transforms video and audio metadata to a dict
+
+        :param uri: analyzed media
+        :returns: metadata object with video and audio stream
+        """
+        self.logger.debug("Analyzing %s", uri)
+        mi = Analyzer().get_meta_data(uri)
+        if not mi.videos:
+            raise ValueError("missing video stream")
+        if not mi.audios:
+            raise ValueError("missing audio stream")
+        return mi
+
+    @staticmethod
+    def run(ff: encoding.FFMPEG) -> None:
+        """ Starts ffmpeg process and captures errors from it's logs"""
+        return_code, output, error = ff.run()
+        if return_code != 0:
+            # Check return code and error messages
+            error = error or f"invalid ffmpeg return code {return_code}"
+            raise RuntimeError(error)
+
     @abc.abstractmethod
     def prepare_ffmpeg(self, src: Metadata) -> encoding.FFMPEG:
         raise NotImplementedError
 
 
-class Transcoder(FFMPEGProcessor):
+class Transcoder(Processor):
     """
     Source transcoding logic.
     """
@@ -131,7 +151,7 @@ class Transcoder(FFMPEGProcessor):
         return video_codecs
 
 
-class Splitter(FFMPEGProcessor):
+class Splitter(Processor):
     """
     Source splitting logic.
     """
