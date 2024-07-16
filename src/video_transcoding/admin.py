@@ -32,11 +32,7 @@ class VideoAdmin(admin.ModelAdmin):
     readonly_fields = ('created', 'modified', 'video_player')
 
     class Media:
-        _prefix = 'https://cdn.jsdelivr.net/mediaelement/latest'
-        css = {
-            "all": (f'{_prefix}/mediaelementplayer.css',)
-        }
-        js = (f'{_prefix}/mediaelement-and-player.min.js',)
+        js = ('https://cdn.jsdelivr.net/npm/hls.js@1',)
 
     @short_description(_("Status"))
     def status_display(self, obj: models.Video) -> str:
@@ -57,9 +53,19 @@ class VideoAdmin(admin.ModelAdmin):
         edge = random.choice(defaults.VIDEO_EDGES)
         source = obj.format_video_url(edge)
         return mark_safe('''
-<video width="480px" height="270px" class="mejs__player">
-<source src="%s" />
-</video>''' % (source,))
+<video id="video" width="480px" height="270px" controls></video>
+<script>
+  var video = document.getElementById('video');
+  var videoSrc = '%s';
+  if (Hls.isSupported()) {
+    var hls = new Hls();
+    hls.loadSource(videoSrc);
+    hls.attachMedia(video);
+  } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+    video.src = videoSrc;
+  }
+</script>
+''' % (source,))
 
     def add_view(self,
                  request: HttpRequest,

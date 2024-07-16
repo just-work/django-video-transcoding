@@ -152,7 +152,7 @@ class ResumableStrategy(Strategy):
         """
         :return: A m3u8 master manifest uri for results at storage.
         """
-        f = self.store.root.file('master.m3u8')
+        f = self.store.root.file('index.m3u8')
         return self.store.get_absolute_uri(f).geturl()
 
     @property
