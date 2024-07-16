@@ -35,7 +35,7 @@ VIDEO_ORIGINS = e('VIDEO_ORIGINS',
 VIDEO_EDGES = e('VIDEO_EDGES', 'http://storage.localhost:8080/').split(',')
 
 # Edge video manifest url template
-VIDEO_URL = '{edge}/hls/{filename}1080p.mp4/index.m3u8'
+VIDEO_URL = '{edge}/{filename}/index.m3u8'
 
 # HTTP Request timeouts
 VIDEO_CONNECT_TIMEOUT = float(e('VIDEO_CONNECT_TIMEOUT', 1))
