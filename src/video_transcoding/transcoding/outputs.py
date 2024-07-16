@@ -13,6 +13,7 @@ class HLSOutput(Output):
     hls_segment_filename: Optional[str] = None
     master_pl_name: Optional[str] = None
     muxdelay: Optional[str] = None
+    copyts: bool = param(default=False)
 
 
 @dataclass
