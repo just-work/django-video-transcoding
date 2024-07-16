@@ -168,7 +168,9 @@ class ResumableStrategy(Strategy):
         :param file: chunk filename
         :return: a json file containing resulting file metadata.
         """
-        return file.parent.file(f'{file.basename}.json')
+        parts = list(file.parts)
+        parts[-1] = f'{file.basename}.json'
+        return workspace.File(*parts)
 
     def initialize(self) -> None:
         self.sources = self.ws.ensure_collection('sources')

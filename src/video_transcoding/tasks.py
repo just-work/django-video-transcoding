@@ -154,7 +154,7 @@ class TranscodeVideo(LoggerMixin, celery.Task):
             if duration is None:
                 duration = stream['duration']
             else:
-                duration = min(duration, stream['duration'])
+                duration = max(duration, stream['duration'])
         data['duration'] = duration
 
         return data
