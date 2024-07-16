@@ -236,20 +236,24 @@ class Segmentor(Processor):
         self.audio = audio_source
 
     def prepare_ffmpeg(self, src: Metadata) -> encoding.FFMPEG:
-        video_source = encoding.input_file(self.src, *src.streams)
+        video_streams = [s for s in src.streams if s.kind == VIDEO]
+        video_source = encoding.input_file(self.src, *video_streams)
         video_codecs = [s > codecs.Copy(kind=VIDEO, bitrate=s.meta.bitrate)
                         for s in video_source.streams
                         if s.kind == VIDEO]
         # We need bitrate hints for HLS bandwidth tags
-        for c, s in zip(video_codecs, self.profile.video):
-            c.bitrate = s.max_rate
+        for vc, vt in zip(video_codecs, self.profile.video):
+            vc.bitrate = vt.max_rate
 
-        audio_source = encoding.input_file(self.audio, *src.streams)
+        audio_streams = [s for s in src.streams if s.kind == AUDIO]
+        audio_source = encoding.input_file(self.audio, *audio_streams)
         audio_codecs = [s > codecs.Copy(kind=AUDIO, bitrate=s.meta.bitrate)
                         for s in audio_source.streams
                         if s.kind == AUDIO]
-        for c, s in zip(audio_codecs, self.profile.audio):
-            c.bitrate = s.bitrate
+
+        for ac, at in zip(audio_codecs, self.profile.audio):
+            ac.bitrate = at.bitrate
+
         out = self.prepare_output(video_codecs + audio_codecs)
         ff = encoding.FFMPEG(input=video_source,
                              output=out,
