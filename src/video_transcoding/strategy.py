@@ -127,11 +127,25 @@ class ResumableStrategy(Strategy):
         self.store = workspace.WebDAVWorkspace(base)
 
     @property
-    def playlist_file(self) -> workspace.File:
+    def source_manifest(self) -> workspace.File:
         """
-        :return: An m3u8 playlist file for split source in sources colleciton.
+        :return: An m3u8 manifest file for downloaded source.
         """
         return self.sources.file('source.m3u8')
+
+    @property
+    def video_playlist_file(self) -> workspace.File:
+        """
+        :return: An m3u8 playlist file for split video source.
+        """
+        return self.sources.file('playlist-video-0.m3u8')
+
+    @property
+    def audio_playlist_file(self) -> workspace.File:
+        """
+        :return: An m3u8 playlist file for transcoded audio.
+        """
+        return self.sources.file('playlist-audio-0.m3u8')
 
     @property
     def manifest_uri(self) -> str:
@@ -148,12 +162,13 @@ class ResumableStrategy(Strategy):
         """
         return self.sources.file('profile.json')
 
-    def metadata_file(self, fn: str) -> workspace.File:
+    @staticmethod
+    def metadata_file(file: workspace.File) -> workspace.File:
         """
-        :param fn: chunk filename
+        :param file: chunk filename
         :return: a json file containing resulting file metadata.
         """
-        return self.results.file(f'{fn}.json')
+        return file.parent.file(f'{file.basename}.json')
 
     def initialize(self) -> None:
         self.sources = self.ws.ensure_collection('sources')
@@ -168,7 +183,9 @@ class ResumableStrategy(Strategy):
     def process(self) -> metadata.Metadata:
         self.profile = self.select_profile()
 
-        segments = self.split()
+        source_meta = self.split()
+
+        segments = self.get_segment_list()
 
         result_meta: Optional[metadata.Metadata] = None
         for fn in segments:
@@ -176,6 +193,9 @@ class ResumableStrategy(Strategy):
             result_meta = self.merge_metadata(result_meta, segment_meta)
         if result_meta is None:
             raise RuntimeError("no segments")
+
+        # Copy previously transcoded audio streams to resulting meta
+        result_meta.audios = source_meta.audios
 
         return self.merge(segments, meta=result_meta)
 
@@ -245,26 +265,31 @@ class ResumableStrategy(Strategy):
         )
         return profile
 
-    def split(self) -> List[str]:
+    def split(self) -> metadata.Metadata:
         """
         Splits source file to chunks at shared webdav
         :return: a list of chunk filenames.
         """
-        if self.ws.exists(self.playlist_file):
+        f = self.metadata_file(self.source_manifest)
+        if self.ws.exists(f):
             # m3u8 playlist already written after split finished, reuse it
             self.logger.debug("Source already downloaded to %s",
-                              self.playlist_file)
-            return self.get_segment_list()
+                              self.source_manifest)
+            content = self.ws.read(f)
+            data = json.loads(content)
+            meta = metadata.Metadata.from_native(data)
+            return meta
 
-        self._split()
+        meta = self._split()
+        content = json.dumps(asdict(meta))
+        self.ws.write(f, content)
+        return meta
 
-        return self.get_segment_list()
-
-    def _split(self) -> None:
+    def _split(self) -> metadata.Metadata:
         """
         Downloads source file and split it to chunks at shared webdav.
         """
-        destination = self.ws.get_absolute_uri(self.playlist_file)
+        destination = self.ws.get_absolute_uri(self.source_manifest)
         container = replace(self.profile.container,
                             segment_duration=defaults.VIDEO_CHUNK_DURATION)
         profile = replace(self.profile, container=container)
@@ -273,7 +298,7 @@ class ResumableStrategy(Strategy):
             destination.geturl(),
             profile=profile,
         )
-        split()
+        return split()
 
     def get_segment_list(self) -> List[str]:
         """
@@ -281,7 +306,7 @@ class ResumableStrategy(Strategy):
         :return: a list of chunk filenames.
         """
         segments = []
-        content = self.ws.read(self.playlist_file)
+        content = self.ws.read(self.video_playlist_file)
         for line in content.splitlines(keepends=False):
             if line.startswith('#'):
                 continue
@@ -296,7 +321,7 @@ class ResumableStrategy(Strategy):
         :param filename: chunk filename
         :return: resulting chunk metadata.
         """
-        f = self.metadata_file(filename)
+        f = self.metadata_file(self.results.file(filename))
         if self.ws.exists(f):
             self.logger.debug("Skip %s, using metadata from %s", filename, f)
             content = self.ws.read(f)
@@ -358,9 +383,11 @@ class ResumableStrategy(Strategy):
             segment_duration=defaults.VIDEO_SEGMENT_DURATION,
             copyts=False,
         )
-        segment = transcoder.HLSSegmentor(
-            src,
-            dst,
+        audio = self.ws.get_absolute_uri(self.audio_playlist_file).geturl()
+        segment = transcoder.Segmentor(
+            video_source=src,
+            audio_source=audio,
+            dst=dst,
             profile=profile,
             meta=meta,
         )
