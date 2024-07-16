@@ -166,7 +166,8 @@ class Splitter(Processor):
 
     def prepare_ffmpeg(self, src: Metadata) -> encoding.FFMPEG:
         source = encoding.input_file(self.src, *src.streams)
-        codecs_list = [source.video > codecs.Copy(kind=VIDEO)]
+        bitrate = source.video.meta.bitrate
+        codecs_list = [source.video > codecs.Copy(kind=VIDEO, bitrate=bitrate)]
         codecs_list.extend([source.audio > c
                             for c in self.prepre_audio_codecs()])
         out = self.prepare_output(codecs_list)
