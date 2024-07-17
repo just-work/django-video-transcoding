@@ -22,14 +22,11 @@ VIDEO_TRANSCODING_CELERY_CONF = {
     ]
 }
 
-# Directory for large output files
-VIDEO_TEMP_DIR = '/tmp'
 # URI for shared files
-VIDEO_TEMP_URI = e('VIDEO_TEMP_URI', 'http://storage.localhost:8080/tmp/')
-
-# A list of WebDAV endpoints for storing video results
-VIDEO_ORIGINS = e('VIDEO_ORIGINS',
-                  'http://storage.localhost:8080/videos/').split(',')
+VIDEO_TEMP_URI = e('VIDEO_TEMP_URI', 'dav://storage.localhost:8080/tmp/')
+# URI for result files
+VIDEO_RESULTS_URI = e('VIDEO_RESULTS_URI',
+                      'dav://storage.localhost:8080/results/')
 
 # Video streamer public urls (comma-separated)
 VIDEO_EDGES = e('VIDEO_EDGES', 'http://storage.localhost:8080/').split(',')
