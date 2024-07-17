@@ -118,14 +118,11 @@ class ResumableStrategy(Strategy):
 
         root = defaults.VIDEO_TEMP_URI.rstrip('/')
         base = f'{root}/{basename}/'
-        self.ws = workspace.WebDAVWorkspace(base)
+        self.ws = workspace.init(base)
 
-        if len(defaults.VIDEO_ORIGINS) > 1:
-            raise RuntimeError("More that origin not supported yet")
-        root = defaults.VIDEO_ORIGINS[0].rstrip('/')
+        root = defaults.VIDEO_RESULTS_URI.rstrip('/')
         base = f'{root}/{basename}/'
-        self.store = workspace.WebDAVWorkspace(base)
-
+        self.store = workspace.init(base)
     @property
     def source_manifest(self) -> workspace.File:
         """
