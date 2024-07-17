@@ -208,3 +208,17 @@ class WebDAVWorkspace(Workspace):
             # MKCOL returns 405 if collection already exists and
             # 409 if existing resource is not a collection
             resp.raise_for_status()
+
+
+def init(base: str) -> Workspace:
+    uri = urlparse(base)
+    if uri.scheme == 'file':
+        return FileSystemWorkspace(base)
+    elif uri.scheme == 'dav':
+        uri = uri._replace(scheme='http')
+        return WebDAVWorkspace(uri.geturl())
+    elif uri.scheme == 'davs':
+        uri = uri._replace(scheme='https')
+        return WebDAVWorkspace(uri.geturl())
+    else:
+        raise ValueError(base)
