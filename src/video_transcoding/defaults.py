@@ -1,26 +1,32 @@
 from os import getenv as e
 
+from django.conf import settings
 from kombu import Queue
 
 
 CELERY_APP_NAME = 'video_transcoding'
 
 
-VIDEO_TRANSCODING_CELERY_CONF = {
-    'broker_url': e('VIDEO_TRANSCODING_CELERY_BROKER_URL',
-                    'amqp://guest:guest@rabbitmq:5672/'),
-    'result_backend': e('VIDEO_TRANSCODING_CELERY_RESULT_BACKEND', None),
-    'task_default_exchange': CELERY_APP_NAME,
-    'task_default_exchange_type': 'topic',
-    'task_default_queue': CELERY_APP_NAME,
-    'worker_prefetch_multiplier': 1,
-    'worker_concurrency': e('VIDEO_TRANSCODING_CELERY_CONCURRENCY'),
-    'task_acks_late': True,
-    'task_reject_on_worker_lost': True,
-    'task_queues': [
-        Queue(CELERY_APP_NAME, routing_key=CELERY_APP_NAME),
-    ]
-}
+try:
+    VIDEO_TRANSCODING_CELERY_CONF = getattr(
+        settings, 'VIDEO_TRANSCODING_CELERY_CONF',
+    )
+except AttributeError:
+    VIDEO_TRANSCODING_CELERY_CONF = {
+        'broker_url': e('VIDEO_TRANSCODING_CELERY_BROKER_URL',
+                        'amqp://guest:guest@rabbitmq:5672/'),
+        'result_backend': e('VIDEO_TRANSCODING_CELERY_RESULT_BACKEND', None),
+        'task_default_exchange': CELERY_APP_NAME,
+        'task_default_exchange_type': 'topic',
+        'task_default_queue': CELERY_APP_NAME,
+        'worker_prefetch_multiplier': 1,
+        'worker_concurrency': e('VIDEO_TRANSCODING_CELERY_CONCURRENCY'),
+        'task_acks_late': True,
+        'task_reject_on_worker_lost': True,
+        'task_queues': [
+            Queue(CELERY_APP_NAME, routing_key=CELERY_APP_NAME),
+        ]
+    }
 
 # URI for shared files
 VIDEO_TEMP_URI = e('VIDEO_TEMP_URI', 'dav://storage.localhost:8080/tmp/')

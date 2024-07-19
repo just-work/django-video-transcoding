@@ -12,7 +12,7 @@ class Copy(codecs.Copy):
 
 @dataclass
 class AudioCodec(codecs.AudioCodec):
-    rate: float = param(name='ar')
+    rate: float = param(name='ar', stream_suffix=True)
     channels: int = param(name='ac', stream_suffix=True)
 
 

@@ -9,7 +9,7 @@ from fffw.encoding.vector import SIMD, Vector
 from fffw.graph import VIDEO, AUDIO
 
 from video_transcoding.transcoding import codecs, outputs
-from video_transcoding.transcoding.metadata import Metadata, Analyzer
+from video_transcoding.transcoding.metadata import Metadata, Analyzer, rational
 from video_transcoding.transcoding.profiles import Profile
 from video_transcoding.utils import LoggerMixin
 
@@ -18,10 +18,12 @@ class Processor(LoggerMixin, abc.ABC):
     """
     A single processing step abstract class.
     """
+    requires_video: bool = True
+    requires_audio: bool = True
 
     def __init__(self, src: str, dst: str, *,
                  profile: Profile,
-                 meta: Optional[Metadata] = None) -> None:
+                 meta: Metadata) -> None:
         super().__init__()
         self.src = src
         self.dst = dst
@@ -32,30 +34,24 @@ class Processor(LoggerMixin, abc.ABC):
         return self.process()
 
     def process(self) -> Metadata:
-        if self.meta is None:
-            self.meta = self.get_media_info(self.src)
         ff = self.prepare_ffmpeg(self.meta)
         self.run(ff)
-        # Get result mediainfo
-        dst = self.get_media_info(self.dst)
+        # Get result media info
+        dst = self.get_result_metadata(self.dst)
         return dst
 
-    def get_media_info(self, uri: str,
-                       requires_audio: bool = True,
-                       requires_video: bool = True) -> Metadata:
+    def get_result_metadata(self, uri: str) -> Metadata:
         """
-        Transforms video and audio metadata to a dict
+        Get result metadata.
 
         :param uri: analyzed media
-        :param requires_audio: throw an error if audio stream is missing
-        :param requires_video: throw an error if video stream is missing
         :return: metadata object with video and audio stream
         """
         self.logger.debug("Analyzing %s", uri)
         mi = Analyzer().get_meta_data(uri)
-        if requires_video and not mi.videos:
+        if self.requires_video and not mi.videos:
             raise ValueError("missing video stream")
-        if requires_audio and not mi.audios:
+        if self.requires_audio and not mi.audios:
             raise ValueError("missing audio stream")
         return mi
 
@@ -77,13 +73,21 @@ class Transcoder(Processor):
     """
     Source transcoding logic.
     """
+    requires_audio = False
 
-    def get_media_info(self,
-                       uri: str,
-                       requires_audio: bool = False,
-                       requires_video: bool = True) -> Metadata:
-        # Changed requires_audio default to False
-        return super().get_media_info(uri, requires_audio, requires_video)
+    def get_result_metadata(self, uri: str) -> Metadata:
+        dst = super().get_result_metadata(uri)
+        data = Analyzer().ffprobe(uri)
+        for s in dst.videos:
+            ffprobe_stream = data[s.streams[0]]
+            # For MPEGTS files nor mediainfo nor ffprobe can estimate bitrate
+            # for multi-track files.
+            s.bitrate = 0
+            # Parse frame rate from ffprobe data
+            s.frame_rate = rational(ffprobe_stream['avg_frame_rate'])
+            # Estimate frame count from duration
+            s.frames = round(s.duration * s.frame_rate)
+        return dst
 
     def prepare_ffmpeg(self, src: Metadata) -> encoding.FFMPEG:
         """
@@ -164,6 +168,44 @@ class Splitter(Processor):
     Source splitting logic.
     """
 
+    def get_result_metadata(self, uri: str) -> Metadata:
+        dst = super().get_result_metadata(uri)
+        data = Analyzer().ffprobe(uri)
+        # Mediainfo takes metadata from first HLS chunk in a playlist, so
+        # we need to force some fields from source metadata
+        if len(self.meta.videos) != len(dst.videos):
+            raise RuntimeError("Streams mismatch")
+        for s, d in zip(self.meta.videos, dst.videos):
+            if s.streams != d.streams:
+                raise RuntimeError("Stream order mismatch")
+            # Replace chunk duration with whole source duration
+            d.duration = s.duration
+            # Fill empty frames/frame_rate metadata from source
+            d.frames = s.frames
+            d.frame_rate = s.frame_rate
+            # To have exact match copy scenes list from source
+            d.scenes = s.scenes
+        if len(self.meta.audios) != len(dst.audios):
+            raise RuntimeError("Streams mismatch")
+        for s, d in zip(self.meta.audios, dst.audios):
+            if s.streams != d.streams:
+                raise RuntimeError("Stream order mismatch")
+            ffprobe_stream = data[s.streams[0]]
+            # Replace chunk duration with whole source duration
+            d.duration = s.duration
+            # Fill sample_rate from transcoded ffprobe result
+            d.sample_rate = int(ffprobe_stream['sample_rate'])
+            # Recompute samples count from duration
+            d.samples = round(d.duration * d.sample_rate)
+            # Fill bitrate from HLS metadata
+            bitrate = int(ffprobe_stream['tags']['variant_bitrate'])
+            # remove 10% overhead, see
+            # https://github.com/FFmpeg/FFmpeg/blob/n7.0.1/libavformat/hlsenc.c#L1493
+            d.bitrate = round(bitrate / 1.1)
+            # To have exact match copy scenes list from source
+            d.scenes = s.scenes
+        return dst
+
     def prepare_ffmpeg(self, src: Metadata) -> encoding.FFMPEG:
         source = encoding.input_file(self.src, *src.streams)
         bitrate = source.video.meta.bitrate
@@ -232,9 +274,43 @@ class Segmentor(Processor):
     def __init__(self, *,
                  video_source: str, audio_source: str,
                  dst: str, profile: Profile,
-                 meta: Optional[Metadata] = None) -> None:
+                 meta: Metadata) -> None:
         super().__init__(video_source, dst, profile=profile, meta=meta)
         self.audio = audio_source
+
+    def get_result_metadata(self, uri: str) -> Metadata:
+        dst = super().get_result_metadata(uri)
+        data = Analyzer().ffprobe(uri)
+        # ffprobe uses audio stream as audio#0 and HLS audio group linked to
+        # variants as audio#1. Video streams receive indices 2-N and thus
+        # don't correspond to mediainfo streams.
+
+        ffprobe_audio = [s for s in data.values() if s['codec_type'] == 'audio']
+        for a, ff, src in zip(dst.audios, ffprobe_audio, self.meta.audios):
+            # Set bitrate from "source" metadata
+            a.bitrate = src.bitrate
+            # Replace segment duration with source duration
+            a.duration = src.duration
+            a.scenes = src.scenes
+            # Recompute samples from source duration
+            a.samples = round(a.duration * a.sampling_rate)
+
+        ffprobe_video = [s for s in data.values() if s['codec_type'] == 'video']
+        for v, ff, src in zip(dst.videos, ffprobe_video, self.meta.videos):
+            # Mediainfo estimates bitrate from first chunk which is error-prone.
+            # Replace it with nominal bitrate from HLS manifest.
+            bandwidth = int(ff['tags']['variant_bitrate'])
+            # remove 10% overhead, see
+            # https://github.com/FFmpeg/FFmpeg/blob/n7.0.1/libavformat/hlsenc.c#L1493
+            v.bitrate = round(bandwidth / 1.1)
+            # Replace segment duration with source duration
+            v.duration = src.duration
+            v.scenes = src.scenes
+            # Set frame rate from ffprobe data
+            v.frame_rate = rational(ff['avg_frame_rate'])
+            # Compute frames from frame rate and duration
+            v.frames = round(v.duration * v.frame_rate)
+        return dst
 
     def prepare_ffmpeg(self, src: Metadata) -> encoding.FFMPEG:
         video_streams = [s for s in src.streams if s.kind == VIDEO]
@@ -295,8 +371,8 @@ class Segmentor(Processor):
                 audios.append(c)
         vsm = []
         for i, a in enumerate(audios):
-            vsm.append(f'a:{i},agroup:a{i}')
+            vsm.append(f'a:{i},agroup:a{i}:bandwidth:{a.bitrate}')
         for (i, a), (j, v) in product(enumerate(audios), enumerate(videos)):
-            vsm.append(f'v:{j},agroup:a{i}')
+            vsm.append(f'v:{j},agroup:a{i}:bandwidth:{v.bitrate}')
         var_stream_map = ' '.join(vsm)
         return var_stream_map
