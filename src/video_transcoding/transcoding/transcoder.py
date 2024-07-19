@@ -76,6 +76,7 @@ class Transcoder(Processor):
     """
     Source transcoding logic.
     """
+    requires_audio = False
 
     def prepare_ffmpeg(self, src: Metadata) -> encoding.FFMPEG:
         """
