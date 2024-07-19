@@ -274,7 +274,7 @@ class Segmentor(Processor):
     def __init__(self, *,
                  video_source: str, audio_source: str,
                  dst: str, profile: Profile,
-                 meta: Optional[Metadata] = None) -> None:
+                 meta: Metadata) -> None:
         super().__init__(video_source, dst, profile=profile, meta=meta)
         self.audio = audio_source
 
@@ -300,6 +300,8 @@ class Segmentor(Processor):
             # Mediainfo estimates bitrate from first chunk which is error-prone.
             # Replace it with nominal bitrate from HLS manifest.
             bandwidth = int(ff['tags']['variant_bitrate'])
+            # remove 10% overhead, see
+            # https://github.com/FFmpeg/FFmpeg/blob/n7.0.1/libavformat/hlsenc.c#L1493
             v.bitrate = round(bandwidth / 1.1)
             # Replace segment duration with source duration
             v.duration = src.duration

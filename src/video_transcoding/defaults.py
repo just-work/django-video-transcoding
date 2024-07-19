@@ -8,7 +8,9 @@ CELERY_APP_NAME = 'video_transcoding'
 
 
 try:
-    VIDEO_TRANSCODING_CELERY_CONF = settings.VIDEO_TRANSCODING_CELERY_CONF
+    VIDEO_TRANSCODING_CELERY_CONF = getattr(
+        settings, 'VIDEO_TRANSCODING_CELERY_CONF',
+    )
 except AttributeError:
     VIDEO_TRANSCODING_CELERY_CONF = {
         'broker_url': e('VIDEO_TRANSCODING_CELERY_BROKER_URL',
