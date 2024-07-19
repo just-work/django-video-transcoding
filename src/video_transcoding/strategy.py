@@ -123,6 +123,14 @@ class ResumableStrategy(Strategy):
         root = defaults.VIDEO_RESULTS_URI.rstrip('/')
         base = f'{root}/{basename}/'
         self.store = workspace.init(base)
+
+    @property
+    def source_metadata(self) -> workspace.File:
+        """
+        :return: A json file with source metadata.
+        """
+        return self.sources.file('source.json')
+
     @property
     def source_manifest(self) -> workspace.File:
         """
@@ -180,9 +188,10 @@ class ResumableStrategy(Strategy):
             self.ws.delete_collection(self.ws.root)
 
     def process(self) -> metadata.Metadata:
-        self.profile = self.select_profile()
+        src = self.analyze_source()
+        self.profile = self.select_profile(src)
 
-        source_meta = self.split()
+        source_meta = self.split(src)
 
         segments = self.get_segment_list()
 
@@ -231,7 +240,35 @@ class ResumableStrategy(Strategy):
             result_meta.videos[i] = r
         return result_meta
 
-    def select_profile(self) -> profiles.Profile:
+    def analyze_source(self) -> metadata.Metadata:
+        """
+        Analyzes source file
+
+        :return: source file metadata
+        """
+        if self.ws.exists(self.source_metadata):
+            self.logger.debug("Using previous metadata %s",
+                              self.source_metadata)
+            content = self.ws.read(self.source_metadata)
+            data = json.loads(content)
+            return metadata.Metadata.from_native(data)
+
+        meta = self._analyze_source()
+
+        content = json.dumps(asdict(meta))
+        self.ws.write(self.source_metadata, content)
+
+        return meta
+
+    def _analyze_source(self) -> metadata.Metadata:
+        """
+        Runs source file analysis
+        :return: source file metadata.
+        """
+        src = metadata.Analyzer().get_meta_data(self.source_uri)
+        return src
+
+    def select_profile(self, src: metadata.Metadata) -> profiles.Profile:
         """
         Selects profile for input if it has not already been selected.
 
@@ -244,29 +281,30 @@ class ResumableStrategy(Strategy):
             data = json.loads(content)
             return profiles.Profile.from_native(data)
 
-        profile = self._select_profile()
+        profile = self._select_profile(src)
 
         content = json.dumps(asdict(profile))
         self.ws.write(self.profile_file, content)
 
         return profile
 
-    def _select_profile(self) -> profiles.Profile:
+    def _select_profile(self, src: metadata.Metadata) -> profiles.Profile:
         """
         Analyzes source file and selects profile for it from preset.
 
         :return: selected profile.
         """
-        src = metadata.Analyzer().get_meta_data(self.source_uri)
         profile = self.preset.select_profile(
             src.video, src.audio,
             container=profiles.Container(format='m3u8'),
         )
         return profile
 
-    def split(self) -> metadata.Metadata:
+    def split(self, src: metadata.Metadata) -> metadata.Metadata:
         """
         Splits source file to chunks at shared webdav
+
+        :param src: remote source metadata.
         :return: a list of chunk filenames.
         """
         f = self.metadata_file(self.source_manifest)
@@ -279,12 +317,12 @@ class ResumableStrategy(Strategy):
             meta = metadata.Metadata.from_native(data)
             return meta
 
-        meta = self._split()
+        meta = self._split(src)
         content = json.dumps(asdict(meta))
         self.ws.write(f, content)
         return meta
 
-    def _split(self) -> metadata.Metadata:
+    def _split(self, src: metadata.Metadata) -> metadata.Metadata:
         """
         Downloads source file and split it to chunks at shared webdav.
         """
@@ -296,6 +334,7 @@ class ResumableStrategy(Strategy):
             self.source_uri,
             destination.geturl(),
             profile=profile,
+            meta=src,
         )
         return split()
 
@@ -348,11 +387,13 @@ class ResumableStrategy(Strategy):
                           ))
 
         src = self.sources.file(filename)
+        meta = self.get_segment_meta(src)
         dst = self.results.file(filename)
         transcode = transcoder.Transcoder(
             self.ws.get_absolute_uri(src).geturl(),
             self.ws.get_absolute_uri(dst).geturl(),
             profile=profile,
+            meta=meta,
         )
         meta = transcode()
         self.logger.debug("Transcoded: %s", meta)
@@ -405,3 +446,6 @@ class ResumableStrategy(Strategy):
         f = self.results.file('concat.ffconcat')
         self.ws.write(f, '\n'.join(concat))
         return self.ws.get_absolute_uri(f).geturl()
+
+    def get_segment_meta(self, src: workspace.File) -> metadata.Metadata:
+        raise NotImplementedError

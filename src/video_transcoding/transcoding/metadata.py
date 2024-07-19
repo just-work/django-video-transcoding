@@ -1,18 +1,31 @@
+import json
 from copy import deepcopy
 from dataclasses import dataclass, asdict
 from pprint import pformat
-from typing import List, cast
+from typing import List, cast, Any, Dict
 
 import pymediainfo
 from fffw.encoding import Stream
 from fffw.graph import meta
 
+from video_transcoding.transcoding import ffprobe
 from video_transcoding.utils import LoggerMixin
+
+
+def scene_from_native(data: dict) -> meta.Scene:
+    return meta.Scene(
+        duration=meta.TS(data['duration']),
+        start=meta.TS(data['start']),
+        position=meta.TS(data['position']),
+        stream=data['stream']
+    )
 
 
 def get_meta_kwargs(data: dict) -> dict:
     kwargs = deepcopy(data)
-    kwargs['scenes'] = [meta.Scene(**s) for s in data['scenes']]
+    kwargs['start'] = meta.TS(data['start'])
+    kwargs['duration'] = meta.TS(data['duration'])
+    kwargs['scenes'] = [scene_from_native(s) for s in data['scenes']]
     return kwargs
 
 
@@ -63,6 +76,9 @@ class Analyzer(LoggerMixin):
     def get_meta_data(self, uri: str) -> Metadata:
         result: pymediainfo.MediaInfo = pymediainfo.MediaInfo.parse(uri)
         for t in result.tracks:
+            # New mediainfo version stores stream index in another field,
+            # fffw does not support it yet.
+            t.stream = t.stream_identifier
             if t.track_type in ('Video', 'Image'):
                 self.fix_par(t)
                 self.fix_frames(t)
@@ -193,3 +209,16 @@ class Analyzer(LoggerMixin):
         data['sampling_rate'] = f'{sampling_rate}'
         data['duration'] = f'{duration * 1000.0:.3f}'  # milliseconds again
         data['samples_count'] = f'{samples}'
+
+    def ffprobe(self, uri: str) -> Dict[str, Dict[str, Any]]:
+        """
+        Performs media analysis with ffprobe
+        :param uri: media file uri
+        :return: streams from ffprobe output by string stream id
+        """
+        self.logger.debug("Running ffprobe on %s", uri)
+        ff = ffprobe.FFProbe(input=uri, show_streams=True, output_format='json')
+        ret, output, errors = ff.run()
+        if ret != 0:
+            raise RuntimeError(errors or "ffprobe error")
+        return {str(s["index"]): s for s in json.loads(output)["streams"]}
