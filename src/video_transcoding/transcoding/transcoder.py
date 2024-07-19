@@ -38,10 +38,6 @@ class Processor(LoggerMixin, abc.ABC):
         self.run(ff)
         # Get result media info
         dst = self.get_result_metadata(self.dst)
-        for s in self.meta.streams:
-            print("SRC:", s.meta)
-        for d in dst.streams:
-            print("DST:", d.meta)
         return dst
 
     def get_result_metadata(self, uri: str) -> Metadata:
@@ -92,7 +88,6 @@ class Transcoder(Processor):
             # Estimate frame count from duration
             s.frames = round(s.duration * s.frame_rate)
         return dst
-
 
     def prepare_ffmpeg(self, src: Metadata) -> encoding.FFMPEG:
         """
@@ -283,6 +278,38 @@ class Segmentor(Processor):
         super().__init__(video_source, dst, profile=profile, meta=meta)
         self.audio = audio_source
 
+    def get_result_metadata(self, uri: str) -> Metadata:
+        dst = super().get_result_metadata(uri)
+        data = Analyzer().ffprobe(uri)
+        # ffprobe uses audio stream as audio#0 and HLS audio group linked to
+        # variants as audio#1. Video streams receive indices 2-N and thus
+        # don't correspond to mediainfo streams.
+
+        ffprobe_audio = [s for s in data.values() if s['codec_type'] == 'audio']
+        for a, ff, src in zip(dst.audios, ffprobe_audio, self.meta.audios):
+            # Set bitrate from "source" metadata
+            a.bitrate = src.bitrate
+            # Replace segment duration with source duration
+            a.duration = src.duration
+            a.scenes = src.scenes
+            # Recompute samples from source duration
+            a.samples = round(a.duration * a.sampling_rate)
+
+        ffprobe_video = [s for s in data.values() if s['codec_type'] == 'video']
+        for v, ff, src in zip(dst.videos, ffprobe_video, self.meta.videos):
+            # Mediainfo estimates bitrate from first chunk which is error-prone.
+            # Replace it with nominal bitrate from HLS manifest.
+            bandwidth = int(ff['tags']['variant_bitrate'])
+            v.bitrate = round(bandwidth / 1.1)
+            # Replace segment duration with source duration
+            v.duration = src.duration
+            v.scenes = src.scenes
+            # Set frame rate from ffprobe data
+            v.frame_rate = rational(ff['avg_frame_rate'])
+            # Compute frames from frame rate and duration
+            v.frames = round(v.duration * v.frame_rate)
+        return dst
+
     def prepare_ffmpeg(self, src: Metadata) -> encoding.FFMPEG:
         video_streams = [s for s in src.streams if s.kind == VIDEO]
         video_source = encoding.input_file(self.src, *video_streams)
@@ -342,8 +369,8 @@ class Segmentor(Processor):
                 audios.append(c)
         vsm = []
         for i, a in enumerate(audios):
-            vsm.append(f'a:{i},agroup:a{i}')
+            vsm.append(f'a:{i},agroup:a{i}:bandwidth:{a.bitrate}')
         for (i, a), (j, v) in product(enumerate(audios), enumerate(videos)):
-            vsm.append(f'v:{j},agroup:a{i}')
+            vsm.append(f'v:{j},agroup:a{i}:bandwidth:{v.bitrate}')
         var_stream_map = ' '.join(vsm)
         return var_stream_map
