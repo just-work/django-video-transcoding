@@ -12,6 +12,11 @@ from video_transcoding.transcoding import ffprobe
 from video_transcoding.utils import LoggerMixin
 
 
+def rational(v: str) -> float:
+    num, den = v.split('/')
+    return float(num) / float(den) if float(den) else 0.0
+
+
 def scene_from_native(data: dict) -> meta.Scene:
     return meta.Scene(
         duration=meta.TS(data['duration']),
@@ -78,7 +83,7 @@ class Analyzer(LoggerMixin):
         for t in result.tracks:
             # New mediainfo version stores stream index in another field,
             # fffw does not support it yet.
-            t.stream = t.stream_identifier
+            t.stream = str(t.stream_identifier)
             if t.track_type in ('Video', 'Image'):
                 self.fix_par(t)
                 self.fix_frames(t)

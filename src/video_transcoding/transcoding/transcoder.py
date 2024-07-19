@@ -9,7 +9,7 @@ from fffw.encoding.vector import SIMD, Vector
 from fffw.graph import VIDEO, AUDIO
 
 from video_transcoding.transcoding import codecs, outputs
-from video_transcoding.transcoding.metadata import Metadata, Analyzer
+from video_transcoding.transcoding.metadata import Metadata, Analyzer, rational
 from video_transcoding.transcoding.profiles import Profile
 from video_transcoding.utils import LoggerMixin
 
@@ -38,8 +38,9 @@ class Processor(LoggerMixin, abc.ABC):
         self.run(ff)
         # Get result media info
         dst = self.get_result_metadata(self.dst)
-        for s, d in zip(self.meta.streams, dst.streams):
+        for s in self.meta.streams:
             print("SRC:", s.meta)
+        for d in dst.streams:
             print("DST:", d.meta)
         return dst
 
@@ -77,6 +78,21 @@ class Transcoder(Processor):
     Source transcoding logic.
     """
     requires_audio = False
+
+    def get_result_metadata(self, uri: str) -> Metadata:
+        dst = super().get_result_metadata(uri)
+        data = Analyzer().ffprobe(uri)
+        for s in dst.videos:
+            ffprobe_stream = data[s.streams[0]]
+            # For MPEGTS files nor mediainfo nor ffprobe can estimate bitrate
+            # for multi-track files.
+            s.bitrate = 0
+            # Parse frame rate from ffprobe data
+            s.frame_rate = rational(ffprobe_stream['avg_frame_rate'])
+            # Estimate frame count from duration
+            s.frames = round(s.duration * s.frame_rate)
+        return dst
+
 
     def prepare_ffmpeg(self, src: Metadata) -> encoding.FFMPEG:
         """
