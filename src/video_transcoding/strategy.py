@@ -11,6 +11,7 @@ from video_transcoding.transcoding import (
     metadata,
     transcoder,
 )
+from video_transcoding.transcoding.metadata import Analyzer
 from video_transcoding.utils import LoggerMixin
 
 
@@ -448,4 +449,16 @@ class ResumableStrategy(Strategy):
         return self.ws.get_absolute_uri(f).geturl()
 
     def get_segment_meta(self, src: workspace.File) -> metadata.Metadata:
-        raise NotImplementedError
+        meta = self.analyze_source()
+        segment_uri = self.ws.get_absolute_uri(src).geturl()
+        segment = Analyzer().get_meta_data(segment_uri)
+        # Mediainfo lacks some metadata from TS fragments, so we need source
+        # metadata to fill missing fields.
+        for s, d in zip(meta.videos, segment.videos):
+            # Set frame rate from source
+            d.frame_rate = s.frame_rate
+            # Recompute frames count from segment duration and source frame rate
+            d.frames = round(d.duration * d.frame_rate)
+            print("SRC:", s)
+            print("SEG:", d)
+        return segment
