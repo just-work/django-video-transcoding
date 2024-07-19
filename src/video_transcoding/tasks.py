@@ -151,10 +151,12 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         for stream in data['audios'] + data['videos']:
             del stream['scenes']
             del stream['streams']
+            del stream['start']
+            del stream['device']
             if duration is None:
                 duration = stream['duration']
             else:
-                duration = max(duration, stream['duration'])
+                duration = min(duration, stream['duration'])
         data['duration'] = duration
 
         return data

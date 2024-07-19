@@ -433,7 +433,7 @@ class ResumableStrategy(Strategy):
             meta=meta,
         )
         result = segment()
-        return replace(meta, uri=result.uri)
+        return result
 
     def write_concat_file(self, segments: List[str]) -> str:
         """
@@ -459,6 +459,4 @@ class ResumableStrategy(Strategy):
             d.frame_rate = s.frame_rate
             # Recompute frames count from segment duration and source frame rate
             d.frames = round(d.duration * d.frame_rate)
-            print("SRC:", s)
-            print("SEG:", d)
         return segment

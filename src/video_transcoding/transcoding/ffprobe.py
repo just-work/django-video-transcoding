@@ -23,3 +23,12 @@ class FFProbe(BaseWrapper):
     show_format: bool = param(default=False)
     output_format: str = param(name='of')
     loglevel: str = param()
+
+    def handle_stderr(self, line: str) -> str:
+        if '[error]' in line:
+            self.logger.error(line)
+        return ''
+
+    def handle_stdout(self, line: str) -> str:
+        return line
+
