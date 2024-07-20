@@ -149,10 +149,8 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         duration = None
         # cleanup internal metadata and compute duration
         for stream in data['audios'] + data['videos']:
-            del stream['scenes']
-            del stream['streams']
-            del stream['start']
-            del stream['device']
+            for f in ('scenes', 'streams', 'start', 'device'):
+                stream.pop(f, None)
             if duration is None:
                 duration = stream['duration']
             else:

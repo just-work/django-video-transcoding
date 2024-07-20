@@ -181,6 +181,7 @@ class ResumableStrategy(Strategy):
     def initialize(self) -> None:
         self.sources = self.ws.ensure_collection('sources')
         self.results = self.ws.ensure_collection('results')
+        self.store.create_collection(self.store.root)
 
     def cleanup(self, is_error: bool) -> None:
         if is_error:
