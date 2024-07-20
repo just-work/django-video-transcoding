@@ -193,7 +193,9 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         video_profiles: List[profiles.VideoProfile] = []
         for vp in preset.video_profiles.all():  # type: models.VideoProfile
             vc = profiles.VideoCondition(**vp.condition)
-            tracks = [t.name for t in vp.video.all()]
+
+            vqs = vp.videoprofiletracks_set.select_related('track')
+            tracks = [vpt.track.name for vpt in vqs]
             video_profiles.append(profiles.VideoProfile(
                 condition=vc,
                 video=tracks,
@@ -202,7 +204,9 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         audio_profiles: List[profiles.AudioProfile] = []
         for ap in preset.audio_profiles.all():  # type: models.AudioProfile
             ac = profiles.AudioCondition(**ap.condition)
-            tracks = [t.name for t in ap.audio.all()]
+
+            aqs = ap.audioprofiletracks_set.select_related('track')
+            tracks = [apt.track.name for apt in aqs]
             audio_profiles.append(profiles.AudioProfile(
                 condition=ac,
                 audio=tracks,
