@@ -72,7 +72,7 @@ class VideoAdmin(admin.ModelAdmin):
                  form_url: str = '',
                  extra_context: Any = None
                  ) -> HttpResponse:
-        fields, self.fields = self.fields, ('source',)
+        fields, self.fields = self.fields, ('source', 'preset')
         try:
             return super().add_view(request, form_url, extra_context)
         finally:
