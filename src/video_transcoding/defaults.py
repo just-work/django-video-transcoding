@@ -29,7 +29,7 @@ except AttributeError:
     }
 
 # delay between sending celery task and applying it
-VIDEO_TRANSCODING_COUNTDOWN = int(e('VIDEO_TRANSCODING_COUNTDOWN', 0))
+VIDEO_TRANSCODING_COUNTDOWN = int(e('VIDEO_TRANSCODING_COUNTDOWN', 10))
 # delay between applying celery task and locking video
 VIDEO_TRANSCODING_WAIT = int(e('VIDEO_TRANSCODING_WAIT', 0))
 
