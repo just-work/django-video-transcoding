@@ -1,4 +1,5 @@
 import dataclasses
+import time
 from datetime import timedelta
 from typing import Optional, List
 from uuid import UUID, uuid4
@@ -7,7 +8,7 @@ import celery
 from billiard.exceptions import SoftTimeLimitExceeded
 from django.db.transaction import atomic
 
-from video_transcoding import models, strategy
+from video_transcoding import models, strategy, defaults
 from video_transcoding.celery import app
 from video_transcoding.transcoding import profiles
 from video_transcoding.utils import LoggerMixin
@@ -93,6 +94,9 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         :returns: Video object
         :raises Retry: in case of unexpected video status or task_id
         """
+        if defaults.VIDEO_TRANSCODING_WAIT:
+            # Handle database replication and transaction commit related delay
+            time.sleep(defaults.VIDEO_TRANSCODING_WAIT)
         try:
             video = self.select_for_update(video_id, models.Video.QUEUED)
         except (models.Video.DoesNotExist, ValueError) as e:

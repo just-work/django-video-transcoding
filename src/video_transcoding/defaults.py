@@ -28,6 +28,11 @@ except AttributeError:
         ]
     }
 
+# delay between sending celery task and applying it
+VIDEO_TRANSCODING_COUNTDOWN = int(e('VIDEO_TRANSCODING_COUNTDOWN', 0))
+# delay between applying celery task and locking video
+VIDEO_TRANSCODING_WAIT = int(e('VIDEO_TRANSCODING_WAIT', 0))
+
 # URI for shared files
 VIDEO_TEMP_URI = e('VIDEO_TEMP_URI', 'dav://storage.localhost:8080/tmp/')
 # URI for result files
