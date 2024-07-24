@@ -58,6 +58,7 @@ class VideoProfile(TimeStampedModel):
     condition = models.JSONField(default=dict)
     preset = models.ForeignKey(Preset, models.CASCADE,
                                related_name='video_profiles')
+    segment_duration = models.DurationField()
 
     video = cast(
         related_descriptors.ManyToManyDescriptor,

@@ -203,6 +203,7 @@ class TranscodeVideo(LoggerMixin, celery.Task):
             video_profiles.append(profiles.VideoProfile(
                 condition=vc,
                 video=tracks,
+                segment_duration=vp.segment_duration.total_seconds(),
             ))
 
         audio_profiles: List[profiles.AudioProfile] = []
