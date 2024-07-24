@@ -296,10 +296,7 @@ class ResumableStrategy(Strategy):
 
         :return: selected profile.
         """
-        profile = self.preset.select_profile(
-            src.video, src.audio,
-            container=profiles.Container(format='m3u8'),
-        )
+        profile = self.preset.select_profile(src.video, src.audio)
         return profile
 
     def split(self, src: metadata.Metadata) -> metadata.Metadata:
@@ -329,13 +326,10 @@ class ResumableStrategy(Strategy):
         Downloads source file and split it to chunks at shared webdav.
         """
         destination = self.ws.get_absolute_uri(self.source_manifest)
-        container = replace(self.profile.container,
-                            segment_duration=defaults.VIDEO_CHUNK_DURATION)
-        profile = replace(self.profile, container=container)
         split = transcoder.Splitter(
             self.source_uri,
             destination.geturl(),
-            profile=profile,
+            profile=self.profile,
             meta=src,
         )
         return split()
@@ -382,19 +376,13 @@ class ResumableStrategy(Strategy):
         :return: resulting file metadata.
         """
         self.logger.debug("Processing %s", filename)
-        profile = replace(self.profile,
-                          container=profiles.Container(
-                              format='mpegts',
-                              copyts=True,
-                          ))
-
         src = self.sources.file(filename)
         meta = self.get_segment_meta(src)
         dst = self.results.file(filename)
         transcode = transcoder.Transcoder(
             self.ws.get_absolute_uri(src).geturl(),
             self.ws.get_absolute_uri(dst).geturl(),
-            profile=profile,
+            profile=self.profile,
             meta=meta,
         )
         meta = transcode()
@@ -411,26 +399,15 @@ class ResumableStrategy(Strategy):
         :param meta: resulting file metadata.
         :return: resulting file metadata.
         """
-        profile = replace(self.profile,
-                          container=profiles.Container(
-                              format='m3u8',
-                              segment_duration=defaults.VIDEO_SEGMENT_DURATION,
-                              copyts=False,
-                          ))
         src = self.write_concat_file(segments)
         dst = self.manifest_uri
         self.logger.debug("Segmenting %s to %s", src, dst)
-        profile.container = profiles.Container(
-            format='m3u8',
-            segment_duration=defaults.VIDEO_SEGMENT_DURATION,
-            copyts=False,
-        )
         audio = self.ws.get_absolute_uri(self.audio_playlist_file).geturl()
         segment = transcoder.Segmentor(
             video_source=src,
             audio_source=audio,
             dst=dst,
-            profile=profile,
+            profile=self.profile,
             meta=meta,
         )
         result = segment()

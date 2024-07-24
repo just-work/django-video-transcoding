@@ -51,6 +51,3 @@ VIDEO_REQUEST_TIMEOUT = float(e('VIDEO_REQUEST_TIMEOUT', 1))
 
 # Processing segment duration
 VIDEO_CHUNK_DURATION = int(e('VIDEO_CHUNK_DURATION', 60))
-
-# HLS playlists segment duration
-VIDEO_SEGMENT_DURATION = int(e('VIDEO_SEGMENT_DURATION', 2))
