@@ -1,13 +1,14 @@
 import abc
 import os.path
 from itertools import product
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from urllib.parse import urljoin
 
 from fffw import encoding
 from fffw.encoding.vector import SIMD, Vector
 from fffw.graph import VIDEO, AUDIO
 
+from video_transcoding import defaults
 from video_transcoding.transcoding import codecs, outputs
 from video_transcoding.transcoding.metadata import Metadata, Analyzer, rational
 from video_transcoding.transcoding.profiles import Profile
@@ -130,8 +131,9 @@ class Transcoder(Processor):
             output_file=self.dst,
             method='PUT',
             codecs=[*video_codecs, *audio_codecs],
-            format=self.profile.container.format,
+            format='mpegts',
             muxdelay='0',
+            copyts=True,
         )
 
     def prepare_video_codecs(self) -> List[codecs.VideoCodec]:
@@ -237,7 +239,7 @@ class Splitter(Processor):
                           codecs_list: List[encoding.Codec]
                           ) -> Dict[str, Any]:
         return dict(
-            hls_time=self.profile.container.segment_duration,
+            hls_time=defaults.VIDEO_CHUNK_DURATION,
             hls_playlist_type='vod',
             codecs=codecs_list,
             muxdelay='0',

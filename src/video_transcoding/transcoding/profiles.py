@@ -93,6 +93,7 @@ class VideoProfile:
     Video transcoding profile.
     """
     condition: VideoCondition
+    segment_duration: float
     video: List[str]  # List of VideoTrack ids defined in a preset
 
 
@@ -110,9 +111,7 @@ class Container:
     """
     Output file format
     """
-    format: str
     segment_duration: Optional[float] = None
-    copyts: bool = False
 
     @classmethod
     def from_native(cls, data: Dict[str, Any]) -> "Container":
@@ -149,8 +148,7 @@ class Preset:
 
     def select_profile(self,
                        video: VideoMeta,
-                       audio: AudioMeta,
-                       container: Container) -> Profile:
+                       audio: AudioMeta) -> Profile:
         video_profile = None
         for vp in self.video_profiles:
             if vp.condition.is_valid(video):
@@ -170,16 +168,27 @@ class Preset:
         return Profile(
             video=[v for v in self.video if v.id in video_profile.video],
             audio=[a for a in self.audio if a.id in audio_profile.audio],
-            container=container,
+            container=Container(
+                segment_duration=video_profile.segment_duration),
         )
 
+
+# Selecting HLS Segment duration
+# ==============================
+#
+# 48 kHz * 1024 samples per frame (AAC) and 30 fps (H264) have common
+# "pretty" duration 1.6 seconds - 48 H264-frames (one GOP) and 75 AAC-frames.
+# This duration satisfy integer equation: M * 1024/48000 = N * 1/30
+# * 48 kHz @ 25 fps - 4.8 seconds
+# * 44100 Hz @ 25 fps - 10.24 seconds
+# * 44100 Hz @ 30 fps - just don't use this (1536 frames or 51.2 seconds)
 
 # Default frame rate
 FRAME_RATE = 30
 # HLS Segment duration step, seconds
-SEGMENT_SIZE = 4
+SEGMENT_SIZE = 4.8
 # H.264 Group of pixels duration, seconds
-GOP_DURATION = 2
+GOP_DURATION = 1.6
 # Force key frame every N seconds
 KEY_FRAMES = 'expr:if(isnan(prev_forced_t),1,gte(t,prev_forced_t+{sec}))'
 
@@ -192,6 +201,7 @@ DEFAULT_PRESET = Preset(
                 min_bitrate=4_000_000,
                 min_frame_rate=0,
             ),
+            segment_duration=SEGMENT_SIZE,
             video=['1080p', '720p', '480p', '360p']
         ),
         VideoProfile(
@@ -201,6 +211,7 @@ DEFAULT_PRESET = Preset(
                 min_bitrate=2_500_000,
                 min_frame_rate=0,
             ),
+            segment_duration=SEGMENT_SIZE,
             video=['720p', '480p', '360p']
         ),
         VideoProfile(
@@ -210,6 +221,7 @@ DEFAULT_PRESET = Preset(
                 min_bitrate=1_200_000,
                 min_frame_rate=0,
             ),
+            segment_duration=SEGMENT_SIZE,
             video=['480p', '360p']
         ),
         VideoProfile(
@@ -219,23 +231,17 @@ DEFAULT_PRESET = Preset(
                 min_bitrate=0,
                 min_frame_rate=0,
             ),
+            segment_duration=SEGMENT_SIZE,
             video=['360p']
         ),
     ],
     audio_profiles=[
         AudioProfile(
             condition=AudioCondition(
-                min_bitrate=160,
-                min_sample_rate=0
-            ),
-            audio=['192k', '96k']
-        ),
-        AudioProfile(
-            condition=AudioCondition(
                 min_bitrate=0,
                 min_sample_rate=0
             ),
-            audio=['96k']
+            audio=['192k']
         ),
     ],
 
@@ -252,7 +258,7 @@ DEFAULT_PRESET = Preset(
             width=1920,
             height=1080,
             force_key_frames=KEY_FRAMES.format(sec=SEGMENT_SIZE),
-            gop_size=GOP_DURATION * FRAME_RATE,
+            gop_size=round(GOP_DURATION * FRAME_RATE),
             frame_rate=FRAME_RATE,
         ),
         VideoTrack(
@@ -267,7 +273,7 @@ DEFAULT_PRESET = Preset(
             width=1280,
             height=720,
             force_key_frames=KEY_FRAMES.format(sec=SEGMENT_SIZE),
-            gop_size=GOP_DURATION * FRAME_RATE,
+            gop_size=round(GOP_DURATION * FRAME_RATE),
             frame_rate=FRAME_RATE,
         ),
         VideoTrack(
@@ -282,7 +288,7 @@ DEFAULT_PRESET = Preset(
             width=854,
             height=480,
             force_key_frames=KEY_FRAMES.format(sec=SEGMENT_SIZE),
-            gop_size=GOP_DURATION * FRAME_RATE,
+            gop_size=round(GOP_DURATION * FRAME_RATE),
             frame_rate=FRAME_RATE,
         ),
         VideoTrack(
@@ -297,7 +303,7 @@ DEFAULT_PRESET = Preset(
             width=640,
             height=360,
             force_key_frames=KEY_FRAMES.format(sec=SEGMENT_SIZE),
-            gop_size=GOP_DURATION * FRAME_RATE,
+            gop_size=round(GOP_DURATION * FRAME_RATE),
             frame_rate=FRAME_RATE,
         ),
     ],
