@@ -27,7 +27,7 @@ dependencies = [
     "requests>=2.25,<2.33",
     # Video processing
     "pymediainfo>=5.0.3,<6.2",
-    "fffw~=5.0.0",
+    "fffw~=6.0.0",
 ]
 license = { text = "MIT" }
 keywords = [
