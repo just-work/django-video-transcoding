@@ -49,10 +49,12 @@ class VideoCondition:
     """
     Condition for source video stream for video profile selection
     """
-    min_width: int
-    min_height: int
-    min_bitrate: int
-    min_frame_rate: float
+    min_width: int = 0
+    min_height: int = 0
+    min_bitrate: int = 0
+    min_frame_rate: float = 0.0
+    min_dar: float = 0.0
+    max_dar: float = 0.0
 
     def is_valid(self, meta: VideoMeta) -> bool:
         """
@@ -63,7 +65,9 @@ class VideoCondition:
             meta.width >= self.min_width and
             meta.height >= self.min_height and
             meta.bitrate >= self.min_bitrate and
-            meta.frame_rate >= self.min_frame_rate
+            meta.frame_rate >= self.min_frame_rate and
+            (not self.min_dar or meta.dar >= self.min_dar) and
+            (not self.max_dar or meta.dar <= self.max_dar)
         )
 
 
@@ -165,6 +169,7 @@ class Preset:
         if audio_profile is None:
             raise RuntimeError("No compatible audio profiles")
 
+        # noinspection PyTypeChecker
         return Profile(
             video=[v for v in self.video if v.id in video_profile.video],
             audio=[a for a in self.audio if a.id in audio_profile.audio],
@@ -199,7 +204,9 @@ DEFAULT_PRESET = Preset(
                 min_width=1920,
                 min_height=1080,
                 min_bitrate=4_000_000,
-                min_frame_rate=0,
+                min_frame_rate=0.0,
+                min_dar=0.0,
+                max_dar=0.0,
             ),
             segment_duration=SEGMENT_SIZE,
             video=['1080p', '720p', '480p', '360p']
@@ -209,7 +216,9 @@ DEFAULT_PRESET = Preset(
                 min_width=1280,
                 min_height=720,
                 min_bitrate=2_500_000,
-                min_frame_rate=0,
+                min_frame_rate=0.0,
+                min_dar=0.0,
+                max_dar=0.0,
             ),
             segment_duration=SEGMENT_SIZE,
             video=['720p', '480p', '360p']
@@ -219,7 +228,9 @@ DEFAULT_PRESET = Preset(
                 min_width=854,
                 min_height=480,
                 min_bitrate=1_200_000,
-                min_frame_rate=0,
+                min_frame_rate=0.0,
+                min_dar=0.0,
+                max_dar=0.0,
             ),
             segment_duration=SEGMENT_SIZE,
             video=['480p', '360p']
@@ -229,7 +240,9 @@ DEFAULT_PRESET = Preset(
                 min_width=0,
                 min_height=0,
                 min_bitrate=0,
-                min_frame_rate=0,
+                min_frame_rate=0.0,
+                min_dar=0.0,
+                max_dar=0.0,
             ),
             segment_duration=SEGMENT_SIZE,
             video=['360p']
