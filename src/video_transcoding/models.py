@@ -130,7 +130,7 @@ class Video(TimeStampedModel):
                                verbose_name=_('Task ID'))
     source = models.URLField(verbose_name=_('Source'),
                              validators=[
-                                 URLValidator(schemes=('http', 'https'))])
+                                 URLValidator(schemes=('ftp', 'http', 'https'))])
     basename = models.UUIDField(blank=True, null=True,
                                 verbose_name=_('Basename'))
     preset = models.ForeignKey(Preset, models.SET_NULL, blank=True, null=True)
