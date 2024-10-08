@@ -26,7 +26,12 @@ class NestedJSONForm(forms.ModelForm):
 
     def clean(self) -> Dict[str, Any]:
         cd = self.cleaned_data
-        cd[self.json_field] = {k: cd[f'_{k}'] for k in self.nested_fields}
+        missing = set()
+        for k in self.nested_fields:
+            if f'_{k}' not in cd:
+                missing.add(f'_{k}')
+        if not missing:
+            cd[self.json_field] = {k: cd[f'_{k}'] for k in self.nested_fields}
         return cd
 
 
