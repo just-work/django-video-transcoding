@@ -105,6 +105,7 @@ class MediaInfoMixin(MediaInfoMixinTarget):
         return media_info
 
 
+# noinspection PyUnresolvedReferences,PyArgumentList
 @skip("refactor needed")
 class TranscodingTestCase(MediaInfoMixin, BaseTestCase):
     """ Video file transcoding tests."""
