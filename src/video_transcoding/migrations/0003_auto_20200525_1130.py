@@ -24,7 +24,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='video',
             name='source',
-            field=models.URLField(validators=[django.core.validators.URLValidator(schemes=('http', 'https'))], verbose_name='Source'),
+            field=models.URLField(validators=[django.core.validators.URLValidator(schemes=('ftp', 'http', 'https'))], verbose_name='Source'),
         ),
         migrations.AlterField(
             model_name='video',
