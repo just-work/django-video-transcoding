@@ -23,7 +23,8 @@ def short_description(name: Union[str, Promise]) -> Callable[[C], C]:
     return inner
 
 
-@admin.register(models.Video)
+# noinspection PyUnresolvedReferences
+@admin.register(models.get_video_model())
 class VideoAdmin(admin.ModelAdmin):
     list_display = ('basename', 'source', 'status_display')
     list_filter = ('status',)
@@ -79,6 +80,7 @@ class VideoAdmin(admin.ModelAdmin):
             self.fields = fields
 
 
+# noinspection PyUnresolvedReferences
 class TrackAdmin(admin.ModelAdmin):
     list_display = ('name', 'preset', 'created', 'modified')
     list_filter = ('preset',)
@@ -110,6 +112,7 @@ class AudioProfileTracksInline(ProfileTracksInline):
     model = models.AudioProfileTracks
 
 
+# noinspection PyUnresolvedReferences
 class ProfileAdmin(admin.ModelAdmin):
     list_display = ('name', 'preset', 'order_number', 'created', 'modified')
     list_filter = ('preset',)
@@ -144,6 +147,7 @@ class AudioProfileInline(ProfileInline):
     model = models.AudioProfile
 
 
+# noinspection PyUnresolvedReferences
 @admin.register(models.Preset)
 class PresetAdmin(admin.ModelAdmin):
     list_display = ('name', 'created', 'modified')
