@@ -177,7 +177,6 @@ class Video(TimeStampedModel):
 
     class Meta:
         abstract = defaults.VIDEO_MODEL != 'video_transcoding.Video'
-        app_label = 'video_transcoding'
         verbose_name = _('Video')
         verbose_name_plural = _('Video')
 
