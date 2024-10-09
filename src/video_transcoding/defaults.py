@@ -51,3 +51,13 @@ VIDEO_REQUEST_TIMEOUT = float(e('VIDEO_REQUEST_TIMEOUT', 1))
 
 # Processing segment duration
 VIDEO_CHUNK_DURATION = int(e('VIDEO_CHUNK_DURATION', 60))
+
+VIDEO_MODEL = 'video_transcoding.Video'
+
+
+_default_config = locals()
+_local_config = getattr(settings, 'VIDEO_TRANSCODING_CONFIG', {})
+for k, v in _local_config.items():
+    if k not in _default_config:
+        raise KeyError(k)
+    _default_config[k] = v
