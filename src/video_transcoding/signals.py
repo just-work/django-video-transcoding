@@ -8,7 +8,7 @@ from video_transcoding import helpers, models
 
 
 # noinspection PyUnusedLocal
-@receiver(post_save, sender=models.Video)
+@receiver(post_save, sender=models.get_video_model())
 def send_transcode_task(sender: Any, *, instance: models.Video, created: bool,
                         **kw: Any) -> None:
     if not created:
