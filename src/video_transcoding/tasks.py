@@ -9,9 +9,12 @@ from billiard.exceptions import SoftTimeLimitExceeded
 from django.db.transaction import atomic
 
 from video_transcoding import models, strategy, defaults
+
 from video_transcoding.celery import app
 from video_transcoding.transcoding import profiles
 from video_transcoding.utils import LoggerMixin
+
+Video = models.get_video_model()
 
 DESTINATION_FILENAME = '{basename}.mp4'
 
@@ -35,7 +38,7 @@ class TranscodeVideo(LoggerMixin, celery.Task):
 
         :param video_id: Video id.
         """
-        status = models.Video.DONE
+        status = Video.DONE
         error = meta = duration = None
         video = self.lock_video(video_id)
         try:
@@ -44,33 +47,33 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         except SoftTimeLimitExceeded as e:
             self.logger.debug("Received SIGUSR1, return video to queue")
             # celery graceful shutdown
-            status = models.Video.QUEUED
+            status = Video.QUEUED
             error = repr(e)
             raise self.retry(countdown=10)
         except Exception as e:
-            status = models.Video.ERROR
+            status = Video.ERROR
             error = repr(e)
             self.logger.exception("Processing error %s", error)
         finally:
             self.unlock_video(video_id, status, error, meta, duration)
         return error
 
-    def select_for_update(self, video_id: int, status: int) -> models.Video:
+    def select_for_update(self, video_id: int, status: int) -> Video:
         """ Lock video in DB for current task.
 
         :param video_id: Video primary key
         :param status: expected video status
         :returns: Video object from db
 
-        :raises models.Video.DoesNotExist: in case of missing or locked
+        :raises Video.DoesNotExist: in case of missing or locked
             Video for primary key
         :raises ValueError: in case of unexpected Video status or task_id
 
         """
         try:
-            video = models.Video.objects.select_for_update(
+            video = Video.objects.select_for_update(
                 skip_locked=True, of=('self',)).get(pk=video_id)
-        except models.Video.DoesNotExist:
+        except Video.DoesNotExist:
             self.logger.error("Can't lock video %s", video_id)
             raise
 
@@ -86,7 +89,7 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         return video
 
     @atomic
-    def lock_video(self, video_id: int) -> models.Video:
+    def lock_video(self, video_id: int) -> Video:
         """
         Gets video in QUEUED status from DB and changes status to PROCESS.
 
@@ -98,13 +101,13 @@ class TranscodeVideo(LoggerMixin, celery.Task):
             # Handle database replication and transaction commit related delay
             time.sleep(defaults.VIDEO_TRANSCODING_WAIT)
         try:
-            video = self.select_for_update(video_id, models.Video.QUEUED)
-        except (models.Video.DoesNotExist, ValueError) as e:
+            video = self.select_for_update(video_id, Video.QUEUED)
+        except (Video.DoesNotExist, ValueError) as e:
             # if video is locked or task_id is not equal to current task, retry.
             raise self.retry(exc=e)
         if video.basename is None:
             video.basename = uuid4()
-        video.change_status(models.Video.PROCESS, basename=video.basename)
+        video.change_status(Video.PROCESS, basename=video.basename)
         return video
 
     @atomic
@@ -122,8 +125,8 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         :raises RuntimeError: in case of unexpected video status or task id
         """
         try:
-            video = self.select_for_update(video_id, models.Video.PROCESS)
-        except (models.Video.DoesNotExist, ValueError) as e:
+            video = self.select_for_update(video_id, Video.PROCESS)
+        except (Video.DoesNotExist, ValueError) as e:
             # if video is locked or task_id differs from current task, do
             # nothing because video is modified somewhere else.
             raise RuntimeError("Can't unlock locked video %s: %s",
@@ -134,7 +137,7 @@ class TranscodeVideo(LoggerMixin, celery.Task):
                             metadata=meta,
                             duration=duration)
 
-    def process_video(self, video: models.Video) -> dict:
+    def process_video(self, video: Video) -> dict:
         """
         Makes an HLS adaptation set from video source.
         """
@@ -149,7 +152,7 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         )
         output_meta = s()
 
-        data = dataclasses.asdict(output_meta)
+        data = dataclasses.asdict(output_meta)  # type: ignore
         duration = None
         # cleanup internal metadata and compute duration
         for stream in data['audios'] + data['videos']:
