@@ -118,3 +118,5 @@ Also defaults can be overridden this via `django.conf.settings.VIDEO_TRANSCODING
 For preset-related models use `<Model>Base` abstract models defined in `video_transcoding.models`.
 For overriding `Video` model set `VIDEO_TRANSCODING_CONFIG["VIDEO_MODEL"]` key to `app_label.ModelName` in `settings`.
 Connect other django models to `Video` using `video_transcoding.models.get_video_model()`. 
+When `Video` is overridden, video model admin is not registered automatically. As with migrations, this should be
+done manually.
