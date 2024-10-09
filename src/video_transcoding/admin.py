@@ -24,7 +24,6 @@ def short_description(name: Union[str, Promise]) -> Callable[[C], C]:
 
 
 # noinspection PyUnresolvedReferences
-@admin.register(models.get_video_model())
 class VideoAdmin(admin.ModelAdmin):
     list_display = ('basename', 'source', 'status_display')
     list_filter = ('status',)
@@ -78,6 +77,10 @@ class VideoAdmin(admin.ModelAdmin):
             return super().add_view(request, form_url, extra_context)
         finally:
             self.fields = fields
+
+
+if defaults.VIDEO_MODEL == 'video_transcoding.Video':
+    admin.register(models.Video)(VideoAdmin)
 
 
 # noinspection PyUnresolvedReferences
