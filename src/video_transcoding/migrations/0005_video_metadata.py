@@ -2,17 +2,20 @@
 
 from django.db import migrations, models
 
+from video_transcoding import defaults
+
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('video_transcoding', '0004_audioprofile_audiotrack_preset_audioprofiletracks_and_more'),
+        ('video_transcoding',
+         '0004_audioprofile_audiotrack_preset_audioprofiletracks_and_more'),
     ]
-
-    operations = [
-        migrations.AddField(
-            model_name='video',
-            name='metadata',
-            field=models.JSONField(blank=True, null=True),
-        ),
-    ]
+    operations = []
+    if defaults.VIDEO_MODEL == 'video_transcoding.Video':
+        operations.extend([
+            migrations.AddField(
+                model_name='video',
+                name='metadata',
+                field=models.JSONField(blank=True, null=True),
+            ),
+        ])

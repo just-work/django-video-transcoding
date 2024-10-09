@@ -5,6 +5,8 @@ import django.utils.timezone
 import model_utils.fields
 from django.db import migrations, models
 
+from video_transcoding import defaults
+
 
 class Migration(migrations.Migration):
 
@@ -77,11 +79,6 @@ class Migration(migrations.Migration):
             name='preset',
             field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='audio_profiles', to='video_transcoding.preset'),
         ),
-        migrations.AddField(
-            model_name='video',
-            name='preset',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='video_transcoding.preset'),
-        ),
         migrations.CreateModel(
             name='VideoProfile',
             fields=[
@@ -142,3 +139,14 @@ class Migration(migrations.Migration):
             unique_together={('name', 'preset')},
         ),
     ]
+
+    if defaults.VIDEO_MODEL == 'video_transcoding.Video':
+        operations.extend([
+            migrations.AddField(
+                model_name='video',
+                name='preset',
+                field=models.ForeignKey(blank=True, null=True,
+                                        on_delete=django.db.models.deletion.SET_NULL,
+                                        to='video_transcoding.preset'),
+            ),
+        ])
