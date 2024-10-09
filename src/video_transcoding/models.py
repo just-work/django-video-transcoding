@@ -215,4 +215,4 @@ class Video(TimeStampedModel):
 
 def get_video_model() -> Type[Video]:
     app_label, model_name = defaults.VIDEO_MODEL.split('.')
-    return apps.get_registered_model(app_label, model_name)
+    return cast(Type[Video], apps.get_registered_model(app_label, model_name))
