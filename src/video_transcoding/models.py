@@ -1,7 +1,8 @@
 import os
-from typing import Any, cast
+from typing import Any, cast, Type
 from uuid import UUID
 
+from django.apps import apps
 from django.core.validators import URLValidator
 from django.db import models
 from django.db.models.fields import related_descriptors
@@ -11,7 +12,7 @@ from model_utils.models import TimeStampedModel
 from video_transcoding import defaults
 
 
-class Preset(TimeStampedModel):
+class PresetBase(TimeStampedModel):
     """ Transcoding preset."""
     video_tracks: related_descriptors.ReverseManyToOneDescriptor
     audio_tracks: related_descriptors.ReverseManyToOneDescriptor
@@ -19,11 +20,18 @@ class Preset(TimeStampedModel):
     audio_profiles: related_descriptors.ReverseManyToOneDescriptor
     name = models.SlugField(max_length=255, unique=True)
 
+    class Meta:
+        abstract = True
+
     def __str__(self) -> str:
         return self.name
 
 
-class VideoTrack(TimeStampedModel):
+class Preset(PresetBase):
+    pass
+
+
+class VideoTrackBase(TimeStampedModel):
     """ Video stream transcoding parameters."""
     name = models.SlugField(max_length=255, unique=False)
     params = models.JSONField(default=dict)
@@ -31,13 +39,18 @@ class VideoTrack(TimeStampedModel):
                                related_name='video_tracks')
 
     class Meta:
+        abstract = True
         unique_together = (('name', 'preset'),)
 
     def __str__(self) -> str:
         return f'{self.name}@{self.preset}'
 
 
-class AudioTrack(TimeStampedModel):
+class VideoTrack(VideoTrackBase):
+    pass
+
+
+class AudioTrackBase(TimeStampedModel):
     """ Audio stream transcoding parameters."""
     name = models.SlugField(max_length=255, unique=False)
     params = models.JSONField(default=dict)
@@ -45,13 +58,18 @@ class AudioTrack(TimeStampedModel):
                                related_name='audio_tracks')
 
     class Meta:
+        abstract = True
         unique_together = (('name', 'preset'),)
 
     def __str__(self) -> str:
         return f'{self.name}@{self.preset}'
 
 
-class VideoProfile(TimeStampedModel):
+class AudioTrack(AudioTrackBase):
+    pass
+
+
+class VideoProfileBase(TimeStampedModel):
     """ Video transcoding profile."""
     name = models.SlugField(max_length=255, unique=False)
     order_number = models.SmallIntegerField(default=0)
@@ -65,6 +83,7 @@ class VideoProfile(TimeStampedModel):
         models.ManyToManyField(VideoTrack, through='VideoProfileTracks'))
 
     class Meta:
+        abstract = True
         unique_together = (('name', 'preset'),)
         ordering = ['order_number']
 
@@ -72,17 +91,26 @@ class VideoProfile(TimeStampedModel):
         return f'{self.name}@{self.preset}'
 
 
-class VideoProfileTracks(models.Model):
+class VideoProfile(VideoProfileBase):
+    pass
+
+
+class VideoProfileTracksBase(models.Model):
     profile = models.ForeignKey(VideoProfile, models.CASCADE)
     track = models.ForeignKey(VideoTrack, models.CASCADE)
     order_number = models.SmallIntegerField(default=0)
 
     class Meta:
+        abstract = True
         unique_together = (('profile', 'track'),)
         ordering = ['order_number']
 
 
-class AudioProfile(TimeStampedModel):
+class VideoProfileTracks(VideoProfileTracksBase):
+    pass
+
+
+class AudioProfileBase(TimeStampedModel):
     """ Audio transcoding profile."""
     name = models.SlugField(max_length=255, unique=False)
     order_number = models.SmallIntegerField(default=0)
@@ -95,6 +123,7 @@ class AudioProfile(TimeStampedModel):
         models.ManyToManyField(AudioTrack, through='AudioProfileTracks'))
 
     class Meta:
+        abstract = True
         unique_together = (('name', 'preset'),)
         ordering = ['order_number']
 
@@ -102,14 +131,23 @@ class AudioProfile(TimeStampedModel):
         return f'{self.name}@{self.preset}'
 
 
-class AudioProfileTracks(models.Model):
+class AudioProfile(AudioProfileBase):
+    pass
+
+
+class AudioProfileTracksBase(models.Model):
     profile = models.ForeignKey(AudioProfile, models.CASCADE)
     track = models.ForeignKey(AudioTrack, models.CASCADE)
     order_number = models.SmallIntegerField(default=0)
 
     class Meta:
+        abstract = True
         unique_together = (('profile', 'track'),)
         ordering = ['order_number']
+
+
+class AudioProfileTracks(AudioProfileTracksBase):
+    pass
 
 
 class Video(TimeStampedModel):
@@ -138,7 +176,7 @@ class Video(TimeStampedModel):
     duration = models.DurationField(blank=True, null=True)
 
     class Meta:
-        app_label = 'video_transcoding'
+        abstract = defaults.VIDEO_MODEL != 'video_transcoding.Video'
         verbose_name = _('Video')
         verbose_name_plural = _('Video')
 
@@ -173,3 +211,8 @@ class Video(TimeStampedModel):
             update_fields.add(k)
         # suppress mypy [no-untyped-calls]
         self.save(update_fields=tuple(update_fields))  # type: ignore
+
+
+def get_video_model() -> Type[Video]:
+    app_label, model_name = defaults.VIDEO_MODEL.split('.')
+    return cast(Type[Video], apps.get_registered_model(app_label, model_name))

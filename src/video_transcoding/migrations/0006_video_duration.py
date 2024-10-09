@@ -2,17 +2,20 @@
 
 from django.db import migrations, models
 
+from video_transcoding import defaults
+
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('video_transcoding', '0005_video_metadata'),
     ]
 
-    operations = [
-        migrations.AddField(
-            model_name='video',
-            name='duration',
-            field=models.DurationField(blank=True, null=True),
-        ),
-    ]
+    operations = []
+    if defaults.VIDEO_MODEL == 'video_transcoding.Video':
+        operations.extend([
+            migrations.AddField(
+                model_name='video',
+                name='duration',
+                field=models.DurationField(blank=True, null=True),
+            ),
+        ])
