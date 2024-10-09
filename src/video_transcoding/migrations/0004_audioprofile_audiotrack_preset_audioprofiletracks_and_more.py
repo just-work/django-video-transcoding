@@ -5,6 +5,8 @@ import django.utils.timezone
 import model_utils.fields
 from django.db import migrations, models
 
+from video_transcoding import defaults
+
 
 class Migration(migrations.Migration):
 
@@ -260,3 +262,14 @@ class Migration(migrations.Migration):
             field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='video_transcoding.videotrack', verbose_name='track'),
         ),
     ]
+
+    if defaults.VIDEO_MODEL == 'video_transcoding.Video':
+        operations.extend([
+            migrations.AddField(
+                model_name='video',
+                name='preset',
+                field=models.ForeignKey(blank=True, null=True,
+                                        on_delete=django.db.models.deletion.SET_NULL,
+                                        to='video_transcoding.preset'),
+            ),
+        ])

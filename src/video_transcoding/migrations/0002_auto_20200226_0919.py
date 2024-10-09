@@ -3,17 +3,22 @@
 import django.core.validators
 from django.db import migrations, models
 
+from video_transcoding import defaults
+
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('video_transcoding', '0001_initial'),
     ]
 
-    operations = [
-        migrations.AlterField(
-            model_name='video',
-            name='source',
-            field=models.URLField(validators=[django.core.validators.URLValidator(schemes=('http', 'https'))]),
-        ),
-    ]
+    operations = []
+    if defaults.VIDEO_MODEL == 'video_transcoding.Video':
+        operations.extend([
+            migrations.AlterField(
+                model_name='video',
+                name='source',
+                field=models.URLField(validators=[
+                    django.core.validators.URLValidator(
+                        schemes=('http', 'https'))]),
+            ),
+        ])
