@@ -9,7 +9,6 @@ from billiard.exceptions import SoftTimeLimitExceeded
 from django.db.transaction import atomic
 
 from video_transcoding import models, strategy, defaults
-
 from video_transcoding.celery import app
 from video_transcoding.transcoding import profiles
 from video_transcoding.utils import LoggerMixin
@@ -58,14 +57,14 @@ class TranscodeVideo(LoggerMixin, celery.Task):
             self.unlock_video(video_id, status, error, meta, duration)
         return error
 
-    def select_for_update(self, video_id: int, status: int) -> Video:
+    def select_for_update(self, video_id: int, status: int) -> models.Video:
         """ Lock video in DB for current task.
 
         :param video_id: Video primary key
         :param status: expected video status
         :returns: Video object from db
 
-        :raises Video.DoesNotExist: in case of missing or locked
+        :raises models.Video.DoesNotExist: in case of missing or locked
             Video for primary key
         :raises ValueError: in case of unexpected Video status or task_id
 
@@ -89,7 +88,7 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         return video
 
     @atomic
-    def lock_video(self, video_id: int) -> Video:
+    def lock_video(self, video_id: int) -> models.Video:
         """
         Gets video in QUEUED status from DB and changes status to PROCESS.
 
@@ -137,7 +136,7 @@ class TranscodeVideo(LoggerMixin, celery.Task):
                             metadata=meta,
                             duration=duration)
 
-    def process_video(self, video: Video) -> dict:
+    def process_video(self, video: models.Video) -> dict:
         """
         Makes an HLS adaptation set from video source.
         """
