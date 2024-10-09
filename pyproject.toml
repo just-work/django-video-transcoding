@@ -18,7 +18,7 @@ authors = [
 dependencies = [
     # Django Framework and batteries
     "Django>=3.2,<5.1",
-    "django-model-utils>=4.2.0,<5.1.0",
+    "django-model-utils>=4.2.0,<5.2.0",
     # Background processing
     "Celery>=5.0.5,<5.5.0",
     "kombu>=5.0.2,<5.4.0",
@@ -45,6 +45,7 @@ classifiers = [
         'Framework :: Django :: 4.1',
         'Framework :: Django :: 4.2',
         'Framework :: Django :: 5.0',
+        'Framework :: Django :: 5.1',
         'Operating System :: POSIX',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
