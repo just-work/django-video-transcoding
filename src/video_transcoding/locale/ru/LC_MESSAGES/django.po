@@ -98,7 +98,7 @@ msgstr "Частота кадров"
 
 #: video_transcoding/forms.py:102
 msgid "GOP size"
-msgstr "Группы кадров"
+msgstr "Размер группы кадров (GOP)"
 
 #: video_transcoding/forms.py:103
 msgid "Force key frames"
@@ -138,19 +138,19 @@ msgstr "пресет"
 
 #: video_transcoding/models.py:39
 msgid "Video track"
-msgstr "Видео дорожка"
+msgstr "Видеодорожка"
 
 #: video_transcoding/models.py:40 video_transcoding/models.py:74
 msgid "Video tracks"
-msgstr "Видео дорожки"
+msgstr "Видеодорожки"
 
 #: video_transcoding/models.py:56
 msgid "Audio track"
-msgstr "Аудио дорожка"
+msgstr "Аудиодорожка"
 
 #: video_transcoding/models.py:57 video_transcoding/models.py:109
 msgid "Audio tracks"
-msgstr "Аудио дорожки"
+msgstr "Аудиодорожки"
 
 #: video_transcoding/models.py:66 video_transcoding/models.py:89
 #: video_transcoding/models.py:101 video_transcoding/models.py:124
@@ -179,11 +179,11 @@ msgstr "дорожка"
 
 #: video_transcoding/models.py:94
 msgid "Video profile track"
-msgstr "Дорожка видео профиля"
+msgstr "Видеодорожка профиля"
 
 #: video_transcoding/models.py:95
 msgid "Video profile tracks"
-msgstr "Дорожки видео профиля"
+msgstr "Видеодорожки профилей"
 
 #: video_transcoding/models.py:114
 msgid "Audio profile"
@@ -195,11 +195,11 @@ msgstr "Аудио профили"
 
 #: video_transcoding/models.py:129
 msgid "Audio profile track"
-msgstr "Дорожка аудио профиля"
+msgstr "Аудиодорожка профиля"
 
 #: video_transcoding/models.py:130
 msgid "Audio profile tracks"
-msgstr "Дорожки аудио профиля"
+msgstr "Аудиодорожки профилей"
 
 #: video_transcoding/models.py:137
 msgid "created"

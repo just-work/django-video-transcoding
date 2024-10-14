@@ -19,11 +19,13 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('created', model_utils.fields.AutoCreatedField(default=django.utils.timezone.now, editable=False, verbose_name='created')),
                 ('modified', model_utils.fields.AutoLastModifiedField(default=django.utils.timezone.now, editable=False, verbose_name='modified')),
-                ('name', models.SlugField(max_length=255)),
-                ('order_number', models.SmallIntegerField(default=0)),
-                ('condition', models.JSONField(default=dict)),
+                ('name', models.SlugField(max_length=255, verbose_name='name')),
+                ('order_number', models.SmallIntegerField(default=0, verbose_name='order number')),
+                ('condition', models.JSONField(default=dict, verbose_name='condition')),
             ],
             options={
+                'verbose_name': 'Audio profile',
+                'verbose_name_plural': 'Audio profiles',
                 'ordering': ['order_number'],
             },
         ),
@@ -33,9 +35,13 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('created', model_utils.fields.AutoCreatedField(default=django.utils.timezone.now, editable=False, verbose_name='created')),
                 ('modified', model_utils.fields.AutoLastModifiedField(default=django.utils.timezone.now, editable=False, verbose_name='modified')),
-                ('name', models.SlugField(max_length=255)),
-                ('params', models.JSONField(default=dict)),
+                ('name', models.SlugField(max_length=255, verbose_name='name')),
+                ('params', models.JSONField(default=dict, verbose_name='params')),
             ],
+            options={
+                'verbose_name': 'Audio track',
+                'verbose_name_plural': 'Audio tracks',
+            },
         ),
         migrations.CreateModel(
             name='Preset',
@@ -46,7 +52,6 @@ class Migration(migrations.Migration):
                 ('name', models.SlugField(max_length=255, unique=True, verbose_name='name')),
             ],
             options={
-                'abstract': False,
                 'verbose_name': 'Preset',
                 'verbose_name_plural': 'Presets',
             },
@@ -56,10 +61,12 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('order_number', models.SmallIntegerField(default=0, verbose_name='order number')),
-                ('profile', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='video_transcoding.audioprofile')),
-                ('track', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='video_transcoding.audiotrack')),
+                ('profile', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='video_transcoding.audioprofile', verbose_name='profile')),
+                ('track', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='video_transcoding.audiotrack', verbose_name='track')),
             ],
             options={
+                'verbose_name': 'Audio profile track',
+                'verbose_name_plural': 'Audio profile tracks',
                 'ordering': ['order_number'],
                 'unique_together': {('profile', 'track')},
                 'verbose_name': 'Audio profile track',
@@ -69,17 +76,17 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='audioprofile',
             name='audio',
-            field=models.ManyToManyField(through='video_transcoding.AudioProfileTracks', to='video_transcoding.audiotrack'),
+            field=models.ManyToManyField(through='video_transcoding.AudioProfileTracks', to='video_transcoding.audiotrack', verbose_name='Audio tracks'),
         ),
         migrations.AddField(
             model_name='audiotrack',
             name='preset',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='audio_tracks', to='video_transcoding.preset'),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='audio_tracks', to='video_transcoding.preset', verbose_name='preset'),
         ),
         migrations.AddField(
             model_name='audioprofile',
             name='preset',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='audio_profiles', to='video_transcoding.preset'),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='audio_profiles', to='video_transcoding.preset', verbose_name='preset'),
         ),
         migrations.AddField(
             model_name='video',
@@ -92,12 +99,14 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('created', model_utils.fields.AutoCreatedField(default=django.utils.timezone.now, editable=False, verbose_name='created')),
                 ('modified', model_utils.fields.AutoLastModifiedField(default=django.utils.timezone.now, editable=False, verbose_name='modified')),
-                ('name', models.SlugField(max_length=255)),
-                ('order_number', models.SmallIntegerField(default=0)),
-                ('condition', models.JSONField(default=dict)),
-                ('preset', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='video_profiles', to='video_transcoding.preset')),
+                ('name', models.SlugField(max_length=255, verbose_name='name')),
+                ('order_number', models.SmallIntegerField(default=0, verbose_name='order number')),
+                ('condition', models.JSONField(default=dict, verbose_name='condition')),
+                ('preset', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='video_profiles', to='video_transcoding.preset', verbose_name='preset')),
             ],
             options={
+                'verbose_name': 'Video profile',
+                'verbose_name_plural': 'Video profiles',
                 'ordering': ['order_number'],
             },
         ),
@@ -112,6 +121,8 @@ class Migration(migrations.Migration):
                 ('preset', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='video_tracks', to='video_transcoding.preset', verbose_name='preset')),
             ],
             options={
+                'verbose_name': 'Video track',
+                'verbose_name_plural': 'Video tracks',
                 'unique_together': {('name', 'preset')},
                 'verbose_name': 'Video track',
                 'verbose_name_plural': 'Video tracks',
@@ -122,10 +133,12 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('order_number', models.SmallIntegerField(default=0, verbose_name='order number')),
-                ('profile', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='video_transcoding.videoprofile')),
-                ('track', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='video_transcoding.videotrack')),
+                ('profile', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='video_transcoding.videoprofile', verbose_name='profile')),
+                ('track', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='video_transcoding.videotrack', verbose_name='track')),
             ],
             options={
+                'verbose_name': 'Video profile track',
+                'verbose_name_plural': 'Video profile tracks',
                 'ordering': ['order_number'],
                 'unique_together': {('profile', 'track')},
                 'verbose_name': 'Video profile track',
@@ -135,7 +148,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='videoprofile',
             name='video',
-            field=models.ManyToManyField(through='video_transcoding.VideoProfileTracks', to='video_transcoding.videotrack'),
+            field=models.ManyToManyField(through='video_transcoding.VideoProfileTracks', to='video_transcoding.videotrack', verbose_name='Video tracks'),
         ),
         migrations.AlterUniqueTogether(
             name='audiotrack',
