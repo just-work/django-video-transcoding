@@ -17,21 +17,28 @@ class Preset(TimeStampedModel):
     audio_tracks: related_descriptors.ReverseManyToOneDescriptor
     video_profiles: related_descriptors.ReverseManyToOneDescriptor
     audio_profiles: related_descriptors.ReverseManyToOneDescriptor
-    name = models.SlugField(max_length=255, unique=True)
+    name = models.SlugField(verbose_name=_('name'), max_length=255, unique=True)
 
     def __str__(self) -> str:
         return self.name
 
+    class Meta:
+        verbose_name = _('Preset')
+        verbose_name_plural = _('Presets')
+
 
 class VideoTrack(TimeStampedModel):
     """ Video stream transcoding parameters."""
-    name = models.SlugField(max_length=255, unique=False)
-    params = models.JSONField(default=dict)
+    name = models.SlugField(verbose_name=_('name'), max_length=255, unique=False)
+    params = models.JSONField(verbose_name=_('params'), default=dict)
     preset = models.ForeignKey(Preset, models.CASCADE,
-                               related_name='video_tracks')
+                               related_name='video_tracks',
+                               verbose_name=_('preset'))
 
     class Meta:
         unique_together = (('name', 'preset'),)
+        verbose_name = _('Video track')
+        verbose_name_plural = _('Video tracks')
 
     def __str__(self) -> str:
         return f'{self.name}@{self.preset}'
@@ -39,13 +46,16 @@ class VideoTrack(TimeStampedModel):
 
 class AudioTrack(TimeStampedModel):
     """ Audio stream transcoding parameters."""
-    name = models.SlugField(max_length=255, unique=False)
-    params = models.JSONField(default=dict)
+    name = models.SlugField(verbose_name=_('name'), max_length=255, unique=False)
+    params = models.JSONField(verbose_name=_('params'), default=dict)
     preset = models.ForeignKey(Preset, models.CASCADE,
-                               related_name='audio_tracks')
+                               related_name='audio_tracks',
+                               verbose_name=_('preset'))
 
     class Meta:
         unique_together = (('name', 'preset'),)
+        verbose_name = _('Audio track')
+        verbose_name_plural = _('Audio tracks')
 
     def __str__(self) -> str:
         return f'{self.name}@{self.preset}'
@@ -53,62 +63,76 @@ class AudioTrack(TimeStampedModel):
 
 class VideoProfile(TimeStampedModel):
     """ Video transcoding profile."""
-    name = models.SlugField(max_length=255, unique=False)
-    order_number = models.SmallIntegerField(default=0)
-    condition = models.JSONField(default=dict)
+    name = models.SlugField(verbose_name=_('name'), max_length=255, unique=False)
+    order_number = models.SmallIntegerField(verbose_name=_('order number'), default=0)
+    condition = models.JSONField(verbose_name=_('condition'), default=dict)
     preset = models.ForeignKey(Preset, models.CASCADE,
-                               related_name='video_profiles')
+                               related_name='video_profiles',
+                               verbose_name=_('preset'))
 
     video = cast(
         related_descriptors.ManyToManyDescriptor,
-        models.ManyToManyField(VideoTrack, through='VideoProfileTracks'))
+        models.ManyToManyField(VideoTrack,
+                               verbose_name=_('Video tracks'),
+                               through='VideoProfileTracks'))
 
     class Meta:
         unique_together = (('name', 'preset'),)
         ordering = ['order_number']
+        verbose_name = _('Video profile')
+        verbose_name_plural = _('Video profiles')
 
     def __str__(self) -> str:
         return f'{self.name}@{self.preset}'
 
 
 class VideoProfileTracks(models.Model):
-    profile = models.ForeignKey(VideoProfile, models.CASCADE)
-    track = models.ForeignKey(VideoTrack, models.CASCADE)
-    order_number = models.SmallIntegerField(default=0)
+    profile = models.ForeignKey(VideoProfile, models.CASCADE, verbose_name=_('profile'))
+    track = models.ForeignKey(VideoTrack, models.CASCADE, verbose_name=_('track'))
+    order_number = models.SmallIntegerField(default=0, verbose_name=_('order number'))
 
     class Meta:
         unique_together = (('profile', 'track'),)
         ordering = ['order_number']
+        verbose_name = _('Video profile track')
+        verbose_name_plural = _('Video profile tracks')
 
 
 class AudioProfile(TimeStampedModel):
     """ Audio transcoding profile."""
-    name = models.SlugField(max_length=255, unique=False)
-    order_number = models.SmallIntegerField(default=0)
-    condition = models.JSONField(default=dict)
+    name = models.SlugField(verbose_name=_('name'), max_length=255, unique=False)
+    order_number = models.SmallIntegerField(verbose_name=_('order number'), default=0)
+    condition = models.JSONField(verbose_name=_('condition'), default=dict)
     preset = models.ForeignKey(Preset, models.CASCADE,
-                               related_name='audio_profiles')
+                               related_name='audio_profiles',
+                               verbose_name=_('preset'))
 
     audio = cast(
         related_descriptors.ManyToManyDescriptor,
-        models.ManyToManyField(AudioTrack, through='AudioProfileTracks'))
+        models.ManyToManyField(AudioTrack,
+                               verbose_name=_('Audio tracks'),
+                               through='AudioProfileTracks'))
 
     class Meta:
         unique_together = (('name', 'preset'),)
         ordering = ['order_number']
+        verbose_name = _('Audio profile')
+        verbose_name_plural = _('Audio profiles')
 
     def __str__(self) -> str:
         return f'{self.name}@{self.preset}'
 
 
 class AudioProfileTracks(models.Model):
-    profile = models.ForeignKey(AudioProfile, models.CASCADE)
-    track = models.ForeignKey(AudioTrack, models.CASCADE)
-    order_number = models.SmallIntegerField(default=0)
+    profile = models.ForeignKey(AudioProfile, models.CASCADE, verbose_name=_('profile'))
+    track = models.ForeignKey(AudioTrack, models.CASCADE, verbose_name=_('track'))
+    order_number = models.SmallIntegerField(default=0, verbose_name=_('order number'))
 
     class Meta:
         unique_together = (('profile', 'track'),)
         ordering = ['order_number']
+        verbose_name = _('Audio profile track')
+        verbose_name_plural = _('Audio profile tracks')
 
 
 class Video(TimeStampedModel):
@@ -127,13 +151,17 @@ class Video(TimeStampedModel):
     error = models.TextField(blank=True, null=True, verbose_name=_('Error'))
     task_id = models.UUIDField(blank=True, null=True,
                                verbose_name=_('Task ID'))
-    source = models.URLField(verbose_name=_('Source'),
-                             validators=[
-                                 URLValidator(schemes=('http', 'https'))])
+    source = models.URLField(
+        verbose_name=_('Source'),
+        validators=[URLValidator(schemes=('http', 'https'))])
     basename = models.UUIDField(blank=True, null=True,
                                 verbose_name=_('Basename'))
-    preset = models.ForeignKey(Preset, models.SET_NULL, blank=True, null=True)
-    metadata = models.JSONField(blank=True, null=True)
+    preset = models.ForeignKey(Preset,
+                               models.SET_NULL,
+                               verbose_name=_('preset'),
+                               blank=True,
+                               null=True)
+    metadata = models.JSONField(verbose_name=_('metadata'), blank=True, null=True)
 
     class Meta:
         app_label = 'video_transcoding'
