@@ -61,7 +61,7 @@ class AudioProfileForm(NestedJSONForm):
                                 widget=forms.HiddenInput(),
                                 initial={})
     _min_bitrate = forms.IntegerField(label=_('Min bitrate'))
-    _min_sample_rate = forms.IntegerField(label=_('Min sample bitrate'))
+    _min_sample_rate = forms.IntegerField(label=_('Min sample rate'))
 
 
 class VideoTrackForm(NestedJSONForm):

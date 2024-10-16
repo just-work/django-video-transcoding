@@ -53,7 +53,7 @@ msgid "Min frame rate"
 msgstr "Минимальная частота кадров"
 
 #: video_transcoding/forms.py:64
-msgid "Min sample bitrate"
+msgid "Min sample rate"
 msgstr "Минимальная частота дискретизации звука"
 
 #: video_transcoding/forms.py:92 video_transcoding/forms.py:123
