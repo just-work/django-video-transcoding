@@ -8,6 +8,7 @@ import celery
 from billiard.exceptions import SoftTimeLimitExceeded
 from django.db import close_old_connections
 from django.db.transaction import atomic
+from django.db.utils import OperationalError
 
 from video_transcoding import models, strategy, defaults
 from video_transcoding.celery import app
@@ -26,6 +27,16 @@ UPLOAD_TIMEOUT = 60 * 60
 class TranscodeVideo(LoggerMixin, celery.Task):
     """ Video processing task."""
     routing_key = 'video_transcoding'
+    autoretry_for = (OperationalError,)
+    inifinite_retry_for = (OperationalError,)
+
+    def retry(self, args=None, kwargs=None, exc=None, throw=True, eta=None,
+              countdown=None, max_retries=None, **options):
+        if isinstance(exc, self.inifinite_retry_for):
+            # infinite retries
+            self.request.retries -= 1
+        return super().retry(args, kwargs, exc, throw, eta, countdown,
+                             max_retries, **options)
 
     def run(self, video_id: int) -> Optional[str]:
         """
