@@ -6,6 +6,7 @@ from uuid import UUID, uuid4
 
 import celery
 from billiard.exceptions import SoftTimeLimitExceeded
+from django.db import close_old_connections
 from django.db.transaction import atomic
 
 from video_transcoding import models, strategy, defaults
@@ -54,6 +55,8 @@ class TranscodeVideo(LoggerMixin, celery.Task):
             error = repr(e)
             self.logger.exception("Processing error %s", error)
         finally:
+            # Close possible stale connections after long operation
+            close_old_connections()
             self.unlock_video(video_id, status, error, meta, duration)
         return error
 
