@@ -21,7 +21,7 @@ def send_transcode_task(sender: Any, *, instance: models.Video, created: bool,
 
 # noinspection PyUnusedLocal
 @task_prerun.connect
-def send_request_started(task: celery.Task, **kwargs):
+def send_request_started(task: celery.Task, **kwargs: Any) -> None:
     """
     Send request_started signal to launch django life cycle handlers.
     """
@@ -30,7 +30,7 @@ def send_request_started(task: celery.Task, **kwargs):
 
 # noinspection PyUnusedLocal
 @task_postrun.connect
-def send_request_finished(task: celery.Task, **kwargs):
+def send_request_finished(task: celery.Task, **kwargs: Any) -> None:
     """
     Send request_finished signal to launch django life cycle handlers.
     """
