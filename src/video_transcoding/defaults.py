@@ -3,15 +3,22 @@ from os import getenv as e
 from django.conf import settings
 from kombu import Queue
 
-
 CELERY_APP_NAME = 'video_transcoding'
-
 
 try:
     VIDEO_TRANSCODING_CELERY_CONF = getattr(
         settings, 'VIDEO_TRANSCODING_CELERY_CONF',
     )
 except AttributeError:
+    video_transcoding_timeout = int(e('VIDEO_TRANSCODING_TIMEOUT', 0))
+    if video_transcoding_timeout:
+        queue_arguments = {
+            # Prevent RabbitMQ closing broker connection while running
+            # a long transcoding task
+            'x-consumer-timeout': video_transcoding_timeout * 1000
+        }
+    else:
+        queue_arguments = {}
     VIDEO_TRANSCODING_CELERY_CONF = {
         'broker_url': e('VIDEO_TRANSCODING_CELERY_BROKER_URL',
                         'amqp://guest:guest@rabbitmq:5672/'),
@@ -24,7 +31,11 @@ except AttributeError:
         'task_acks_late': True,
         'task_reject_on_worker_lost': True,
         'task_queues': [
-            Queue(CELERY_APP_NAME, routing_key=CELERY_APP_NAME),
+            Queue(
+                CELERY_APP_NAME,
+                routing_key=CELERY_APP_NAME,
+                queue_arguments=queue_arguments
+            ),
         ]
     }
 
@@ -53,7 +64,6 @@ VIDEO_REQUEST_TIMEOUT = float(e('VIDEO_REQUEST_TIMEOUT', 1))
 VIDEO_CHUNK_DURATION = int(e('VIDEO_CHUNK_DURATION', 60))
 
 VIDEO_MODEL = 'video_transcoding.Video'
-
 
 _default_config = locals()
 _local_config = getattr(settings, 'VIDEO_TRANSCODING_CONFIG', {})
