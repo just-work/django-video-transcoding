@@ -1,7 +1,7 @@
 import dataclasses
 import time
-from datetime import timedelta
-from typing import Optional, List
+from datetime import timedelta, datetime
+from typing import Optional, List, Iterable, Any, Dict, Union
 from uuid import UUID, uuid4
 
 import celery
@@ -31,8 +31,15 @@ class TranscodeVideo(LoggerMixin, celery.Task):
     inifinite_retry_for = (OperationalError,)
     retry_backoff = True
 
-    def retry(self, args=None, kwargs=None, exc=None, throw=True, eta=None,
-              countdown=None, max_retries=None, **options):
+    def retry(self,
+              args: Optional[Iterable[Any]] = None,
+              kwargs: Optional[Dict[str, Any]] = None,
+              exc: Optional[Exception] = None,
+              throw: bool = True,
+              eta: Optional[datetime] = None,
+              countdown: Optional[Union[float, int]] = None,
+              max_retries: Optional[int] = None,
+              **options: Any) -> Any:
         if isinstance(exc, self.inifinite_retry_for):
             # increment max_retries by one to achieve unlimited retries
             # for infrastructure errors
