@@ -1,7 +1,7 @@
 import abc
 import os.path
 from itertools import product
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Literal, cast
 from urllib.parse import urljoin
 
 from fffw import encoding
@@ -9,8 +9,8 @@ from fffw.encoding.vector import SIMD, Vector
 from fffw.graph import VIDEO, AUDIO
 
 from video_transcoding import defaults
-from video_transcoding.transcoding import codecs, outputs
-from video_transcoding.transcoding.metadata import Metadata, Analyzer, rational
+from video_transcoding.transcoding import codecs, outputs, analysis
+from video_transcoding.transcoding.metadata import Metadata, rational
 from video_transcoding.transcoding.profiles import Profile
 from video_transcoding.utils import LoggerMixin
 
@@ -171,101 +171,47 @@ class Splitter(Processor):
     """
 
     def get_result_metadata(self, uri: str) -> Metadata:
-        dst = super().get_result_metadata(uri)
-        data = Analyzer().ffprobe(uri)
+        dst = analysis.SplitExtractor().get_meta_data(uri)
         # Mediainfo takes metadata from first HLS chunk in a playlist, so
         # we need to force some fields from source metadata
         if len(self.meta.videos) != len(dst.videos):
             raise RuntimeError("Streams mismatch")
         for s, d in zip(self.meta.videos, dst.videos):
-            if s.streams != d.streams:
-                raise RuntimeError("Stream order mismatch")
-            # Replace chunk duration with whole source duration
-            d.duration = s.duration
-            # Fill empty frames/frame_rate metadata from source
-            d.frames = s.frames
-            d.frame_rate = s.frame_rate
-            # To have exact match copy scenes list from source
-            d.scenes = s.scenes
+            d.bitrate = s.bitrate
         if len(self.meta.audios) != len(dst.audios):
             raise RuntimeError("Streams mismatch")
         for s, d in zip(self.meta.audios, dst.audios):
-            if s.streams != d.streams:
-                raise RuntimeError("Stream order mismatch")
-            ffprobe_stream = data[s.streams[0]]
-            # Replace chunk duration with whole source duration
-            d.duration = s.duration
-            # Fill sample_rate from transcoded ffprobe result
-            d.sample_rate = int(ffprobe_stream['sample_rate'])
-            # Recompute samples count from duration
-            d.samples = round(d.duration * d.sample_rate)
-            # Fill bitrate from HLS metadata
-            bitrate = int(ffprobe_stream['tags']['variant_bitrate'])
-            # remove 10% overhead, see
-            # https://github.com/FFmpeg/FFmpeg/blob/n7.0.1/libavformat/hlsenc.c#L1493
-            d.bitrate = round(bitrate / 1.1)
-            # To have exact match copy scenes list from source
-            d.scenes = s.scenes
+            d.bitrate = s.bitrate
         return dst
 
     def prepare_ffmpeg(self, src: Metadata) -> encoding.FFMPEG:
         source = encoding.input_file(self.src, *src.streams)
-        bitrate = source.video.meta.bitrate
-        codecs_list = [source.video > codecs.Copy(kind=VIDEO, bitrate=bitrate)]
-        codecs_list.extend([source.audio > c
-                            for c in self.prepre_audio_codecs()])
-        out = self.prepare_output(codecs_list)
-        return encoding.FFMPEG(input=source, output=out, loglevel='level+info')
+        video_codecs = [source.video > codecs.Copy(kind=VIDEO)]
+        audio_codecs = [source.audio > codecs.Copy(kind=AUDIO)]
+        video_out = self.prepare_output(video_codecs)
+        audio_out = self.prepare_output(audio_codecs)
+        ff = encoding.FFMPEG(input=source, loglevel='level+info')
+        ff > video_out
+        ff > audio_out
+        return ff
 
-    def prepare_output(self,
-                       codecs_list: List[encoding.Codec]
-                       ) -> encoding.Output:
-        return outputs.HLSOutput(
-            **self.get_output_kwargs(codecs_list)
-        )
+    def prepare_output(self, codecs_list: List[encoding.Codec]) -> encoding.Output:
+        return outputs.SegmentOutput(**self.get_output_kwargs(codecs_list))
 
-    def prepre_audio_codecs(self) -> List[codecs.AudioCodec]:
-        audio_codecs = []
-        for audio in self.profile.audio:
-            audio_codecs.append(codecs.AudioCodec(
-                codec=audio.codec,
-                bitrate=audio.bitrate,
-                channels=audio.channels,
-                rate=audio.sample_rate,
-            ))
-        return audio_codecs
-
-    def get_output_kwargs(self,
-                          codecs_list: List[encoding.Codec]
-                          ) -> Dict[str, Any]:
+    def get_output_kwargs(self, codecs_list: List[encoding.Codec]) -> Dict[str, Any]:
+        kinds = {c.kind for c in codecs_list}
+        kind = cast(Literal["video", "audio"], kinds.pop().name.lower())
         return dict(
-            hls_time=defaults.VIDEO_CHUNK_DURATION,
-            hls_playlist_type='vod',
             codecs=codecs_list,
-            muxdelay='0',
-            copyts=True,
-            output_file=urljoin(self.dst, 'playlist-%v.m3u8'),
-            hls_segment_filename=urljoin(self.dst, 'segment-%v-%05d.ts'),
-            master_pl_name=os.path.basename(self.dst),
-            var_stream_map=self.get_var_stream_map(codecs_list)
+            format='stream_segment',
+            segment_format='nut',
+            segment_format_options={},
+            segment_list=urljoin(self.dst, f'source-{kind}.m3u8'),
+            segment_list_type='m3u8',
+            segment_time=defaults.VIDEO_CHUNK_DURATION,
+            min_seg_duration=defaults.VIDEO_CHUNK_DURATION,
+            output_file=urljoin(self.dst, f'source-{kind}-%05d.nut'),
         )
-
-    @staticmethod
-    def get_var_stream_map(codecs_list: List[encoding.Codec]) -> str:
-        audios = []
-        videos = []
-        for c in codecs_list:
-            if c.kind == VIDEO:
-                videos.append(c)
-            else:
-                audios.append(c)
-        vsm = []
-        for i, a in enumerate(audios):
-            vsm.append(f'a:{i},name:audio-{i}')
-        for (i, a), (j, v) in product(enumerate(audios), enumerate(videos)):
-            vsm.append(f'v:{j},name:video-{i}')
-        var_stream_map = ' '.join(vsm)
-        return var_stream_map
 
 
 class Segmentor(Processor):
