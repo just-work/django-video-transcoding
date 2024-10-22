@@ -1,6 +1,6 @@
 import abc
 import json
-from typing import List, cast
+from typing import List, cast, Any
 
 from pymediainfo import MediaInfo
 
@@ -17,7 +17,7 @@ class Extractor(LoggerMixin, abc.ABC):
     def get_meta_data(self, uri: str) -> Metadata:
         raise NotImplementedError()
 
-    def ffprobe(self, uri: str, timeout: float = 60.0, **kwargs) -> ffprobe.ProbeInfo:
+    def ffprobe(self, uri: str, timeout: float = 60.0, **kwargs: Any) -> ffprobe.ProbeInfo:
         self.logger.debug("Probing %s", uri)
         ff = FFProbe(uri, show_format=True, show_streams=True, output_format='json', **kwargs)
         self.logger.debug('[%s] %s', timeout, ff.get_cmd())
@@ -54,7 +54,7 @@ class SplitExtractor(Extractor):
     Extracts source metadata from video and audio HLS playlists.
     """
 
-    def ffprobe(self, uri: str, timeout: float = 60.0, **kwargs) -> ffprobe.ProbeInfo:
+    def ffprobe(self, uri: str, timeout: float = 60.0, **kwargs: Any) -> ffprobe.ProbeInfo:
         kwargs.setdefault('allowed_extensions', 'nut')
         return super().ffprobe(uri, timeout, **kwargs)
 
