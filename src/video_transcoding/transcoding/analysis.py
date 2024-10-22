@@ -25,3 +25,15 @@ class NutPlaylistAnalyzer(ffprobe.Analyzer):
         if not duration and len(self.info.streams) == 1:
             duration = self.maybe_parse_duration(self.info.format.get('duration'))
         return duration
+
+
+class NutSegmentAnalyzer(NutPlaylistAnalyzer):
+    """
+    Analyzer for audio/video segments in .NUT container.
+    """
+
+    def get_bitrate(self, track: Dict[str, Any]) -> int:
+        bitrate = super().get_bitrate(track)
+        if bitrate == 0 and len(self.info.streams) == 1:
+            bitrate = int(self.info.format.get('bit_rate', 0))
+        return bitrate

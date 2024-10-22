@@ -144,14 +144,14 @@ class ResumableStrategy(Strategy):
         """
         :return: An m3u8 playlist file for split video source.
         """
-        return self.sources.file('playlist-video-0.m3u8')
+        return self.sources.file('source-video.m3u8')
 
     @property
     def audio_playlist_file(self) -> workspace.File:
         """
         :return: An m3u8 playlist file for transcoded audio.
         """
-        return self.sources.file('playlist-audio-0.m3u8')
+        return self.sources.file('source-audio.m3u8')
 
     @property
     def manifest_uri(self) -> str:
@@ -426,14 +426,6 @@ class ResumableStrategy(Strategy):
         return self.ws.get_absolute_uri(f).geturl()
 
     def get_segment_meta(self, src: workspace.File) -> metadata.Metadata:
-        meta = self.analyze_source()
         segment_uri = self.ws.get_absolute_uri(src).geturl()
-        segment = Analyzer().get_meta_data(segment_uri)
-        # Mediainfo lacks some metadata from TS fragments, so we need source
-        # metadata to fill missing fields.
-        for s, d in zip(meta.videos, segment.videos):
-            # Set frame rate from source
-            d.frame_rate = s.frame_rate
-            # Recompute frames count from segment duration and source frame rate
-            d.frames = round(d.duration * d.frame_rate)
+        segment = extract.VideoSegmentExtractor().get_meta_data(segment_uri)
         return segment

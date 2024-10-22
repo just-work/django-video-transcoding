@@ -6,7 +6,7 @@ from pymediainfo import MediaInfo
 
 from fffw.analysis import ffprobe
 from fffw.graph import meta
-from video_transcoding.transcoding.analysis import SourceAnalyzer, NutPlaylistAnalyzer
+from video_transcoding.transcoding import analysis
 from video_transcoding.transcoding.ffprobe import FFProbe
 from video_transcoding.transcoding.metadata import Metadata
 from video_transcoding.utils import LoggerMixin
@@ -37,7 +37,7 @@ class SourceExtractor(Extractor):
         info = self.mediainfo(uri)
         video_streams: List[meta.VideoMeta] = []
         audio_streams: List[meta.AudioMeta] = []
-        for s in SourceAnalyzer(info).analyze():
+        for s in analysis.SourceAnalyzer(info).analyze():
             if isinstance(s, meta.VideoMeta):
                 video_streams.append(s)
             elif isinstance(s, meta.AudioMeta):
@@ -49,22 +49,42 @@ class SourceExtractor(Extractor):
         )
 
 
-class SplitExtractor(Extractor):
+class NutExtractor(Extractor, abc.ABC):
     """
-    Extracts source metadata from video and audio HLS playlists.
+    Supports analyzing media with .nut extension.
     """
-
     def ffprobe(self, uri: str, timeout: float = 60.0, **kwargs: Any) -> ffprobe.ProbeInfo:
         kwargs.setdefault('allowed_extensions', 'nut')
         return super().ffprobe(uri, timeout, **kwargs)
 
+
+
+class SplitExtractor(NutExtractor):
+    """
+    Extracts source metadata from video and audio HLS playlists.
+    """
+
     def get_meta_data(self, uri: str) -> Metadata:
         video_uri = uri.replace('/split.json', '/source-video.m3u8')
-        video_streams = NutPlaylistAnalyzer(self.ffprobe(video_uri)).analyze()
+        video_streams = analysis.NutPlaylistAnalyzer(self.ffprobe(video_uri)).analyze()
         audio_uri = uri.replace('/split.json', '/source-audio.m3u8')
-        audio_streams = NutPlaylistAnalyzer(self.ffprobe(audio_uri)).analyze()
+        audio_streams = analysis.NutPlaylistAnalyzer(self.ffprobe(audio_uri)).analyze()
         return Metadata(
             uri=uri,
             videos=cast(List[meta.VideoMeta], video_streams),
             audios=cast(List[meta.AudioMeta], audio_streams),
+        )
+
+
+class VideoSegmentExtractor(NutExtractor):
+    """
+    Extracts metadata from video segments
+    """
+
+    def get_meta_data(self, uri: str) -> Metadata:
+        streams = analysis.NutSegmentAnalyzer(self.ffprobe(uri)).analyze()
+        return Metadata(
+            uri=uri,
+            videos=cast(List[meta.VideoMeta], streams),
+            audios=[],
         )
