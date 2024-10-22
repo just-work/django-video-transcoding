@@ -10,7 +10,7 @@ from video_transcoding.transcoding import (
     profiles,
     metadata,
     transcoder,
-    analysis,
+    extract,
 )
 from video_transcoding.utils import LoggerMixin
 
@@ -267,7 +267,7 @@ class ResumableStrategy(Strategy):
         Runs source file analysis
         :return: source file metadata.
         """
-        src = analysis.SourceExtractor().get_meta_data(self.source_uri)
+        src = extract.SourceExtractor().get_meta_data(self.source_uri)
         return src
 
     def select_profile(self, src: metadata.Metadata) -> profiles.Profile:
