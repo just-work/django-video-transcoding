@@ -133,11 +133,11 @@ class ResumableStrategy(Strategy):
         return self.sources.file('source.json')
 
     @property
-    def source_manifest(self) -> workspace.File:
+    def split_metadata(self) -> workspace.File:
         """
-        :return: An m3u8 manifest file for downloaded source.
+        :return: A json file with metadata for split file.
         """
-        return self.sources.file('source.m3u8')
+        return self.sources.file('split.json')
 
     @property
     def video_playlist_file(self) -> workspace.File:
@@ -306,11 +306,10 @@ class ResumableStrategy(Strategy):
         :param src: remote source metadata.
         :return: a list of chunk filenames.
         """
-        f = self.metadata_file(self.source_manifest)
+        f = self.split_metadata
         if self.ws.exists(f):
-            # m3u8 playlist already written after split finished, reuse it
-            self.logger.debug("Source already downloaded to %s",
-                              self.source_manifest)
+            # split metadata is already written after playlists finished, reuse it
+            self.logger.debug("Source already split to %s", self.split_metadata)
             content = self.ws.read(f)
             data = json.loads(content)
             meta = metadata.Metadata.from_native(data)
@@ -325,7 +324,7 @@ class ResumableStrategy(Strategy):
         """
         Downloads source file and split it to chunks at shared webdav.
         """
-        destination = self.ws.get_absolute_uri(self.source_manifest)
+        destination = self.ws.get_absolute_uri(self.split_metadata)
         split = transcoder.Splitter(
             self.source_uri,
             destination.geturl(),
