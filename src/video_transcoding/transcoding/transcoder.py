@@ -9,7 +9,7 @@ from fffw.encoding.vector import SIMD, Vector
 from fffw.graph import VIDEO, AUDIO
 
 from video_transcoding import defaults
-from video_transcoding.transcoding import codecs, outputs, analysis
+from video_transcoding.transcoding import codecs, outputs, extract
 from video_transcoding.transcoding.metadata import Metadata, rational
 from video_transcoding.transcoding.profiles import Profile
 from video_transcoding.utils import LoggerMixin
@@ -171,7 +171,7 @@ class Splitter(Processor):
     """
 
     def get_result_metadata(self, uri: str) -> Metadata:
-        dst = analysis.SplitExtractor().get_meta_data(uri)
+        dst = extract.SplitExtractor().get_meta_data(uri)
         # Mediainfo takes metadata from first HLS chunk in a playlist, so
         # we need to force some fields from source metadata
         if len(self.meta.videos) != len(dst.videos):
