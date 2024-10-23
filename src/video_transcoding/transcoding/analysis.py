@@ -41,5 +41,5 @@ class NutSegmentAnalyzer(NutPlaylistAnalyzer):
 
 class VideoResultAnalyzer(ffprobe.Analyzer):
     """
-    Analyzer for multi-stream video segments in NUT container.
+    Analyzer for multi-stream video segments in MPEGTS container.
     """
