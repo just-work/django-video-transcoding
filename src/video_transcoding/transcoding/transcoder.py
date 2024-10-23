@@ -262,10 +262,8 @@ class Segmentor(Processor):
             vc.bitrate = vt.max_rate
 
         audio_streams = [s for s in src.streams if s.kind == AUDIO]
-        audio_source = encoding.input_file(self.audio, *audio_streams)
-        audio_codecs = [s > codecs.Copy(kind=AUDIO, bitrate=s.meta.bitrate)
-                        for s in audio_source.streams
-                        if s.kind == AUDIO]
+        audio_source = inputs.input_file(self.audio, *audio_streams)
+        audio_codecs = [audio_source.audio > c for c in self.prepare_audio_codecs()]
 
         for ac, at in zip(audio_codecs, self.profile.audio):
             ac.bitrate = at.bitrate
@@ -276,6 +274,17 @@ class Segmentor(Processor):
                              loglevel='level+info')
         ff.add_input(audio_source)
         return ff
+
+    def prepare_audio_codecs(self) -> List[codecs.AudioCodec]:
+        audio_codecs = []
+        for audio in self.profile.audio:
+            audio_codecs.append(codecs.AudioCodec(
+                codec=audio.codec,
+                bitrate=audio.bitrate,
+                channels=audio.channels,
+                rate=audio.sample_rate,
+            ))
+        return audio_codecs
 
     def prepare_output(self,
                        codecs_list: List[encoding.Codec]
