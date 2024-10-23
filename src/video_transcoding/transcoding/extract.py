@@ -54,7 +54,7 @@ class NutExtractor(Extractor, abc.ABC):
     Supports analyzing media with .nut extension.
     """
     def ffprobe(self, uri: str, timeout: float = 60.0, **kwargs: Any) -> ffprobe.ProbeInfo:
-        kwargs.setdefault('allowed_extensions', 'nut')
+        kwargs.setdefault('allowed_extensions', 'mkv')
         return super().ffprobe(uri, timeout, **kwargs)
 
 

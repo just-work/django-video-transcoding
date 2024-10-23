@@ -194,13 +194,13 @@ class Splitter(Processor):
         return dict(
             codecs=codecs_list,
             format='stream_segment',
-            segment_format='nut',
+            segment_format='mkv',
             segment_format_options={},
             segment_list=urljoin(self.dst, f'source-{kind}.m3u8'),
             segment_list_type='m3u8',
             segment_time=defaults.VIDEO_CHUNK_DURATION,
             min_seg_duration=defaults.VIDEO_CHUNK_DURATION,
-            output_file=urljoin(self.dst, f'source-{kind}-%05d.nut'),
+            output_file=urljoin(self.dst, f'source-{kind}-%05d.mkv'),
         )
 
 
@@ -253,7 +253,7 @@ class Segmentor(Processor):
     def prepare_ffmpeg(self, src: Metadata) -> encoding.FFMPEG:
         video_streams = [s for s in src.streams if s.kind == VIDEO]
         video_source = inputs.input_file(self.src, *video_streams,
-                                         allowed_extensions='nut')
+                                         allowed_extensions='mkv')
         video_codecs = [s > codecs.Copy(kind=VIDEO, bitrate=s.meta.bitrate)
                         for s in video_source.streams
                         if s.kind == VIDEO]
