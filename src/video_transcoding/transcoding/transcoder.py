@@ -9,7 +9,7 @@ from fffw.encoding.vector import SIMD, Vector
 from fffw.graph import VIDEO, AUDIO
 
 from video_transcoding import defaults
-from video_transcoding.transcoding import codecs, outputs, extract
+from video_transcoding.transcoding import codecs, inputs, outputs, extract
 from video_transcoding.transcoding.metadata import Metadata, rational
 from video_transcoding.transcoding.profiles import Profile
 from video_transcoding.utils import LoggerMixin
@@ -111,7 +111,7 @@ class Transcoder(Processor):
 
     @staticmethod
     def prepare_input(src: Metadata) -> encoding.Input:
-        return encoding.input_file(src.uri, *src.streams)
+        return inputs.input_file(src.uri, *src.streams)
 
     def prepare_output(self,
                        audio_codecs: List[encoding.Copy],
@@ -175,7 +175,7 @@ class Splitter(Processor):
         return dst
 
     def prepare_ffmpeg(self, src: Metadata) -> encoding.FFMPEG:
-        source = encoding.input_file(self.src, *src.streams)
+        source = inputs.input_file(self.src, *src.streams)
         video_codecs = [source.video > codecs.Copy(kind=VIDEO)]
         audio_codecs = [source.audio > codecs.Copy(kind=AUDIO)]
         video_out = self.prepare_output(video_codecs)
@@ -252,7 +252,8 @@ class Segmentor(Processor):
 
     def prepare_ffmpeg(self, src: Metadata) -> encoding.FFMPEG:
         video_streams = [s for s in src.streams if s.kind == VIDEO]
-        video_source = encoding.input_file(self.src, *video_streams)
+        video_source = inputs.input_file(self.src, *video_streams,
+                                         allowed_extensions='nut')
         video_codecs = [s > codecs.Copy(kind=VIDEO, bitrate=s.meta.bitrate)
                         for s in video_source.streams
                         if s.kind == VIDEO]
