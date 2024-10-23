@@ -37,3 +37,9 @@ class NutSegmentAnalyzer(NutPlaylistAnalyzer):
         if bitrate == 0 and len(self.info.streams) == 1:
             bitrate = int(self.info.format.get('bit_rate', 0))
         return bitrate
+
+
+class VideoResultAnalyzer(ffprobe.Analyzer):
+    """
+    Analyzer for multi-stream video segments in NUT container.
+    """

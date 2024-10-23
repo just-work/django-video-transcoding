@@ -77,17 +77,7 @@ class Transcoder(Processor):
     requires_audio = False
 
     def get_result_metadata(self, uri: str) -> Metadata:
-        dst = super().get_result_metadata(uri)
-        data = Analyzer().ffprobe(uri)
-        for s in dst.videos:
-            ffprobe_stream = data[s.streams[0]]
-            # For MPEGTS files nor mediainfo nor ffprobe can estimate bitrate
-            # for multi-track files.
-            s.bitrate = 0
-            # Parse frame rate from ffprobe data
-            s.frame_rate = rational(ffprobe_stream['avg_frame_rate'])
-            # Estimate frame count from duration
-            s.frames = round(s.duration * s.frame_rate)
+        dst = extract.VideoResultExtractor().get_meta_data(uri)
         return dst
 
     def prepare_ffmpeg(self, src: Metadata) -> encoding.FFMPEG:

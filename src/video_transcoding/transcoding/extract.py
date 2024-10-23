@@ -58,7 +58,6 @@ class NutExtractor(Extractor, abc.ABC):
         return super().ffprobe(uri, timeout, **kwargs)
 
 
-
 class SplitExtractor(NutExtractor):
     """
     Extracts source metadata from video and audio HLS playlists.
@@ -83,6 +82,21 @@ class VideoSegmentExtractor(NutExtractor):
 
     def get_meta_data(self, uri: str) -> Metadata:
         streams = analysis.NutSegmentAnalyzer(self.ffprobe(uri)).analyze()
+        return Metadata(
+            uri=uri,
+            videos=cast(List[meta.VideoMeta], streams),
+            audios=[],
+        )
+
+
+class VideoResultExtractor(NutExtractor):
+    """
+    Extracts metadata from video segment transcoding results.
+    """
+
+    def get_meta_data(self, uri: str) -> Metadata:
+        streams = analysis.VideoResultAnalyzer(self.ffprobe(uri)).analyze()
+        # Missing bitrate is OK because it varies among segments.
         return Metadata(
             uri=uri,
             videos=cast(List[meta.VideoMeta], streams),
