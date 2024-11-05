@@ -7,10 +7,9 @@ from urllib.parse import urljoin
 from fffw import encoding
 from fffw.encoding.vector import SIMD, Vector
 from fffw.graph import VIDEO, AUDIO
-
 from video_transcoding import defaults
 from video_transcoding.transcoding import codecs, inputs, outputs, extract
-from video_transcoding.transcoding.metadata import Metadata, rational
+from video_transcoding.transcoding.metadata import Metadata
 from video_transcoding.transcoding.profiles import Profile
 from video_transcoding.utils import LoggerMixin
 
@@ -41,6 +40,7 @@ class Processor(LoggerMixin, abc.ABC):
         dst = self.get_result_metadata(self.dst)
         return dst
 
+    @abc.abstractmethod
     def get_result_metadata(self, uri: str) -> Metadata:
         """
         Get result metadata.
@@ -48,13 +48,7 @@ class Processor(LoggerMixin, abc.ABC):
         :param uri: analyzed media
         :return: metadata object with video and audio stream
         """
-        self.logger.debug("Analyzing %s", uri)
-        mi = Analyzer().get_meta_data(uri)
-        if self.requires_video and not mi.videos:
-            raise ValueError("missing video stream")
-        if self.requires_audio and not mi.audios:
-            raise ValueError("missing audio stream")
-        return mi
+        raise NotImplementedError()
 
     @staticmethod
     def run(ff: encoding.FFMPEG) -> None:
