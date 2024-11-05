@@ -217,37 +217,7 @@ class Segmentor(Processor):
         self.audio = audio_source
 
     def get_result_metadata(self, uri: str) -> Metadata:
-        dst = super().get_result_metadata(uri)
-        data = Analyzer().ffprobe(uri)
-        # ffprobe uses audio stream as audio#0 and HLS audio group linked to
-        # variants as audio#1. Video streams receive indices 2-N and thus
-        # don't correspond to mediainfo streams.
-
-        ffprobe_audio = [s for s in data.values() if s['codec_type'] == 'audio']
-        for a, ff, src in zip(dst.audios, ffprobe_audio, self.meta.audios):
-            # Set bitrate from "source" metadata
-            a.bitrate = src.bitrate
-            # Replace segment duration with source duration
-            a.duration = src.duration
-            a.scenes = src.scenes
-            # Recompute samples from source duration
-            a.samples = round(a.duration * a.sampling_rate)
-
-        ffprobe_video = [s for s in data.values() if s['codec_type'] == 'video']
-        for v, ff, src in zip(dst.videos, ffprobe_video, self.meta.videos):
-            # Mediainfo estimates bitrate from first chunk which is error-prone.
-            # Replace it with nominal bitrate from HLS manifest.
-            bandwidth = int(ff['tags']['variant_bitrate'])
-            # remove 10% overhead, see
-            # https://github.com/FFmpeg/FFmpeg/blob/n7.0.1/libavformat/hlsenc.c#L1493
-            v.bitrate = round(bandwidth / 1.1)
-            # Replace segment duration with source duration
-            v.duration = src.duration
-            v.scenes = src.scenes
-            # Set frame rate from ffprobe data
-            v.frame_rate = rational(ff['avg_frame_rate'])
-            # Compute frames from frame rate and duration
-            v.frames = round(v.duration * v.frame_rate)
+        dst = extract.HLSExtractor().get_meta_data(uri)
         return dst
 
     def prepare_ffmpeg(self, src: Metadata) -> encoding.FFMPEG:

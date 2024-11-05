@@ -43,3 +43,36 @@ class VideoResultAnalyzer(ffprobe.Analyzer):
     """
     Analyzer for multi-stream video segments in MPEGTS container.
     """
+
+
+class FFProbeHLSAnalyzer(ffprobe.Analyzer):
+    """
+    Analyzer for multi-variant HLS results.
+    """
+
+    def analyze(self) -> list[meta.Meta]:
+        streams: list[meta.Meta] = []
+        for stream in self.info.streams:
+            if stream.get('tags', {}).get('comment'):
+                # Skip HLS alternative groups
+                continue
+            if stream["codec_type"] == "video":
+                streams.append(self.video_meta_data(**stream))
+            elif stream["codec_type"] == "audio":
+                streams.append(self.audio_meta_data(**stream))
+        return streams
+
+    def get_duration(self, track: Dict[str, Any]) -> meta.TS:
+        duration = super().get_duration(track)
+        if duration:
+            return duration
+        return self.maybe_parse_duration(self.info.format.get('duration'))
+
+    def get_bitrate(self, track: Dict[str, Any]) -> int:
+        bitrate = super().get_bitrate(track)
+        if bitrate:
+            return bitrate
+        variant_bitrate = int(track.get('tags', {}).get('variant_bitrate', 0))
+        # Revert multiplying real bitrate on 1.1
+        # https://github.com/FFmpeg/FFmpeg/blob/n7.0.1/libavformat/hlsenc.c#L1493
+        return round(variant_bitrate / 1.1)
