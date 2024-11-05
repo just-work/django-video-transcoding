@@ -102,3 +102,24 @@ class VideoResultExtractor(NutExtractor):
             videos=cast(List[meta.VideoMeta], streams),
             audios=[],
         )
+
+
+class HLSExtractor(Extractor):
+    """
+    Extracts metadata from HLS results.
+    """
+
+    def get_meta_data(self, uri: str) -> Metadata:
+        info = self.ffprobe(uri)
+        video_streams: List[meta.VideoMeta] = []
+        audio_streams: List[meta.AudioMeta] = []
+        for s in analysis.FFProbeHLSAnalyzer(info).analyze():
+            if isinstance(s, meta.VideoMeta):
+                video_streams.append(s)
+            elif isinstance(s, meta.AudioMeta):
+                audio_streams.append(s)
+        return Metadata(
+            uri=uri,
+            videos=video_streams,
+            audios=audio_streams,
+        )
