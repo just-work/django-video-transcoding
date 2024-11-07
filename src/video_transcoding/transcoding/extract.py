@@ -20,7 +20,6 @@ class Extractor(LoggerMixin, abc.ABC):
     def ffprobe(self, uri: str, timeout: float = 60.0, **kwargs: Any) -> ffprobe.ProbeInfo:
         self.logger.debug("Probing %s", uri)
         ff = FFProbe(uri, show_format=True, show_streams=True, output_format='json', **kwargs)
-        self.logger.debug('[%s] %s', timeout, ff.get_cmd())
         ret, output, errors = ff.run(timeout=timeout)
         if ret != 0:
             raise RuntimeError(f"ffprobe returned {ret}")
