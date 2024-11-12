@@ -1,4 +1,4 @@
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 from fffw.analysis import ffprobe, mediainfo
 from fffw.graph import meta
