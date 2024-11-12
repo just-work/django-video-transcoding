@@ -7,6 +7,7 @@ from urllib.parse import urljoin
 from fffw import encoding
 from fffw.encoding.vector import SIMD, Vector
 from fffw.graph import VIDEO, AUDIO
+
 from video_transcoding import defaults
 from video_transcoding.transcoding import codecs, inputs, outputs, extract
 from video_transcoding.transcoding.metadata import Metadata
@@ -85,8 +86,7 @@ class Transcoder(Processor):
 
         # Initialize output file with audio and codecs from profile tracks.
         video_codecs = self.prepare_video_codecs()
-        audio_codecs = self.prepare_audio_codecs(source)
-        dst = self.prepare_output(audio_codecs, video_codecs)
+        dst = self.prepare_output(video_codecs)
 
         # ffmpeg wrapper with vectorized processing capabilities
         simd = SIMD(source, dst,
@@ -108,15 +108,15 @@ class Transcoder(Processor):
         return inputs.input_file(src.uri, *src.streams)
 
     def prepare_output(self,
-                       audio_codecs: List[encoding.Copy],
                        video_codecs: List[encoding.VideoCodec],
                        ) -> encoding.Output:
         return outputs.FileOutput(
             output_file=self.dst,
             method='PUT',
-            codecs=[*video_codecs, *audio_codecs],
+            codecs=[*video_codecs],
             format='mpegts',
             muxdelay='0',
+            avoid_negative_ts='disabled',
             copyts=True,
         )
 
@@ -136,17 +136,6 @@ class Transcoder(Processor):
                 rate=video.frame_rate,
             ))
         return video_codecs
-
-    @staticmethod
-    def prepare_audio_codecs(source: encoding.Input) -> List[encoding.Copy]:
-        audio_codecs = []
-        for stream in source.streams:
-            if stream.kind != AUDIO:
-                continue
-            audio_codecs.append(codecs.Copy(
-                kind=AUDIO,
-            ))
-        return audio_codecs
 
 
 class Splitter(Processor):
@@ -189,6 +178,8 @@ class Splitter(Processor):
             codecs=codecs_list,
             format='stream_segment',
             segment_format='mkv',
+            avoid_negative_ts='disabled',
+            copyts=True,
             segment_format_options={},
             segment_list=urljoin(self.dst, f'source-{kind}.m3u8'),
             segment_list_type='m3u8',
@@ -266,7 +257,9 @@ class Segmentor(Processor):
             codecs=codecs_list,
             muxdelay='0',
             copyts=True,
+            avoid_negative_ts='auto',
             var_stream_map=self.get_var_stream_map(codecs_list),
+            reset_timestamps=1,
             output_file=urljoin(self.dst, 'playlist-%v.m3u8'),
             hls_segment_filename=urljoin(self.dst, 'segment-%v-%05d.ts'),
             master_pl_name=os.path.basename(self.dst),
