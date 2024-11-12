@@ -1,8 +1,14 @@
 from dataclasses import dataclass
 from typing import Optional, Dict, Any
 
-from fffw.encoding.outputs import Output
+from fffw.encoding import outputs
 from fffw.wrapper import param
+
+
+@dataclass
+class Output(outputs.Output):
+    copyts: bool = param(default=False)
+    avoid_negative_ts: str = param()
 
 
 @dataclass
@@ -13,7 +19,7 @@ class HLSOutput(Output):
     hls_segment_filename: Optional[str] = None
     master_pl_name: Optional[str] = None
     muxdelay: Optional[str] = None
-    copyts: bool = param(default=False)
+    reset_timestamps: Optional[int] = 0
 
 
 def render_opts(value: Dict[str, Any]) -> str:
@@ -41,5 +47,4 @@ class SegmentOutput(Output):
 @dataclass
 class FileOutput(Output):
     method: Optional[str] = param(default=None)
-    copyts: bool = param(default=False)
     muxdelay: Optional[str] = None
