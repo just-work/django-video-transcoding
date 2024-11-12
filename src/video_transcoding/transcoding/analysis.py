@@ -50,8 +50,8 @@ class FFProbeHLSAnalyzer(ffprobe.Analyzer):
     Analyzer for multi-variant HLS results.
     """
 
-    def analyze(self) -> list[meta.Meta]:
-        streams: list[meta.Meta] = []
+    def analyze(self) -> List[meta.Meta]:
+        streams: List[meta.Meta] = []
         for stream in self.info.streams:
             if stream.get('tags', {}).get('comment'):
                 # Skip HLS alternative groups
