@@ -1,12 +1,14 @@
 import dataclasses
 import time
-from datetime import timedelta
-from typing import Optional, List
+from datetime import timedelta, datetime
+from typing import Optional, List, Iterable, Any, Dict, Union
 from uuid import UUID, uuid4
 
 import celery
 from billiard.exceptions import SoftTimeLimitExceeded
+from django.db import close_old_connections
 from django.db.transaction import atomic
+from django.db.utils import OperationalError
 
 from video_transcoding import models, strategy, defaults
 from video_transcoding.celery import app
@@ -25,6 +27,25 @@ UPLOAD_TIMEOUT = 60 * 60
 class TranscodeVideo(LoggerMixin, celery.Task):
     """ Video processing task."""
     routing_key = 'video_transcoding'
+    autoretry_for = (OperationalError,)
+    inifinite_retry_for = (OperationalError,)
+    retry_backoff = True
+
+    def retry(self,
+              args: Optional[Iterable[Any]] = None,
+              kwargs: Optional[Dict[str, Any]] = None,
+              exc: Optional[Exception] = None,
+              throw: bool = True,
+              eta: Optional[datetime] = None,
+              countdown: Optional[Union[float, int]] = None,
+              max_retries: Optional[int] = None,
+              **options: Any) -> Any:
+        if isinstance(exc, self.inifinite_retry_for):
+            # increment max_retries by one to achieve unlimited retries
+            # for infrastructure errors
+            max_retries = (max_retries or self.max_retries) + 1
+        return super().retry(args, kwargs, exc, throw, eta, countdown,
+                             max_retries, **options)
 
     def run(self, video_id: int) -> Optional[str]:
         """
@@ -54,6 +75,8 @@ class TranscodeVideo(LoggerMixin, celery.Task):
             error = repr(e)
             self.logger.exception("Processing error %s", error)
         finally:
+            # Close possible stale connections after long operation
+            close_old_connections()
             self.unlock_video(video_id, status, error, meta, duration)
         return error
 

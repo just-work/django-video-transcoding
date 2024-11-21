@@ -26,11 +26,12 @@ class TranscodeTaskVideoStateTestCase(BaseTestCase):
             status=models.Video.QUEUED,
             task_id=uuid4(),
             source='ftp://ya.ru/1.mp4')
+        cls = "video_transcoding.tasks.TranscodeVideo"
         self.handle_patcher = mock.patch(
-            'video_transcoding.tasks.TranscodeVideo.process_video',
+            f'{cls}.process_video',
             return_value={"duration": 42.0})
         self.handle_mock: mock.MagicMock = self.handle_patcher.start()
-        self.retry_patcher = mock.patch('celery.Task.retry',
+        self.retry_patcher = mock.patch(f'{cls}.retry',
                                         side_effect=Retry)
         self.retry_mock = self.retry_patcher.start()
 
