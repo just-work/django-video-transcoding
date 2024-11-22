@@ -10,8 +10,8 @@ from video_transcoding.transcoding import (
     profiles,
     metadata,
     transcoder,
+    extract,
 )
-from video_transcoding.transcoding.metadata import Analyzer
 from video_transcoding.utils import LoggerMixin
 
 
@@ -133,25 +133,25 @@ class ResumableStrategy(Strategy):
         return self.sources.file('source.json')
 
     @property
-    def source_manifest(self) -> workspace.File:
+    def split_metadata(self) -> workspace.File:
         """
-        :return: An m3u8 manifest file for downloaded source.
+        :return: A json file with metadata for split file.
         """
-        return self.sources.file('source.m3u8')
+        return self.sources.file('split.json')
 
     @property
     def video_playlist_file(self) -> workspace.File:
         """
         :return: An m3u8 playlist file for split video source.
         """
-        return self.sources.file('playlist-video-0.m3u8')
+        return self.sources.file('source-video.m3u8')
 
     @property
     def audio_playlist_file(self) -> workspace.File:
         """
         :return: An m3u8 playlist file for transcoded audio.
         """
-        return self.sources.file('playlist-audio-0.m3u8')
+        return self.sources.file('source-audio.m3u8')
 
     @property
     def manifest_uri(self) -> str:
@@ -267,7 +267,7 @@ class ResumableStrategy(Strategy):
         Runs source file analysis
         :return: source file metadata.
         """
-        src = metadata.Analyzer().get_meta_data(self.source_uri)
+        src = extract.SourceExtractor().get_meta_data(self.source_uri)
         return src
 
     def select_profile(self, src: metadata.Metadata) -> profiles.Profile:
@@ -306,11 +306,10 @@ class ResumableStrategy(Strategy):
         :param src: remote source metadata.
         :return: a list of chunk filenames.
         """
-        f = self.metadata_file(self.source_manifest)
+        f = self.split_metadata
         if self.ws.exists(f):
-            # m3u8 playlist already written after split finished, reuse it
-            self.logger.debug("Source already downloaded to %s",
-                              self.source_manifest)
+            # split metadata is already written after playlists finished, reuse it
+            self.logger.debug("Source already split to %s", self.split_metadata)
             content = self.ws.read(f)
             data = json.loads(content)
             meta = metadata.Metadata.from_native(data)
@@ -325,7 +324,7 @@ class ResumableStrategy(Strategy):
         """
         Downloads source file and split it to chunks at shared webdav.
         """
-        destination = self.ws.get_absolute_uri(self.source_manifest)
+        destination = self.ws.get_absolute_uri(self.split_metadata)
         split = transcoder.Splitter(
             self.source_uri,
             destination.geturl(),
@@ -427,14 +426,6 @@ class ResumableStrategy(Strategy):
         return self.ws.get_absolute_uri(f).geturl()
 
     def get_segment_meta(self, src: workspace.File) -> metadata.Metadata:
-        meta = self.analyze_source()
         segment_uri = self.ws.get_absolute_uri(src).geturl()
-        segment = Analyzer().get_meta_data(segment_uri)
-        # Mediainfo lacks some metadata from TS fragments, so we need source
-        # metadata to fill missing fields.
-        for s, d in zip(meta.videos, segment.videos):
-            # Set frame rate from source
-            d.frame_rate = s.frame_rate
-            # Recompute frames count from segment duration and source frame rate
-            d.frames = round(d.duration * d.frame_rate)
+        segment = extract.VideoSegmentExtractor().get_meta_data(segment_uri)
         return segment

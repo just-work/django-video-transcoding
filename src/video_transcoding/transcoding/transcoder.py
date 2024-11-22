@@ -1,7 +1,7 @@
 import abc
 import os.path
 from itertools import product
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Literal, cast
 from urllib.parse import urljoin
 
 from fffw import encoding
@@ -9,8 +9,8 @@ from fffw.encoding.vector import SIMD, Vector
 from fffw.graph import VIDEO, AUDIO
 
 from video_transcoding import defaults
-from video_transcoding.transcoding import codecs, outputs
-from video_transcoding.transcoding.metadata import Metadata, Analyzer, rational
+from video_transcoding.transcoding import codecs, inputs, outputs, extract
+from video_transcoding.transcoding.metadata import Metadata
 from video_transcoding.transcoding.profiles import Profile
 from video_transcoding.utils import LoggerMixin
 
@@ -41,6 +41,7 @@ class Processor(LoggerMixin, abc.ABC):
         dst = self.get_result_metadata(self.dst)
         return dst
 
+    @abc.abstractmethod
     def get_result_metadata(self, uri: str) -> Metadata:
         """
         Get result metadata.
@@ -48,13 +49,7 @@ class Processor(LoggerMixin, abc.ABC):
         :param uri: analyzed media
         :return: metadata object with video and audio stream
         """
-        self.logger.debug("Analyzing %s", uri)
-        mi = Analyzer().get_meta_data(uri)
-        if self.requires_video and not mi.videos:
-            raise ValueError("missing video stream")
-        if self.requires_audio and not mi.audios:
-            raise ValueError("missing audio stream")
-        return mi
+        raise NotImplementedError()
 
     @staticmethod
     def run(ff: encoding.FFMPEG) -> None:
@@ -77,17 +72,7 @@ class Transcoder(Processor):
     requires_audio = False
 
     def get_result_metadata(self, uri: str) -> Metadata:
-        dst = super().get_result_metadata(uri)
-        data = Analyzer().ffprobe(uri)
-        for s in dst.videos:
-            ffprobe_stream = data[s.streams[0]]
-            # For MPEGTS files nor mediainfo nor ffprobe can estimate bitrate
-            # for multi-track files.
-            s.bitrate = 0
-            # Parse frame rate from ffprobe data
-            s.frame_rate = rational(ffprobe_stream['avg_frame_rate'])
-            # Estimate frame count from duration
-            s.frames = round(s.duration * s.frame_rate)
+        dst = extract.VideoResultExtractor().get_meta_data(uri)
         return dst
 
     def prepare_ffmpeg(self, src: Metadata) -> encoding.FFMPEG:
@@ -101,8 +86,7 @@ class Transcoder(Processor):
 
         # Initialize output file with audio and codecs from profile tracks.
         video_codecs = self.prepare_video_codecs()
-        audio_codecs = self.prepare_audio_codecs(source)
-        dst = self.prepare_output(audio_codecs, video_codecs)
+        dst = self.prepare_output(video_codecs)
 
         # ffmpeg wrapper with vectorized processing capabilities
         simd = SIMD(source, dst,
@@ -121,18 +105,18 @@ class Transcoder(Processor):
 
     @staticmethod
     def prepare_input(src: Metadata) -> encoding.Input:
-        return encoding.input_file(src.uri, *src.streams)
+        return inputs.input_file(src.uri, *src.streams)
 
     def prepare_output(self,
-                       audio_codecs: List[encoding.Copy],
                        video_codecs: List[encoding.VideoCodec],
                        ) -> encoding.Output:
         return outputs.FileOutput(
             output_file=self.dst,
             method='PUT',
-            codecs=[*video_codecs, *audio_codecs],
+            codecs=[*video_codecs],
             format='mpegts',
             muxdelay='0',
+            avoid_negative_ts='disabled',
             copyts=True,
         )
 
@@ -153,17 +137,6 @@ class Transcoder(Processor):
             ))
         return video_codecs
 
-    @staticmethod
-    def prepare_audio_codecs(source: encoding.Input) -> List[encoding.Copy]:
-        audio_codecs = []
-        for stream in source.streams:
-            if stream.kind != AUDIO:
-                continue
-            audio_codecs.append(codecs.Copy(
-                kind=AUDIO,
-            ))
-        return audio_codecs
-
 
 class Splitter(Processor):
     """
@@ -171,101 +144,49 @@ class Splitter(Processor):
     """
 
     def get_result_metadata(self, uri: str) -> Metadata:
-        dst = super().get_result_metadata(uri)
-        data = Analyzer().ffprobe(uri)
+        dst = extract.SplitExtractor().get_meta_data(uri)
         # Mediainfo takes metadata from first HLS chunk in a playlist, so
         # we need to force some fields from source metadata
         if len(self.meta.videos) != len(dst.videos):
             raise RuntimeError("Streams mismatch")
         for s, d in zip(self.meta.videos, dst.videos):
-            if s.streams != d.streams:
-                raise RuntimeError("Stream order mismatch")
-            # Replace chunk duration with whole source duration
-            d.duration = s.duration
-            # Fill empty frames/frame_rate metadata from source
-            d.frames = s.frames
-            d.frame_rate = s.frame_rate
-            # To have exact match copy scenes list from source
-            d.scenes = s.scenes
+            d.bitrate = s.bitrate
         if len(self.meta.audios) != len(dst.audios):
             raise RuntimeError("Streams mismatch")
         for s, d in zip(self.meta.audios, dst.audios):
-            if s.streams != d.streams:
-                raise RuntimeError("Stream order mismatch")
-            ffprobe_stream = data[s.streams[0]]
-            # Replace chunk duration with whole source duration
-            d.duration = s.duration
-            # Fill sample_rate from transcoded ffprobe result
-            d.sample_rate = int(ffprobe_stream['sample_rate'])
-            # Recompute samples count from duration
-            d.samples = round(d.duration * d.sample_rate)
-            # Fill bitrate from HLS metadata
-            bitrate = int(ffprobe_stream['tags']['variant_bitrate'])
-            # remove 10% overhead, see
-            # https://github.com/FFmpeg/FFmpeg/blob/n7.0.1/libavformat/hlsenc.c#L1493
-            d.bitrate = round(bitrate / 1.1)
-            # To have exact match copy scenes list from source
-            d.scenes = s.scenes
+            d.bitrate = s.bitrate
         return dst
 
     def prepare_ffmpeg(self, src: Metadata) -> encoding.FFMPEG:
-        source = encoding.input_file(self.src, *src.streams)
-        bitrate = source.video.meta.bitrate
-        codecs_list = [source.video > codecs.Copy(kind=VIDEO, bitrate=bitrate)]
-        codecs_list.extend([source.audio > c
-                            for c in self.prepre_audio_codecs()])
-        out = self.prepare_output(codecs_list)
-        return encoding.FFMPEG(input=source, output=out, loglevel='level+info')
+        source = inputs.input_file(self.src, *src.streams)
+        video_codecs = [source.video > codecs.Copy(kind=VIDEO)]
+        audio_codecs = [source.audio > codecs.Copy(kind=AUDIO)]
+        video_out = self.prepare_output(video_codecs)
+        audio_out = self.prepare_output(audio_codecs)
+        ff = encoding.FFMPEG(input=source, loglevel='level+info')
+        ff > video_out
+        ff > audio_out
+        return ff
 
-    def prepare_output(self,
-                       codecs_list: List[encoding.Codec]
-                       ) -> encoding.Output:
-        return outputs.HLSOutput(
-            **self.get_output_kwargs(codecs_list)
-        )
+    def prepare_output(self, codecs_list: List[encoding.Codec]) -> encoding.Output:
+        return outputs.SegmentOutput(**self.get_output_kwargs(codecs_list))
 
-    def prepre_audio_codecs(self) -> List[codecs.AudioCodec]:
-        audio_codecs = []
-        for audio in self.profile.audio:
-            audio_codecs.append(codecs.AudioCodec(
-                codec=audio.codec,
-                bitrate=audio.bitrate,
-                channels=audio.channels,
-                rate=audio.sample_rate,
-            ))
-        return audio_codecs
-
-    def get_output_kwargs(self,
-                          codecs_list: List[encoding.Codec]
-                          ) -> Dict[str, Any]:
+    def get_output_kwargs(self, codecs_list: List[encoding.Codec]) -> Dict[str, Any]:
+        kinds = {c.kind for c in codecs_list}
+        kind = cast(Literal["video", "audio"], kinds.pop().name.lower())
         return dict(
-            hls_time=defaults.VIDEO_CHUNK_DURATION,
-            hls_playlist_type='vod',
             codecs=codecs_list,
-            muxdelay='0',
+            format='stream_segment',
+            segment_format='mkv',
+            avoid_negative_ts='disabled',
             copyts=True,
-            output_file=urljoin(self.dst, 'playlist-%v.m3u8'),
-            hls_segment_filename=urljoin(self.dst, 'segment-%v-%05d.ts'),
-            master_pl_name=os.path.basename(self.dst),
-            var_stream_map=self.get_var_stream_map(codecs_list)
+            segment_format_options={},
+            segment_list=urljoin(self.dst, f'source-{kind}.m3u8'),
+            segment_list_type='m3u8',
+            segment_time=defaults.VIDEO_CHUNK_DURATION,
+            min_seg_duration=defaults.VIDEO_CHUNK_DURATION,
+            output_file=urljoin(self.dst, f'source-{kind}-%05d.mkv'),
         )
-
-    @staticmethod
-    def get_var_stream_map(codecs_list: List[encoding.Codec]) -> str:
-        audios = []
-        videos = []
-        for c in codecs_list:
-            if c.kind == VIDEO:
-                videos.append(c)
-            else:
-                audios.append(c)
-        vsm = []
-        for i, a in enumerate(audios):
-            vsm.append(f'a:{i},name:audio-{i}')
-        for (i, a), (j, v) in product(enumerate(audios), enumerate(videos)):
-            vsm.append(f'v:{j},name:video-{i}')
-        var_stream_map = ' '.join(vsm)
-        return var_stream_map
 
 
 class Segmentor(Processor):
@@ -281,42 +202,13 @@ class Segmentor(Processor):
         self.audio = audio_source
 
     def get_result_metadata(self, uri: str) -> Metadata:
-        dst = super().get_result_metadata(uri)
-        data = Analyzer().ffprobe(uri)
-        # ffprobe uses audio stream as audio#0 and HLS audio group linked to
-        # variants as audio#1. Video streams receive indices 2-N and thus
-        # don't correspond to mediainfo streams.
-
-        ffprobe_audio = [s for s in data.values() if s['codec_type'] == 'audio']
-        for a, ff, src in zip(dst.audios, ffprobe_audio, self.meta.audios):
-            # Set bitrate from "source" metadata
-            a.bitrate = src.bitrate
-            # Replace segment duration with source duration
-            a.duration = src.duration
-            a.scenes = src.scenes
-            # Recompute samples from source duration
-            a.samples = round(a.duration * a.sampling_rate)
-
-        ffprobe_video = [s for s in data.values() if s['codec_type'] == 'video']
-        for v, ff, src in zip(dst.videos, ffprobe_video, self.meta.videos):
-            # Mediainfo estimates bitrate from first chunk which is error-prone.
-            # Replace it with nominal bitrate from HLS manifest.
-            bandwidth = int(ff['tags']['variant_bitrate'])
-            # remove 10% overhead, see
-            # https://github.com/FFmpeg/FFmpeg/blob/n7.0.1/libavformat/hlsenc.c#L1493
-            v.bitrate = round(bandwidth / 1.1)
-            # Replace segment duration with source duration
-            v.duration = src.duration
-            v.scenes = src.scenes
-            # Set frame rate from ffprobe data
-            v.frame_rate = rational(ff['avg_frame_rate'])
-            # Compute frames from frame rate and duration
-            v.frames = round(v.duration * v.frame_rate)
+        dst = extract.HLSExtractor().get_meta_data(uri)
         return dst
 
     def prepare_ffmpeg(self, src: Metadata) -> encoding.FFMPEG:
         video_streams = [s for s in src.streams if s.kind == VIDEO]
-        video_source = encoding.input_file(self.src, *video_streams)
+        video_source = inputs.input_file(self.src, *video_streams,
+                                         allowed_extensions='mkv')
         video_codecs = [s > codecs.Copy(kind=VIDEO, bitrate=s.meta.bitrate)
                         for s in video_source.streams
                         if s.kind == VIDEO]
@@ -325,10 +217,8 @@ class Segmentor(Processor):
             vc.bitrate = vt.max_rate
 
         audio_streams = [s for s in src.streams if s.kind == AUDIO]
-        audio_source = encoding.input_file(self.audio, *audio_streams)
-        audio_codecs = [s > codecs.Copy(kind=AUDIO, bitrate=s.meta.bitrate)
-                        for s in audio_source.streams
-                        if s.kind == AUDIO]
+        audio_source = inputs.input_file(self.audio, *audio_streams)
+        audio_codecs = [audio_source.audio > c for c in self.prepare_audio_codecs()]
 
         for ac, at in zip(audio_codecs, self.profile.audio):
             ac.bitrate = at.bitrate
@@ -339,6 +229,17 @@ class Segmentor(Processor):
                              loglevel='level+info')
         ff.add_input(audio_source)
         return ff
+
+    def prepare_audio_codecs(self) -> List[codecs.AudioCodec]:
+        audio_codecs = []
+        for audio in self.profile.audio:
+            audio_codecs.append(codecs.AudioCodec(
+                codec=audio.codec,
+                bitrate=audio.bitrate,
+                channels=audio.channels,
+                rate=audio.sample_rate,
+            ))
+        return audio_codecs
 
     def prepare_output(self,
                        codecs_list: List[encoding.Codec]
@@ -356,7 +257,9 @@ class Segmentor(Processor):
             codecs=codecs_list,
             muxdelay='0',
             copyts=True,
+            avoid_negative_ts='auto',
             var_stream_map=self.get_var_stream_map(codecs_list),
+            reset_timestamps=1,
             output_file=urljoin(self.dst, 'playlist-%v.m3u8'),
             hls_segment_filename=urljoin(self.dst, 'segment-%v-%05d.ts'),
             master_pl_name=os.path.basename(self.dst),
