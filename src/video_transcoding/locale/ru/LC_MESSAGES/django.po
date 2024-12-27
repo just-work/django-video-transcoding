@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-10-11 10:47+0000\n"
+"POT-Creation-Date: 2024-12-27 13:20+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -20,7 +20,7 @@ msgstr ""
 "n%10<=4 && (n%100<12 || n%100>14) ? 1 : n%10==0 || (n%10>=5 && n%10<=9) || "
 "(n%100>=11 && n%100<=14)? 2 : 3);\n"
 
-#: video_transcoding/admin.py:41 video_transcoding/models.py:145
+#: video_transcoding/admin.py:41 video_transcoding/models.py:161
 msgid "Status"
 msgstr "Статус"
 
@@ -56,7 +56,7 @@ msgstr "Минимальная частота кадров"
 msgid "Min sample rate"
 msgstr "Минимальная частота дискретизации звука"
 
-#: video_transcoding/forms.py:92 video_transcoding/forms.py:123
+#: video_transcoding/forms.py:92 video_transcoding/forms.py:125
 msgid "Codec"
 msgstr "Кодек"
 
@@ -64,183 +64,187 @@ msgstr "Кодек"
 msgid "Constant rate factor"
 msgstr "Коэффициент CRF"
 
-#: video_transcoding/forms.py:94 video_transcoding/models.py:26
+#: video_transcoding/forms.py:95 video_transcoding/models.py:27
 msgid "Preset"
 msgstr "Пресет"
 
-#: video_transcoding/forms.py:95
+#: video_transcoding/forms.py:96
 msgid "Max rate"
 msgstr "Максимальный битрейт"
 
-#: video_transcoding/forms.py:96
+#: video_transcoding/forms.py:97
 msgid "Buf size"
 msgstr "Размер буфера"
 
-#: video_transcoding/forms.py:97
+#: video_transcoding/forms.py:98
 msgid "Profile"
 msgstr "Профиль"
 
-#: video_transcoding/forms.py:98
+#: video_transcoding/forms.py:99
 msgid "Pix fmt"
 msgstr "Формат пикселей"
 
-#: video_transcoding/forms.py:99
+#: video_transcoding/forms.py:100
 msgid "Width"
 msgstr "Ширина"
 
-#: video_transcoding/forms.py:100
+#: video_transcoding/forms.py:101
 msgid "Height"
 msgstr "Высота"
 
-#: video_transcoding/forms.py:101
+#: video_transcoding/forms.py:102
 msgid "Frame rate"
 msgstr "Частота кадров"
 
-#: video_transcoding/forms.py:102
+#: video_transcoding/forms.py:103
 msgid "GOP size"
 msgstr "Размер группы кадров (GOP)"
 
-#: video_transcoding/forms.py:103
+#: video_transcoding/forms.py:104
 msgid "Force key frames"
 msgstr "Принудительный выбор ключевых кадров"
 
-#: video_transcoding/forms.py:124
+#: video_transcoding/forms.py:126
 msgid "Bitrate"
 msgstr "Битрейт"
 
-#: video_transcoding/forms.py:125
+#: video_transcoding/forms.py:127
 msgid "Channels"
 msgstr "Количество каналов"
 
-#: video_transcoding/forms.py:126
+#: video_transcoding/forms.py:128
 msgid "Sample rate"
 msgstr "Частота дискретизации звука"
 
-#: video_transcoding/models.py:20 video_transcoding/models.py:31
-#: video_transcoding/models.py:48 video_transcoding/models.py:65
-#: video_transcoding/models.py:100
+#: video_transcoding/models.py:21 video_transcoding/models.py:33
+#: video_transcoding/models.py:50 video_transcoding/models.py:67
+#: video_transcoding/models.py:107
 msgid "name"
 msgstr "Идентификатор результата"
 
-#: video_transcoding/models.py:27
+#: video_transcoding/models.py:28
 msgid "Presets"
 msgstr "Пресеты"
 
-#: video_transcoding/models.py:32 video_transcoding/models.py:49
+#: video_transcoding/models.py:34 video_transcoding/models.py:51
 msgid "params"
 msgstr "Параметры"
 
-#: video_transcoding/models.py:35 video_transcoding/models.py:52
-#: video_transcoding/models.py:70 video_transcoding/models.py:105
-#: video_transcoding/models.py:154
+#: video_transcoding/models.py:37 video_transcoding/models.py:54
+#: video_transcoding/models.py:72 video_transcoding/models.py:112
+#: video_transcoding/models.py:172
 msgid "preset"
 msgstr "пресет"
 
-#: video_transcoding/models.py:39
+#: video_transcoding/models.py:41
 msgid "Video track"
 msgstr "Видеодорожка"
 
-#: video_transcoding/models.py:40 video_transcoding/models.py:74
+#: video_transcoding/models.py:42 video_transcoding/models.py:77
 msgid "Video tracks"
 msgstr "Видеодорожки"
 
-#: video_transcoding/models.py:56
+#: video_transcoding/models.py:58
 msgid "Audio track"
 msgstr "Аудиодорожка"
 
-#: video_transcoding/models.py:57 video_transcoding/models.py:109
+#: video_transcoding/models.py:59 video_transcoding/models.py:117
 msgid "Audio tracks"
 msgstr "Аудиодорожки"
 
-#: video_transcoding/models.py:66 video_transcoding/models.py:89
-#: video_transcoding/models.py:101 video_transcoding/models.py:124
+#: video_transcoding/models.py:68 video_transcoding/models.py:93
+#: video_transcoding/models.py:108 video_transcoding/models.py:133
 msgid "order number"
 msgstr "порядковый номер"
 
-#: video_transcoding/models.py:67 video_transcoding/models.py:102
+#: video_transcoding/models.py:69 video_transcoding/models.py:109
 msgid "condition"
 msgstr "условие"
 
-#: video_transcoding/models.py:79
+#: video_transcoding/models.py:83
 msgid "Video profile"
 msgstr "Видео профиль"
 
-#: video_transcoding/models.py:80
+#: video_transcoding/models.py:84
 msgid "Video profiles"
 msgstr "Видео профили"
 
-#: video_transcoding/models.py:87 video_transcoding/models.py:122
+#: video_transcoding/models.py:91 video_transcoding/models.py:131
 msgid "profile"
 msgstr "профиль"
 
-#: video_transcoding/models.py:88 video_transcoding/models.py:123
+#: video_transcoding/models.py:92 video_transcoding/models.py:132
 msgid "track"
 msgstr "дорожка"
 
-#: video_transcoding/models.py:94
+#: video_transcoding/models.py:98
 msgid "Video profile track"
 msgstr "Видеодорожка профиля"
 
-#: video_transcoding/models.py:95
+#: video_transcoding/models.py:99
 msgid "Video profile tracks"
 msgstr "Видеодорожки профилей"
 
-#: video_transcoding/models.py:114
+#: video_transcoding/models.py:123
 msgid "Audio profile"
 msgstr "Аудио профиль"
 
-#: video_transcoding/models.py:115
+#: video_transcoding/models.py:124
 msgid "Audio profiles"
 msgstr "Аудио профили"
 
-#: video_transcoding/models.py:129
+#: video_transcoding/models.py:138
 msgid "Audio profile track"
 msgstr "Аудиодорожка профиля"
 
-#: video_transcoding/models.py:130
+#: video_transcoding/models.py:139
 msgid "Audio profile tracks"
 msgstr "Аудиодорожки профилей"
 
-#: video_transcoding/models.py:137
+#: video_transcoding/models.py:149 video_transcoding/models.py:157
 msgid "created"
 msgstr "создано"
 
-#: video_transcoding/models.py:138
+#: video_transcoding/models.py:150
 msgid "queued"
 msgstr "в очереди"
 
-#: video_transcoding/models.py:139
+#: video_transcoding/models.py:151
 msgid "process"
 msgstr "обрабатывается"
 
-#: video_transcoding/models.py:140
+#: video_transcoding/models.py:152
 msgid "done"
 msgstr "завершено"
 
-#: video_transcoding/models.py:141
+#: video_transcoding/models.py:153
 msgid "error"
 msgstr "ошибка"
 
-#: video_transcoding/models.py:146
+#: video_transcoding/models.py:158
+msgid "modified"
+msgstr "изменено"
+
+#: video_transcoding/models.py:162
 msgid "Error"
 msgstr "Ошибка"
 
-#: video_transcoding/models.py:148
+#: video_transcoding/models.py:164
 msgid "Task ID"
 msgstr "Id задачи"
 
-#: video_transcoding/models.py:149
+#: video_transcoding/models.py:166
 msgid "Source"
 msgstr "Источник"
 
-#: video_transcoding/models.py:153
+#: video_transcoding/models.py:169
 msgid "Basename"
 msgstr "Идентификатор результата"
 
-#: video_transcoding/models.py:155
+#: video_transcoding/models.py:175
 msgid "metadata"
 msgstr "метаданные"
 
-#: video_transcoding/models.py:159 video_transcoding/models.py:160
+#: video_transcoding/models.py:179 video_transcoding/models.py:180
 msgid "Video"
 msgstr "Видео"

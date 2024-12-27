@@ -6,6 +6,7 @@ from django.core.validators import URLValidator
 from django.db import models
 from django.db.models.fields import related_descriptors
 from django.utils.translation import gettext_lazy as _
+from model_utils.fields import AutoCreatedField, AutoLastModifiedField
 from model_utils.models import TimeStampedModel
 
 from video_transcoding import defaults
@@ -151,6 +152,10 @@ class Video(TimeStampedModel):
         (DONE, _('done')),  # Video processing is done successfully
         (ERROR, _('error')),  # Video processing error
     )
+
+    # For adding missing translations from django-model-utils
+    created = AutoCreatedField(_('created'))
+    modified = AutoLastModifiedField(_('modified'))
 
     status = models.SmallIntegerField(default=CREATED, choices=STATUS_CHOICES,
                                       verbose_name=_('Status'))
