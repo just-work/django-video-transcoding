@@ -2,7 +2,7 @@ import json
 from copy import deepcopy
 from dataclasses import dataclass, asdict
 from pprint import pformat
-from typing import List, cast, Any, Dict
+from typing import List, cast, Any, Dict, TYPE_CHECKING
 
 import pymediainfo
 from fffw.encoding import Stream
@@ -10,6 +10,11 @@ from fffw.graph import meta
 
 from video_transcoding.transcoding import ffprobe
 from video_transcoding.utils import LoggerMixin
+
+if TYPE_CHECKING:
+    from _typeshed import DataclassInstance
+else:
+    DataclassInstance = object
 
 
 def rational(v: str) -> float:
@@ -43,7 +48,7 @@ def audio_meta_from_native(data: dict) -> meta.AudioMeta:
 
 
 @dataclass(repr=False)
-class Metadata:
+class Metadata(DataclassInstance):
     uri: str
     videos: List[meta.VideoMeta]
     audios: List[meta.AudioMeta]
