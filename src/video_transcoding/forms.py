@@ -90,8 +90,10 @@ class VideoTrackForm(NestedJSONForm):
                              widget=forms.HiddenInput(),
                              initial={})
     _codec = forms.CharField(label=_('Codec'), initial='libx264')
-    _constant_rate_factor = forms.IntegerField(label=_('Constant rate factor'),
-                                               initial=23)
+    _constant_rate_factor = forms.IntegerField(
+        label=_('CRF'),
+        help_text=_('Constant rate factor or CRF value for ffmpeg'),
+        initial=23)
     _preset = forms.CharField(label=_('Preset'), initial='slow')
     _max_rate = forms.IntegerField(label=_('Max rate'))
     _buf_size = forms.IntegerField(label=_('Buf size'))
@@ -100,9 +102,14 @@ class VideoTrackForm(NestedJSONForm):
     _width = forms.IntegerField(label=_('Width'))
     _height = forms.IntegerField(label=_('Height'))
     _frame_rate = forms.FloatField(label=_('Frame rate'), initial=30.0)
-    _gop_size = forms.IntegerField(label=_('GOP size'), initial=30)
-    _force_key_frames = forms.CharField(label=_('Force key frames'),
-                                        initial=FORCE_KEY_FRAMES)
+    _gop_size = forms.IntegerField(
+        label=_('GOP size'),
+        help_text=_('Group of pictures size'),
+        initial=30)
+    _force_key_frames = forms.CharField(
+        label=_('Force key frames'),
+        help_text=_('ffmpeg -force_key_frames option value'),
+        initial=FORCE_KEY_FRAMES)
 
 
 class AudioTrackForm(NestedJSONForm):

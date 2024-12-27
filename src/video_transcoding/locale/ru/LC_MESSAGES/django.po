@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-12-27 13:20+0000\n"
+"POT-Creation-Date: 2024-12-27 13:29+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -56,63 +56,75 @@ msgstr "Минимальная частота кадров"
 msgid "Min sample rate"
 msgstr "Минимальная частота дискретизации звука"
 
-#: video_transcoding/forms.py:92 video_transcoding/forms.py:125
+#: video_transcoding/forms.py:92 video_transcoding/forms.py:132
 msgid "Codec"
 msgstr "Кодек"
 
-#: video_transcoding/forms.py:93
-msgid "Constant rate factor"
-msgstr "Коэффициент CRF"
+#: video_transcoding/forms.py:94
+msgid "CRF"
+msgstr "CRF"
 
-#: video_transcoding/forms.py:95 video_transcoding/models.py:27
+#: video_transcoding/forms.py:95
+msgid "Constant rate factor or CRF value for ffmpeg"
+msgstr "Коэффициент постоянного качества или значение CRF для ffmpeg"
+
+#: video_transcoding/forms.py:97 video_transcoding/models.py:27
 msgid "Preset"
 msgstr "Пресет"
 
-#: video_transcoding/forms.py:96
+#: video_transcoding/forms.py:98
 msgid "Max rate"
 msgstr "Максимальный битрейт"
 
-#: video_transcoding/forms.py:97
+#: video_transcoding/forms.py:99
 msgid "Buf size"
 msgstr "Размер буфера"
 
-#: video_transcoding/forms.py:98
+#: video_transcoding/forms.py:100
 msgid "Profile"
 msgstr "Профиль"
 
-#: video_transcoding/forms.py:99
+#: video_transcoding/forms.py:101
 msgid "Pix fmt"
 msgstr "Формат пикселей"
 
-#: video_transcoding/forms.py:100
+#: video_transcoding/forms.py:102
 msgid "Width"
 msgstr "Ширина"
 
-#: video_transcoding/forms.py:101
+#: video_transcoding/forms.py:103
 msgid "Height"
 msgstr "Высота"
 
-#: video_transcoding/forms.py:102
+#: video_transcoding/forms.py:104
 msgid "Frame rate"
 msgstr "Частота кадров"
 
-#: video_transcoding/forms.py:103
+#: video_transcoding/forms.py:106
 msgid "GOP size"
-msgstr "Размер группы кадров (GOP)"
+msgstr "Размер GOP"
 
-#: video_transcoding/forms.py:104
+#: video_transcoding/forms.py:107
+msgid "Group of pictures size"
+msgstr "Размер группы кадров"
+
+#: video_transcoding/forms.py:110
 msgid "Force key frames"
-msgstr "Принудительный выбор ключевых кадров"
+msgstr "Вставка ключевых кадров"
 
-#: video_transcoding/forms.py:126
+#: video_transcoding/forms.py:111
+msgid "ffmpeg -force_key_frames option value"
+msgstr "значение параметра ffmpeg -force_key_frames"
+
+#: video_transcoding/forms.py:133
 msgid "Bitrate"
 msgstr "Битрейт"
 
-#: video_transcoding/forms.py:127
+#: video_transcoding/forms.py:134
 msgid "Channels"
 msgstr "Количество каналов"
 
-#: video_transcoding/forms.py:128
+#: video_transcoding/forms.py:135
 msgid "Sample rate"
 msgstr "Частота дискретизации звука"
 
