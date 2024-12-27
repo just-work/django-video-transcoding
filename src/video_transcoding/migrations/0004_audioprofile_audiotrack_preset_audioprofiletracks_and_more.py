@@ -71,8 +71,6 @@ class Migration(migrations.Migration):
                 'verbose_name_plural': 'Audio profile tracks',
                 'ordering': ['order_number'],
                 'unique_together': {('profile', 'track')},
-                'verbose_name': 'Audio profile track',
-                'verbose_name_plural': 'Audio profile tracks',
             },
         ),
         migrations.AddField(
@@ -126,8 +124,6 @@ class Migration(migrations.Migration):
                 'verbose_name': 'Video track',
                 'verbose_name_plural': 'Video tracks',
                 'unique_together': {('name', 'preset')},
-                'verbose_name': 'Video track',
-                'verbose_name_plural': 'Video tracks',
             },
         ),
         migrations.CreateModel(
@@ -143,8 +139,6 @@ class Migration(migrations.Migration):
                 'verbose_name_plural': 'Video profile tracks',
                 'ordering': ['order_number'],
                 'unique_together': {('profile', 'track')},
-                'verbose_name': 'Video profile track',
-                'verbose_name_plural': 'Video profile tracks',
             },
         ),
         migrations.AddField(
