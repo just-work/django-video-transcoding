@@ -6,15 +6,10 @@ from typing import List, TYPE_CHECKING
 from fffw.encoding import Stream
 from fffw.graph import meta
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from _typeshed import DataclassInstance
 else:
     DataclassInstance = object
-
-
-def rational(v: str) -> float:
-    num, den = v.split('/')
-    return float(num) / float(den) if float(den) else 0.0
 
 
 def scene_from_native(data: dict) -> meta.Scene:
