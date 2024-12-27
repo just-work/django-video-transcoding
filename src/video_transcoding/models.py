@@ -97,6 +97,9 @@ class VideoProfileTracks(models.Model):
         verbose_name = _('Video profile track')
         verbose_name_plural = _('Video profile tracks')
 
+    def __str__(self):
+        return f'{self.track.name}/{self.profile.name}@{self.profile.preset}'
+
 
 class AudioProfile(TimeStampedModel):
     """ Audio transcoding profile."""
@@ -133,6 +136,9 @@ class AudioProfileTracks(models.Model):
         ordering = ['order_number']
         verbose_name = _('Audio profile track')
         verbose_name_plural = _('Audio profile tracks')
+
+    def __str__(self):
+        return f'{self.track.name}/{self.profile.name}@{self.profile.preset}'
 
 
 class Video(TimeStampedModel):
