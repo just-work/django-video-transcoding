@@ -1,5 +1,5 @@
 import os
-from typing import Any, cast, Type
+from typing import Any, cast, Type, Optional
 from uuid import UUID
 
 from django.apps import apps
@@ -22,13 +22,11 @@ class PresetBase(TimeStampedModel):
 
     class Meta:
         abstract = True
+        verbose_name = _('Preset')
+        verbose_name_plural = _('Presets')
 
     def __str__(self) -> str:
         return self.name
-
-    class Meta:
-        verbose_name = _('Preset')
-        verbose_name_plural = _('Presets')
 
 
 class Preset(PresetBase):

@@ -37,7 +37,7 @@ class Migration(migrations.Migration):
                 model_name='video',
                 name='status',
                 field=models.SmallIntegerField(
-                    choices=[(0, 'created'), (1, 'queued'), (2, 'process'),
+                    choices=[(0, 'new'), (1, 'queued'), (2, 'process'),
                              (3, 'done'), (4, 'error')], default=0,
                     verbose_name='Status'),
             ),

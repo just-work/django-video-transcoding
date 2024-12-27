@@ -14,7 +14,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='videoprofile',
             name='segment_duration',
-            field=models.DurationField(default=datetime.timedelta(seconds=4)),
+            field=models.DurationField(default=datetime.timedelta(seconds=4), verbose_name='segment duration'),
             preserve_default=False,
         ),
     ]

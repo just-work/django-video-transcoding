@@ -16,6 +16,6 @@ class Migration(migrations.Migration):
             migrations.AddField(
                 model_name='video',
                 name='duration',
-                field=models.DurationField(blank=True, null=True),
+                field=models.DurationField(blank=True, null=True, verbose_name='duration'),
             ),
         ])

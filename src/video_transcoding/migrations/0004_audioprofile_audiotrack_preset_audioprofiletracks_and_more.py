@@ -88,11 +88,6 @@ class Migration(migrations.Migration):
             name='preset',
             field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='audio_profiles', to='video_transcoding.preset', verbose_name='preset'),
         ),
-        migrations.AddField(
-            model_name='video',
-            name='preset',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='video_transcoding.preset', verbose_name='preset'),
-        ),
         migrations.CreateModel(
             name='VideoProfile',
             fields=[
@@ -264,6 +259,8 @@ class Migration(migrations.Migration):
                 name='preset',
                 field=models.ForeignKey(blank=True, null=True,
                                         on_delete=django.db.models.deletion.SET_NULL,
-                                        to='video_transcoding.preset'),
+                                        to='video_transcoding.preset',
+                                        verbose_name='preset'),
+
             ),
         ])
