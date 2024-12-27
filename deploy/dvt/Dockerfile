@@ -1,4 +1,4 @@
-FROM python:3.10
+FROM python:latest
 
 RUN apt-get update && apt-get upgrade -y && apt-get install -y
 RUN apt-get install -y apt-utils
