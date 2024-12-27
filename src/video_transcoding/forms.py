@@ -1,6 +1,7 @@
 from typing import List, Any, Dict
 
 from django import forms
+from django.utils.translation import gettext_lazy as _
 
 from video_transcoding import models
 
@@ -41,10 +42,10 @@ class VideoProfileForm(NestedJSONForm):
                                 required=False,
                                 widget=forms.HiddenInput(),
                                 initial={})
-    _min_bitrate = forms.IntegerField()
-    _min_width = forms.IntegerField()
-    _min_height = forms.IntegerField()
-    _min_frame_rate = forms.FloatField()
+    _min_bitrate = forms.IntegerField(label=_('Min bitrate'))
+    _min_width = forms.IntegerField(label=_('Min width'))
+    _min_height = forms.IntegerField(label=_('Min height'))
+    _min_frame_rate = forms.FloatField(label=_('Min frame rate'))
 
 
 class AudioProfileForm(NestedJSONForm):
@@ -59,8 +60,8 @@ class AudioProfileForm(NestedJSONForm):
                                 required=False,
                                 widget=forms.HiddenInput(),
                                 initial={})
-    _min_bitrate = forms.IntegerField()
-    _min_sample_rate = forms.IntegerField()
+    _min_bitrate = forms.IntegerField(label=_('Min bitrate'))
+    _min_sample_rate = forms.IntegerField(label=_('Min sample rate'))
 
 
 class VideoTrackForm(NestedJSONForm):
@@ -88,18 +89,27 @@ class VideoTrackForm(NestedJSONForm):
                              required=False,
                              widget=forms.HiddenInput(),
                              initial={})
-    _codec = forms.CharField(initial='libx264')
-    _constant_rate_factor = forms.IntegerField(initial=23)
-    _preset = forms.CharField(initial='slow')
-    _max_rate = forms.IntegerField()
-    _buf_size = forms.IntegerField()
-    _profile = forms.CharField(initial='main')
-    _pix_fmt = forms.CharField(initial='yuv420p')
-    _width = forms.IntegerField()
-    _height = forms.IntegerField()
-    _frame_rate = forms.FloatField(initial=30.0)
-    _gop_size = forms.IntegerField(initial=30)
-    _force_key_frames = forms.CharField(initial=FORCE_KEY_FRAMES)
+    _codec = forms.CharField(label=_('Codec'), initial='libx264')
+    _constant_rate_factor = forms.IntegerField(
+        label=_('CRF'),
+        help_text=_('Constant rate factor or CRF value for ffmpeg'),
+        initial=23)
+    _preset = forms.CharField(label=_('Preset'), initial='slow')
+    _max_rate = forms.IntegerField(label=_('Max rate'))
+    _buf_size = forms.IntegerField(label=_('Buf size'))
+    _profile = forms.CharField(label=_('Profile'), initial='main')
+    _pix_fmt = forms.CharField(label=_('Pix fmt'), initial='yuv420p')
+    _width = forms.IntegerField(label=_('Width'))
+    _height = forms.IntegerField(label=_('Height'))
+    _frame_rate = forms.FloatField(label=_('Frame rate'), initial=30.0)
+    _gop_size = forms.IntegerField(
+        label=_('GOP size'),
+        help_text=_('Group of pictures size'),
+        initial=30)
+    _force_key_frames = forms.CharField(
+        label=_('Force key frames'),
+        help_text=_('ffmpeg -force_key_frames option value'),
+        initial=FORCE_KEY_FRAMES)
 
 
 class AudioTrackForm(NestedJSONForm):
@@ -119,7 +129,7 @@ class AudioTrackForm(NestedJSONForm):
                              required=False,
                              widget=forms.HiddenInput(),
                              initial={})
-    _codec = forms.CharField(initial='libfdk_aac')
-    _bitrate = forms.IntegerField()
-    _channels = forms.IntegerField(initial=2)
-    _sample_rate = forms.IntegerField(initial=48000)
+    _codec = forms.CharField(label=_('Codec'), initial='libfdk_aac')
+    _bitrate = forms.IntegerField(label=_('Bitrate'))
+    _channels = forms.IntegerField(label=_('Channels'), initial=2)
+    _sample_rate = forms.IntegerField(label=_('Sample rate'), initial=48000)

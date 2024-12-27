@@ -13,6 +13,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='video',
             name='metadata',
-            field=models.JSONField(blank=True, null=True),
+            field=models.JSONField(blank=True, null=True, verbose_name='metadata'),
         ),
     ]
