@@ -1,5 +1,9 @@
 from unittest import TestCase, mock
 
+from fffw.encoding import Stream
+from fffw.graph import VIDEO
+
+from video_transcoding.transcoding import inputs
 from video_transcoding.transcoding.ffprobe import FFProbe
 
 
@@ -33,3 +37,11 @@ class FFProbeWrapperTestCase(TestCase):
             out = f.handle_stderr(line)
             self.assertEqual(out, '')
             m.assert_not_called()
+
+
+class InputsTestCase(TestCase):
+    def test_init_inputs(self):
+        src = inputs.input_file('filename', Stream(kind=VIDEO),
+                                allowed_extensions='m3u8')
+        self.assertIsInstance(src, inputs.Input)
+        self.assertEqual(src.allowed_extensions, 'm3u8')
