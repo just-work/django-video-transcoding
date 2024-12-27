@@ -11,7 +11,7 @@ try:
     )
 except AttributeError:
     video_transcoding_timeout = int(e('VIDEO_TRANSCODING_TIMEOUT', 0))
-    if video_transcoding_timeout:
+    if video_transcoding_timeout:  # pragma: no cover
         queue_arguments = {
             # Prevent RabbitMQ closing broker connection while running
             # a long transcoding task
