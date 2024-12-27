@@ -98,7 +98,7 @@ class VideoProfileTracks(models.Model):
         verbose_name = _('Video profile track')
         verbose_name_plural = _('Video profile tracks')
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f'{self.track.name}/{self.profile.name}@{self.profile.preset}'
 
 
@@ -138,7 +138,7 @@ class AudioProfileTracks(models.Model):
         verbose_name = _('Audio profile track')
         verbose_name_plural = _('Audio profile tracks')
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f'{self.track.name}/{self.profile.name}@{self.profile.preset}'
 
 
