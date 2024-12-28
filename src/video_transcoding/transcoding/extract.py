@@ -14,14 +14,14 @@ from video_transcoding.utils import LoggerMixin
 
 class Extractor(LoggerMixin, abc.ABC):
     @abc.abstractmethod
-    def get_meta_data(self, uri: str) -> Metadata:
+    def get_meta_data(self, uri: str) -> Metadata:  # pragma: no cover
         raise NotImplementedError()
 
     def ffprobe(self, uri: str, timeout: float = 60.0, **kwargs: Any) -> ffprobe.ProbeInfo:
         self.logger.debug("Probing %s", uri)
         ff = FFProbe(uri, show_format=True, show_streams=True, output_format='json', **kwargs)
         ret, output, errors = ff.run(timeout=timeout)
-        if ret != 0:
+        if ret != 0:  # pragma: no cover
             raise RuntimeError(f"ffprobe returned {ret}")
         return ffprobe.ProbeInfo(**json.loads(output))
 
@@ -41,6 +41,8 @@ class SourceExtractor(Extractor):
                 video_streams.append(s)
             elif isinstance(s, meta.AudioMeta):
                 audio_streams.append(s)
+            else:  # pragma: no cover
+                raise RuntimeError("unexpected stream kind")
         return Metadata(
             uri=uri,
             videos=video_streams,
@@ -48,25 +50,25 @@ class SourceExtractor(Extractor):
         )
 
 
-class NutExtractor(Extractor, abc.ABC):
+class MKVExtractor(Extractor, abc.ABC):
     """
-    Supports analyzing media with .nut extension.
+    Supports analyzing media from playlists with .mkv segments.
     """
     def ffprobe(self, uri: str, timeout: float = 60.0, **kwargs: Any) -> ffprobe.ProbeInfo:
         kwargs.setdefault('allowed_extensions', 'mkv')
-        return super().ffprobe(uri, timeout, **kwargs)
+        return super().ffprobe(uri, timeout=timeout, **kwargs)
 
 
-class SplitExtractor(NutExtractor):
+class SplitExtractor(MKVExtractor):
     """
     Extracts source metadata from video and audio HLS playlists.
     """
 
     def get_meta_data(self, uri: str) -> Metadata:
         video_uri = uri.replace('/split.json', '/source-video.m3u8')
-        video_streams = analysis.NutPlaylistAnalyzer(self.ffprobe(video_uri)).analyze()
+        video_streams = analysis.MKVPlaylistAnalyzer(self.ffprobe(video_uri)).analyze()
         audio_uri = uri.replace('/split.json', '/source-audio.m3u8')
-        audio_streams = analysis.NutPlaylistAnalyzer(self.ffprobe(audio_uri)).analyze()
+        audio_streams = analysis.MKVPlaylistAnalyzer(self.ffprobe(audio_uri)).analyze()
         return Metadata(
             uri=uri,
             videos=cast(List[meta.VideoMeta], video_streams),
@@ -74,13 +76,13 @@ class SplitExtractor(NutExtractor):
         )
 
 
-class VideoSegmentExtractor(NutExtractor):
+class VideoSegmentExtractor(MKVExtractor):
     """
     Extracts metadata from video segments
     """
 
     def get_meta_data(self, uri: str) -> Metadata:
-        streams = analysis.NutSegmentAnalyzer(self.ffprobe(uri)).analyze()
+        streams = analysis.MKVSegmentAnalyzer(self.ffprobe(uri)).analyze()
         return Metadata(
             uri=uri,
             videos=cast(List[meta.VideoMeta], streams),
@@ -88,7 +90,7 @@ class VideoSegmentExtractor(NutExtractor):
         )
 
 
-class VideoResultExtractor(NutExtractor):
+class VideoResultExtractor(MKVExtractor):
     """
     Extracts metadata from video segment transcoding results.
     """
@@ -117,6 +119,8 @@ class HLSExtractor(Extractor):
                 video_streams.append(s)
             elif isinstance(s, meta.AudioMeta):
                 audio_streams.append(s)
+            else:  # pragma: no cover
+                raise RuntimeError("invalid stream kind")
         return Metadata(
             uri=uri,
             videos=video_streams,

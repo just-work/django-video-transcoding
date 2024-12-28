@@ -10,9 +10,9 @@ class SourceAnalyzer(mediainfo.Analyzer):
     """
 
 
-class NutPlaylistAnalyzer(ffprobe.Analyzer):
+class MKVPlaylistAnalyzer(ffprobe.Analyzer):
     """
-    Analyzer for HLS playlist with .NUT fragments.
+    Analyzer for HLS playlist with .mkv fragments.
     """
 
     def get_duration(self, track: Dict[str, Any]) -> meta.TS:
@@ -27,7 +27,7 @@ class NutPlaylistAnalyzer(ffprobe.Analyzer):
         return duration
 
 
-class NutSegmentAnalyzer(NutPlaylistAnalyzer):
+class MKVSegmentAnalyzer(MKVPlaylistAnalyzer):
     """
     Analyzer for audio/video segments in .NUT container.
     """
