@@ -117,10 +117,10 @@ class ResumableStrategyTestCase(TestCase):
             preset=profiles.DEFAULT_PRESET
         )
         uri = s.ws.get_absolute_uri(s.ws.root).geturl()
-        root = f'{defaults.VIDEO_TEMP_URI.replace('dav://', 'http://')}'
+        root = f"{defaults.VIDEO_TEMP_URI.replace('dav://', 'http://')}"
         self.assertEqual(uri, f'{root}{basename}/')
         uri = s.store.get_absolute_uri(s.store.root).geturl()
-        root = f'{defaults.VIDEO_RESULTS_URI.replace('dav://', 'http://')}'
+        root = f"{defaults.VIDEO_RESULTS_URI.replace('dav://', 'http://')}"
         self.assertEqual(uri, f'{root}{basename}/')
 
     def test_main_flow(self):
