@@ -26,7 +26,7 @@ class Resource(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def trailing_slash(self) -> str:
+    def trailing_slash(self) -> str:  # pragma: no cover
         raise NotImplementedError
 
     @property
@@ -75,27 +75,29 @@ class File(Resource):
 class Workspace(LoggerMixin, abc.ABC):
 
     @abc.abstractmethod
-    def create_collection(self, c: Collection) -> None:
+    def create_collection(self, c: Collection) -> None:  # pragma: no cover
         raise NotImplementedError
 
     def get_absolute_uri(self, r: Resource) -> ParseResult:
         path = '/'.join((*Path(self.uri.path.lstrip('/')).parts, *r.parts))
+        if not path:
+            return self.uri
         return self.uri._replace(path='/' + path + r.trailing_slash)
 
     @abc.abstractmethod
-    def delete_collection(self, c: Collection) -> None:
+    def delete_collection(self, c: Collection) -> None:  # pragma: no cover
         raise NotImplementedError
 
     @abc.abstractmethod
-    def read(self, f: File) -> str:
+    def read(self, f: File) -> str:  # pragma: no cover
         raise NotImplementedError
 
     @abc.abstractmethod
-    def write(self, f: File, content: str) -> None:
+    def write(self, f: File, content: str) -> None:  # pragma: no cover
         raise NotImplementedError
 
     @abc.abstractmethod
-    def exists(self, r: Resource) -> bool:
+    def exists(self, r: Resource) -> bool:  # pragma: no cover
         raise NotImplementedError
 
     def __init__(self, uri: ParseResult) -> None:
@@ -109,7 +111,7 @@ class Workspace(LoggerMixin, abc.ABC):
 
         :returns: complete uri for a directory.
         """
-        c = self.root.collection(*Path(path).parts)
+        c = self.root.collection(*Path(path.lstrip('/')).parts)
         self.create_collection(c)
         return c
 
@@ -177,7 +179,9 @@ class WebDAVWorkspace(Workspace):
     def exists(self, r: Resource) -> bool:
         uri = self.get_absolute_uri(r)
         self.logger.debug("exists %s", uri.geturl())
-        resp = self.session.request("HEAD", uri.geturl())
+        timeout = (defaults.VIDEO_CONNECT_TIMEOUT,
+                   defaults.VIDEO_REQUEST_TIMEOUT,)
+        resp = self.session.request("HEAD", uri.geturl(), timeout=timeout)
         if resp.status_code == http.HTTPStatus.NOT_FOUND:
             return False
         resp.raise_for_status()
@@ -186,7 +190,9 @@ class WebDAVWorkspace(Workspace):
     def read(self, r: File) -> str:
         uri = self.get_absolute_uri(r)
         self.logger.debug("get %s", uri.geturl())
-        resp = self.session.request("GET", uri.geturl())
+        timeout = (defaults.VIDEO_CONNECT_TIMEOUT,
+                   defaults.VIDEO_REQUEST_TIMEOUT,)
+        resp = self.session.request("GET", uri.geturl(), timeout=timeout)
         resp.raise_for_status()
         return resp.text
 
