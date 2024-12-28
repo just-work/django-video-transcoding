@@ -209,7 +209,6 @@ class TranscodeTaskVideoStateTestCase(base.BaseTestCase):
 
         preset = tasks.transcode_video.init_preset(p)
 
-        self.maxDiff = None
         self.assertIsInstance(preset, profiles.Preset)
         self.assertEqual(len(preset.video_profiles), 1)
         vp = preset.video_profiles[0]

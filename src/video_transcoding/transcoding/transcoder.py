@@ -186,7 +186,6 @@ class Splitter(Processor):
             segment_format='mkv',
             avoid_negative_ts='disabled',
             copyts=True,
-            segment_format_options={},
             segment_list=urljoin(self.dst, f'source-{kind}.m3u8'),
             segment_list_type='m3u8',
             segment_time=defaults.VIDEO_CHUNK_DURATION,
