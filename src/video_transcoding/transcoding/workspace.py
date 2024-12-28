@@ -42,6 +42,11 @@ class Resource(abc.ABC):
     def __repr__(self) -> str:
         return self.path
 
+    def __eq__(self, other):
+        if not isinstance(other, Resource):
+            return NotImplemented
+        return self.parts == other.parts
+
 
 class Collection(Resource):
     """

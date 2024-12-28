@@ -66,21 +66,21 @@ class Strategy(LoggerMixin, abc.ABC):
         self.cleanup(is_error=exc_type is not None)
 
     @abc.abstractmethod
-    def process(self) -> metadata.Metadata:
+    def process(self) -> metadata.Metadata:  # pragma: no cover
         """
         Run processing logic.
         """
         raise NotImplementedError
 
     @abc.abstractmethod
-    def initialize(self) -> None:
+    def initialize(self) -> None:  # pragma: no cover
         """
         Initialize workspace.
         """
         raise NotImplementedError
 
     @abc.abstractmethod
-    def cleanup(self, is_error: bool) -> None:
+    def cleanup(self, is_error: bool) -> None:  # pragma: no cover
         """
         Cleanup workspace.
 
@@ -179,6 +179,7 @@ class ResumableStrategy(Strategy):
         return workspace.File(*parts)
 
     def initialize(self) -> None:
+        self.ws.create_collection(self.ws.root)
         self.sources = self.ws.ensure_collection('sources')
         self.results = self.ws.ensure_collection('results')
         self.store.create_collection(self.store.root)
@@ -193,7 +194,7 @@ class ResumableStrategy(Strategy):
         src = self.analyze_source()
         self.profile = self.select_profile(src)
 
-        source_meta = self.split(src)
+        self.split(src)
 
         segments = self.get_segment_list()
 
@@ -201,11 +202,8 @@ class ResumableStrategy(Strategy):
         for fn in segments:
             segment_meta = self.process_segment(fn)
             result_meta = self.merge_metadata(result_meta, segment_meta)
-        if result_meta is None:
+        if result_meta is None:  # pragma: no cover
             raise RuntimeError("no segments")
-
-        # Copy previously transcoded audio streams to resulting meta
-        result_meta.audios = source_meta.audios
 
         return self.merge(segments, meta=result_meta)
 
