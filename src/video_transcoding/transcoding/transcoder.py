@@ -218,6 +218,8 @@ class Segmentor(Processor):
         video_codecs = [s > codecs.Copy(kind=VIDEO, bitrate=s.meta.bitrate)
                         for s in video_source.streams
                         if s.kind == VIDEO]
+        if len(video_codecs) != len(self.profile.video):  # pragma: no cover
+            raise RuntimeError("video streams mismatch")
         # We need bitrate hints for HLS bandwidth tags
         for vc, vt in zip(video_codecs, self.profile.video):
             vc.bitrate = vt.max_rate
@@ -225,6 +227,9 @@ class Segmentor(Processor):
         audio_streams = [s for s in src.streams if s.kind == AUDIO]
         audio_source = inputs.input_file(self.audio, *audio_streams)
         audio_codecs = [audio_source.audio > c for c in self.prepare_audio_codecs()]
+
+        if len(audio_codecs) != len(self.profile.audio):  # pragma: no cover
+            raise RuntimeError("audio streams mismatch")
 
         for ac, at in zip(audio_codecs, self.profile.audio):
             ac.bitrate = at.bitrate

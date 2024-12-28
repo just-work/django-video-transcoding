@@ -266,7 +266,81 @@ class SplitterTestCase(ProcessorBaseTestCase):
             '-segment_time', defaults.VIDEO_CHUNK_DURATION,
             '-min_seg_duration', defaults.VIDEO_CHUNK_DURATION,
             '/dst/source-audio-%05d.mkv',
+        ]
+        self.assertEqual(ff.get_args(), ensure_binary(expected))
 
 
+class SegmentorTestCase(ProcessorBaseTestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.segmentor = transcoder.Segmentor(
+            video_source='/results/source-video.m3u8',
+            audio_source='/sources/source-audio.m3u8',
+            dst='/dst/',
+            profile=self.profile,
+            meta=self.meta,
+        )
+
+    def test_get_result_metadata(self):
+        target = 'video_transcoding.transcoding.extract.HLSExtractor'
+        with mock.patch(target) as m:
+            m.return_value.get_meta_data.return_value = self.meta
+
+            result = self.segmentor.get_result_metadata('uri')
+
+        m.assert_called_once_with()
+        m.return_value.get_meta_data.assert_called_once_with('uri')
+        self.assertEqual(result, self.meta)
+
+    def test_prepare_ffmpeg(self):
+        self.profile.video.append(profiles.VideoTrack(
+            frame_rate=30,
+            width=1280,
+            height=720,
+            profile='main',
+            pix_fmt='yuv420p',
+            buf_size=1_500_000,
+            gop_size=30,
+            max_rate=750_000,
+            id='v',
+            force_key_frames='1.0',
+            codec='libx264',
+            preset='slow',
+            constant_rate_factor=23,
+        ))
+        self.meta.videos.append(deepcopy(self.meta.video))
+
+        ff = self.segmentor.prepare_ffmpeg(self.meta)
+        vsm = ' '.join([
+            'a:0,agroup:a0:bandwidth:128000',
+            'v:0,agroup:a0:bandwidth:1500000',
+            'v:1,agroup:a0:bandwidth:750000',
+        ])
+
+        expected = [
+            '-loglevel', 'level+info',
+            '-i', '/results/source-video.m3u8',
+            '-allowed_extensions', 'mkv',
+            '-i', '/sources/source-audio.m3u8',
+            '-map', '0:v:0',
+            '-c:v:0', 'copy',
+            '-b:v:0', 1500000,
+            '-map', '0:v:1',
+            '-c:v:1', 'copy',
+            '-b:v:1', 750000,
+            '-map', '1:a:0',
+            '-c:a:0', 'libfdk_aac',
+            '-b:a:0', 128000,
+            '-ar:a:0', 48000,
+            '-ac:a:0', 2,
+            '-copyts', '-avoid_negative_ts', 'auto',
+            '-hls_time', 1.0,
+            '-hls_playlist_type', 'vod',
+            '-var_stream_map', vsm,
+            '-hls_segment_filename', '/dst/segment-%v-%05d.ts',
+            '-muxdelay', 0,
+            '-reset_timestamps', 1,
+            '/dst/playlist-%v.m3u8'
         ]
         self.assertEqual(ff.get_args(), ensure_binary(expected))
