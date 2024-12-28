@@ -3,8 +3,7 @@ import http
 import os
 import shutil
 from pathlib import Path
-from types import NotImplementedType
-from typing import Optional, Union, Any
+from typing import Optional, Any
 from urllib.parse import urlparse, ParseResult
 
 import requests
@@ -43,9 +42,9 @@ class Resource(abc.ABC):
     def __repr__(self) -> str:
         return self.path
 
-    def __eq__(self, other: Any) -> Union[bool, NotImplementedType]:
+    def __eq__(self, other: Any) -> bool:
         if not isinstance(other, Resource):
-            return NotImplemented
+            return False
         return self.parts == other.parts
 
 
