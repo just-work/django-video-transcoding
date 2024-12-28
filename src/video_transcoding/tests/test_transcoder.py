@@ -1,3 +1,5 @@
+from copy import deepcopy
+from dataclasses import replace
 from unittest import mock
 
 from django.test import TestCase
@@ -5,16 +7,26 @@ from fffw.encoding import Stream
 from fffw.graph import VIDEO, AUDIO
 from fffw.wrapper import ensure_binary
 
+from video_transcoding import defaults
 from video_transcoding.tests import base
-from video_transcoding.transcoding import transcoder, profiles, inputs, codecs, \
-    outputs
+from video_transcoding.transcoding import (
+    transcoder,
+    profiles,
+    inputs,
+    codecs,
+    outputs,
+)
 
 
-class TranscoderTestCase(base.ProfileMixin, base.MetadataMixin, TestCase):
+class ProcessorBaseTestCase(base.ProfileMixin, base.MetadataMixin, TestCase):
     def setUp(self):
         self.profile = self.default_profile()
         self.meta = self.make_meta(30.0, uri='src.ts')
 
+
+class TranscoderTestCase(ProcessorBaseTestCase):
+    def setUp(self):
+        super().setUp()
         self.transcoder = transcoder.Transcoder(
             'src.ts',
             'dst.ts',
@@ -196,3 +208,65 @@ class TranscoderTestCase(base.ProfileMixin, base.MetadataMixin, TestCase):
         m.assert_called_once_with()
         m.return_value.get_meta_data.assert_called_once_with('uri')
         self.assertEqual(result, self.meta)
+
+
+class SplitterTestCase(ProcessorBaseTestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.splitter = transcoder.Splitter(
+            'src.mp4',
+            '/dst/',
+            profile=self.profile,
+            meta=self.meta,
+        )
+
+    def test_get_result_metadata(self):
+        meta = deepcopy(self.meta)
+        for stream in meta.streams:
+            # ensure that bitrate metadata is copied from source meta
+            # noinspection PyTypeChecker
+            stream._meta = replace(stream.meta, bitrate=stream.meta.bitrate + 1)
+        target = 'video_transcoding.transcoding.extract.SplitExtractor'
+        with mock.patch(target) as m:
+            m.return_value.get_meta_data.return_value = meta
+
+            result = self.splitter.get_result_metadata('uri')
+
+        m.assert_called_once_with()
+        m.return_value.get_meta_data.assert_called_once_with('uri')
+        self.assertEqual(result, self.meta)
+
+    def test_prepare_ffmpeg(self):
+        ff = self.splitter.prepare_ffmpeg(self.meta)
+
+        # ffmpeg
+        expected = [
+            '-loglevel', 'level+info',
+            '-i', 'src.mp4',
+            '-map', '0:v:0',
+            '-c:v:0', 'copy',
+            '-an',
+            '-f', 'stream_segment',
+            '-copyts', '-avoid_negative_ts', 'disabled',
+            '-segment_format', 'mkv',
+            '-segment_list', '/dst/source-video.m3u8',
+            '-segment_list_type', 'm3u8',
+            '-segment_time', defaults.VIDEO_CHUNK_DURATION,
+            '-min_seg_duration', defaults.VIDEO_CHUNK_DURATION,
+            '/dst/source-video-%05d.mkv',
+            '-map', '0:a:0',
+            '-c:a:0', 'copy',
+            '-vn',
+            '-f', 'stream_segment',
+            '-copyts', '-avoid_negative_ts', 'disabled',
+            '-segment_format', 'mkv',
+            '-segment_list', '/dst/source-audio.m3u8',
+            '-segment_list_type', 'm3u8',
+            '-segment_time', defaults.VIDEO_CHUNK_DURATION,
+            '-min_seg_duration', defaults.VIDEO_CHUNK_DURATION,
+            '/dst/source-audio-%05d.mkv',
+
+
+        ]
+        self.assertEqual(ff.get_args(), ensure_binary(expected))
