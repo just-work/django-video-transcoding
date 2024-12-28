@@ -19,7 +19,7 @@ class VideoTrack:
     pix_fmt: str
     width: int
     height: int
-    frame_rate: int
+    frame_rate: float
     gop_size: int
     force_key_frames: str
 
@@ -77,8 +77,8 @@ class AudioCondition:
     Condition for source audio stream for video profile selection
     """
 
-    min_sample_rate: int
-    min_bitrate: int
+    min_sample_rate: int = 0
+    min_bitrate: int = 0
 
     def is_valid(self, meta: AudioMeta) -> bool:
         """

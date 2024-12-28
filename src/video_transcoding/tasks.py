@@ -119,7 +119,7 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         :returns: Video object
         :raises Retry: in case of unexpected video status or task_id
         """
-        if defaults.VIDEO_TRANSCODING_WAIT:
+        if defaults.VIDEO_TRANSCODING_WAIT:  # pragma: no cover
             # Handle database replication and transaction commit related delay
             time.sleep(defaults.VIDEO_TRANSCODING_WAIT)
         try:
@@ -165,7 +165,7 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         """
         preset = self.init_preset(video.preset)
         basename = video.basename
-        if basename is None:
+        if basename is None:  # pragma: no cover
             raise RuntimeError("basename not set")
         s = self.init_strategy(
             source_uri=video.source,
@@ -174,7 +174,8 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         )
         output_meta = s()
 
-        data = dataclasses.asdict(output_meta)  # type: ignore
+        # noinspection PyTypeChecker
+        data = dataclasses.asdict(output_meta)
         duration = None
         # cleanup internal metadata and compute duration
         for stream in data['audios'] + data['videos']:

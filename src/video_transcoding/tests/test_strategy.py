@@ -1,70 +1,12 @@
 import json
 from dataclasses import asdict
 from unittest import mock
-from urllib.parse import ParseResult, urlunparse, urlparse
 
 from django.test import TestCase
 
 from video_transcoding import strategy, defaults
 from video_transcoding.tests import base
 from video_transcoding.transcoding import profiles, workspace
-
-
-class MemoryWorkspace:
-    def __init__(self, basename: str):
-        self.tree = {}
-        self.root = workspace.Collection(basename)
-
-    def ensure_collection(self, path: str) -> workspace.Collection:
-        parts = self.root.parts + tuple(path.strip('/').split('/'))
-        t = self.tree
-        for p in parts:
-            t = t.setdefault(p, {})
-        return workspace.Collection(*parts)
-
-    def create_collection(self, c: workspace.Collection) -> None:
-        t = self.tree
-        for p in c.parts:
-            t = t.setdefault(p, {})
-
-    def delete_collection(self, c: workspace.Collection) -> None:
-        t = self.tree
-        parent = p = None
-        for p in c.parts:
-            parent = t
-            try:
-                t = t[p]
-            except KeyError:
-                break
-        else:
-            del parent[p]
-
-    def exists(self, r: workspace.Resource) -> bool:
-        t = self.tree
-        for p in r.parts:
-            try:
-                t = t[p]
-            except KeyError:
-                return False
-        else:
-            return True
-
-    def read(self, f: workspace.File) -> str:
-        t = self.tree
-        for p in f.parts:
-            t = t[p]
-        return t
-
-    def write(self, f: workspace.File, content: str) -> None:
-        t = self.tree
-        for p in f.parts[:-1]:
-            t = t[p]
-        t[f.parts[-1]] = content
-
-    def get_absolute_uri(self, r: workspace.Resource) -> ParseResult:
-        path = '/'.join(r.parts)
-        # noinspection PyArgumentList
-        return urlparse(urlunparse(('memory', '', path, '', '', '')))
 
 
 class ResumableStrategyTestCase(base.ProfileMixin, base.MetadataMixin,
@@ -79,8 +21,8 @@ class ResumableStrategyTestCase(base.ProfileMixin, base.MetadataMixin,
             basename=basename,
             preset=profiles.DEFAULT_PRESET
         )
-        self.tmp_ws = MemoryWorkspace(f'tmp-{basename}')
-        self.dst_ws = MemoryWorkspace(f'dst-{basename}')
+        self.tmp_ws = base.MemoryWorkspace(f'tmp-{basename}')
+        self.dst_ws = base.MemoryWorkspace(f'dst-{basename}')
         self.strategy.ws = self.tmp_ws
         self.strategy.store = self.dst_ws
         self.strategy.initialize()

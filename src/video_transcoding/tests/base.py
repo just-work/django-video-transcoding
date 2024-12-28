@@ -1,11 +1,12 @@
 from unittest import mock
+from urllib.parse import ParseResult, urlparse, urlunparse
 from uuid import uuid4
 
 from celery.result import AsyncResult
 from django.test import TestCase
 from fffw.graph import VideoMeta, TS, Scene, AudioMeta
 
-from video_transcoding.transcoding import profiles, metadata
+from video_transcoding.transcoding import profiles, metadata, workspace
 
 
 class BaseTestCase(TestCase):
@@ -97,3 +98,60 @@ class MetadataMixin:
                 ),
             ]
         )
+
+
+class MemoryWorkspace:
+    def __init__(self, basename: str):
+        self.tree = {}
+        self.root = workspace.Collection(basename)
+
+    def ensure_collection(self, path: str) -> workspace.Collection:
+        parts = self.root.parts + tuple(path.strip('/').split('/'))
+        t = self.tree
+        for p in parts:
+            t = t.setdefault(p, {})
+        return workspace.Collection(*parts)
+
+    def create_collection(self, c: workspace.Collection) -> None:
+        t = self.tree
+        for p in c.parts:
+            t = t.setdefault(p, {})
+
+    def delete_collection(self, c: workspace.Collection) -> None:
+        t = self.tree
+        parent = p = None
+        for p in c.parts:
+            parent = t
+            try:
+                t = t[p]
+            except KeyError:
+                break
+        else:
+            del parent[p]
+
+    def exists(self, r: workspace.Resource) -> bool:
+        t = self.tree
+        for p in r.parts:
+            try:
+                t = t[p]
+            except KeyError:
+                return False
+        else:
+            return True
+
+    def read(self, f: workspace.File) -> str:
+        t = self.tree
+        for p in f.parts:
+            t = t[p]
+        return t
+
+    def write(self, f: workspace.File, content: str) -> None:
+        t = self.tree
+        for p in f.parts[:-1]:
+            t = t[p]
+        t[f.parts[-1]] = content
+
+    def get_absolute_uri(self, r: workspace.Resource) -> ParseResult:
+        path = '/'.join(r.parts)
+        # noinspection PyArgumentList
+        return urlparse(urlunparse(('memory', '', path, '', '', '')))
