@@ -82,7 +82,7 @@ class FileSystemWorkspaceTestCase(TestCase):
         m.side_effect = FileNotFoundError()
         try:
             self.ws.delete_collection(c)
-        except FileNotFoundError:
+        except FileNotFoundError:  # pragma: no cover
             self.fail("exception raised")
 
     @mock.patch('os.path.exists')
@@ -220,7 +220,7 @@ class WebDAVWorkspaceTestCase(TestCase):
         self.response.status_code = requests.codes.not_found
         try:
             self.ws.delete_collection(c)
-        except requests.exceptions.HTTPError:
+        except requests.exceptions.HTTPError:  # pragma: no cover
             self.fail("exception raised")
 
     def test_exists(self):
@@ -280,4 +280,3 @@ class InitWorkspaceTestCase(TestCase):
     def test_init_value_error(self):
         with self.assertRaises(ValueError):
             workspace.init('not_a_scheme://domain.com/')
-
