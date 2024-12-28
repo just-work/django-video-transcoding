@@ -42,7 +42,7 @@ class Processor(LoggerMixin, abc.ABC):
         return dst
 
     @abc.abstractmethod
-    def get_result_metadata(self, uri: str) -> Metadata:
+    def get_result_metadata(self, uri: str) -> Metadata:  # pragma: no cover
         """
         Get result metadata.
 
@@ -61,7 +61,8 @@ class Processor(LoggerMixin, abc.ABC):
             raise RuntimeError(error)
 
     @abc.abstractmethod
-    def prepare_ffmpeg(self, src: Metadata) -> encoding.FFMPEG:
+    def prepare_ffmpeg(self, src: Metadata
+                       ) -> encoding.FFMPEG:  # pragma: no cover
         raise NotImplementedError
 
 
@@ -88,20 +89,25 @@ class Transcoder(Processor):
         video_codecs = self.prepare_video_codecs()
         dst = self.prepare_output(video_codecs)
 
+        simd = self.scale_and_encode(source, video_codecs, dst)
+
+        return simd.ffmpeg
+
+    def scale_and_encode(self,
+                         source: inputs.Input,
+                         video_codecs: list[codecs.VideoCodec],
+                         dst: outputs.Output) -> SIMD:
         # ffmpeg wrapper with vectorized processing capabilities
         simd = SIMD(source, dst,
                     overwrite=True, loglevel='repeat+level+info')
-
         # per-video-track scaling
         scaling_params = [
             (video.width, video.height) for video in self.profile.video
         ]
         scaled_video = simd.video.connect(encoding.Scale, params=scaling_params)
-
         # connect scaled video streams to simd video codecs
         scaled_video | Vector(video_codecs)
-
-        return simd.ffmpeg
+        return simd
 
     @staticmethod
     def prepare_input(src: Metadata) -> encoding.Input:

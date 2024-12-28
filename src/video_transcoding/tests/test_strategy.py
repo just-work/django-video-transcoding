@@ -4,10 +4,10 @@ from unittest import mock
 from urllib.parse import ParseResult, urlunparse, urlparse
 
 from django.test import TestCase
-from fffw.graph import VideoMeta, AudioMeta, TS, Scene
 
 from video_transcoding import strategy, defaults
-from video_transcoding.transcoding import profiles, workspace, metadata
+from video_transcoding.tests import base
+from video_transcoding.transcoding import profiles, workspace
 
 
 class MemoryWorkspace:
@@ -67,9 +67,11 @@ class MemoryWorkspace:
         return urlparse(urlunparse(('memory', '', path, '', '', '')))
 
 
-class ResumableStrategyTestCase(TestCase):
+class ResumableStrategyTestCase(base.ProfileMixin, base.MetadataMixin,
+                                TestCase):
     def setUp(self):
         super().setUp()
+        self.profile = self.default_profile()
         source_uri = 'https://example.com/source.mp4'
         basename = 'basename'
         self.strategy = strategy.ResumableStrategy(
@@ -82,31 +84,6 @@ class ResumableStrategyTestCase(TestCase):
         self.strategy.ws = self.tmp_ws
         self.strategy.store = self.dst_ws
         self.strategy.initialize()
-        self.profile = profiles.Profile(
-            video=[profiles.VideoTrack(
-                frame_rate=30,
-                width=1920,
-                height=1080,
-                profile='main',
-                pix_fmt='yuv420p',
-                buf_size=3_000_000,
-                gop_size=30,
-                max_rate=1_500_000,
-                id='v',
-                force_key_frames='1.0',
-                codec='libx264',
-                preset='slow',
-                constant_rate_factor=23,
-            )],
-            audio=[profiles.AudioTrack(
-                codec='libfdk_aac',
-                id='a',
-                bitrate=128_000,
-                channels=2,
-                sample_rate=48000,
-            )],
-            container=profiles.Container(segment_duration=1.0)
-        )
 
     def test_strategy_init(self):
         source_uri = 'https://example.com/source.mp4'
@@ -226,51 +203,6 @@ class ResumableStrategyTestCase(TestCase):
         ])
         merge.assert_called_once_with(['s1', 's2'], meta=mock.sentinel.m2_rv)
         self.assertEqual(result, mock.sentinel.merge_rv)
-
-    @staticmethod
-    def make_meta(*scenes: float) -> metadata.Metadata:
-        duration = sum(scenes)
-        # technically, merged scenes are incorrect because start value is
-        # always zero, but we don't care as we don't use them.
-        return metadata.Metadata(
-            uri='uri',
-            videos=[
-                VideoMeta(
-                    bitrate=100500,
-                    frame_rate=30.0,
-                    dar=1.778,
-                    par=1.0,
-                    width=1920,
-                    height=1080,
-                    frames=int(duration * 30.0),
-                    streams=['v'],
-                    start=TS(0),
-                    duration=TS(duration),
-                    device=None,
-                    scenes=[Scene(stream='v',
-                                  duration=TS(s),
-                                  start=TS(0),
-                                  position=TS(0))
-                            for s in scenes]
-                ),
-            ],
-            audios=[
-                AudioMeta(
-                    bitrate=100500,
-                    sampling_rate=48000,
-                    channels=2,
-                    samples=int(duration * 48000),
-                    streams=['a'],
-                    start=TS(0),
-                    duration=TS(duration),
-                    scenes=[Scene(stream='a',
-                                  duration=TS(s),
-                                  start=TS(0),
-                                  position=TS(0))
-                            for s in scenes]
-                ),
-            ]
-        )
 
     def test_merge_metadata(self):
         result_meta = None
