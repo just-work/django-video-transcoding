@@ -257,6 +257,7 @@ class ResumableStrategy(Strategy):
 
         meta = self._analyze_source()
 
+        # noinspection PyTypeChecker
         content = json.dumps(asdict(meta))
         self.ws.write(self.source_metadata, content)
 
@@ -285,6 +286,7 @@ class ResumableStrategy(Strategy):
 
         profile = self._select_profile(src)
 
+        # noinspection PyTypeChecker
         content = json.dumps(asdict(profile))
         self.ws.write(self.profile_file, content)
 
@@ -316,6 +318,7 @@ class ResumableStrategy(Strategy):
             return meta
 
         meta = self._split(src)
+        # noinspection PyTypeChecker
         content = json.dumps(asdict(meta))
         self.ws.write(f, content)
         return meta
@@ -364,6 +367,7 @@ class ResumableStrategy(Strategy):
 
         meta = self._process_segment(filename)
 
+        # noinspection PyTypeChecker
         content = json.dumps(asdict(meta))
         self.ws.write(f, content)
         return meta
