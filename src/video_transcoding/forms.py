@@ -26,13 +26,19 @@ class NestedJSONForm(forms.ModelForm):
 
     def clean(self) -> Dict[str, Any]:
         cd = self.cleaned_data
-        cd[self.json_field] = {k: cd[f'_{k}'] for k in self.nested_fields}
+        missing = set()
+        for k in self.nested_fields:
+            if f'_{k}' not in cd:
+                missing.add(f'_{k}')
+        if not missing:
+            cd[self.json_field] = {k: cd[f'_{k}'] for k in self.nested_fields}
         return cd
 
 
 class VideoProfileForm(NestedJSONForm):
     json_field = 'condition'
-    nested_fields = ['min_bitrate', 'min_width', 'min_height', 'min_frame_rate']
+    nested_fields = ['min_bitrate', 'min_width', 'min_height', 'min_frame_rate',
+                     'min_dar', 'max_dar']
 
     class Meta:
         model = models.VideoProfile
@@ -46,6 +52,8 @@ class VideoProfileForm(NestedJSONForm):
     _min_width = forms.IntegerField(label=_('Min width'))
     _min_height = forms.IntegerField(label=_('Min height'))
     _min_frame_rate = forms.FloatField(label=_('Min frame rate'))
+    _min_dar = forms.FloatField(label=_('Min aspect'))
+    _max_dar = forms.FloatField(label=_('Max aspect'))
 
 
 class AudioProfileForm(NestedJSONForm):

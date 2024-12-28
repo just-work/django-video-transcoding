@@ -5,6 +5,8 @@ import django.utils.timezone
 import model_utils.fields
 from django.db import migrations, models
 
+from video_transcoding import defaults
+
 
 class Migration(migrations.Migration):
 
@@ -69,8 +71,6 @@ class Migration(migrations.Migration):
                 'verbose_name_plural': 'Audio profile tracks',
                 'ordering': ['order_number'],
                 'unique_together': {('profile', 'track')},
-                'verbose_name': 'Audio profile track',
-                'verbose_name_plural': 'Audio profile tracks',
             },
         ),
         migrations.AddField(
@@ -87,11 +87,6 @@ class Migration(migrations.Migration):
             model_name='audioprofile',
             name='preset',
             field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='audio_profiles', to='video_transcoding.preset', verbose_name='preset'),
-        ),
-        migrations.AddField(
-            model_name='video',
-            name='preset',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='video_transcoding.preset', verbose_name='preset'),
         ),
         migrations.CreateModel(
             name='VideoProfile',
@@ -124,8 +119,6 @@ class Migration(migrations.Migration):
                 'verbose_name': 'Video track',
                 'verbose_name_plural': 'Video tracks',
                 'unique_together': {('name', 'preset')},
-                'verbose_name': 'Video track',
-                'verbose_name_plural': 'Video tracks',
             },
         ),
         migrations.CreateModel(
@@ -141,8 +134,6 @@ class Migration(migrations.Migration):
                 'verbose_name_plural': 'Video profile tracks',
                 'ordering': ['order_number'],
                 'unique_together': {('profile', 'track')},
-                'verbose_name': 'Video profile track',
-                'verbose_name_plural': 'Video profile tracks',
             },
         ),
         migrations.AddField(
@@ -162,101 +153,17 @@ class Migration(migrations.Migration):
             name='videoprofile',
             unique_together={('name', 'preset')},
         ),
-        migrations.AlterModelOptions(
-            name='audioprofile',
-            options={'ordering': ['order_number'], 'verbose_name': 'Audio profile', 'verbose_name_plural': 'Audio profiles'},
-        ),
-        migrations.AlterModelOptions(
-            name='audiotrack',
-            options={'verbose_name': 'Audio track', 'verbose_name_plural': 'Audio tracks'},
-        ),
-        migrations.AlterModelOptions(
-            name='videoprofile',
-            options={'ordering': ['order_number'], 'verbose_name': 'Video profile', 'verbose_name_plural': 'Video profiles'},
-        ),
-        migrations.AlterField(
-            model_name='audioprofile',
-            name='audio',
-            field=models.ManyToManyField(through='video_transcoding.AudioProfileTracks', to='video_transcoding.audiotrack', verbose_name='Audio tracks'),
-        ),
-        migrations.AlterField(
-            model_name='audioprofile',
-            name='condition',
-            field=models.JSONField(default=dict, verbose_name='condition'),
-        ),
-        migrations.AlterField(
-            model_name='audioprofile',
-            name='name',
-            field=models.SlugField(max_length=255, verbose_name='name'),
-        ),
-        migrations.AlterField(
-            model_name='audioprofile',
-            name='order_number',
-            field=models.SmallIntegerField(default=0, verbose_name='order number'),
-        ),
-        migrations.AlterField(
-            model_name='audioprofile',
-            name='preset',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='audio_profiles', to='video_transcoding.preset', verbose_name='preset'),
-        ),
-        migrations.AlterField(
-            model_name='audioprofiletracks',
-            name='profile',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='video_transcoding.audioprofile', verbose_name='profile'),
-        ),
-        migrations.AlterField(
-            model_name='audioprofiletracks',
-            name='track',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='video_transcoding.audiotrack', verbose_name='track'),
-        ),
-        migrations.AlterField(
-            model_name='audiotrack',
-            name='name',
-            field=models.SlugField(max_length=255, verbose_name='name'),
-        ),
-        migrations.AlterField(
-            model_name='audiotrack',
-            name='params',
-            field=models.JSONField(default=dict, verbose_name='params'),
-        ),
-        migrations.AlterField(
-            model_name='audiotrack',
-            name='preset',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='audio_tracks', to='video_transcoding.preset', verbose_name='preset'),
-        ),
-        migrations.AlterField(
-            model_name='videoprofile',
-            name='condition',
-            field=models.JSONField(default=dict, verbose_name='condition'),
-        ),
-        migrations.AlterField(
-            model_name='videoprofile',
-            name='name',
-            field=models.SlugField(max_length=255, verbose_name='name'),
-        ),
-        migrations.AlterField(
-            model_name='videoprofile',
-            name='order_number',
-            field=models.SmallIntegerField(default=0, verbose_name='order number'),
-        ),
-        migrations.AlterField(
-            model_name='videoprofile',
-            name='preset',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='video_profiles', to='video_transcoding.preset', verbose_name='preset'),
-        ),
-        migrations.AlterField(
-            model_name='videoprofile',
-            name='video',
-            field=models.ManyToManyField(through='video_transcoding.VideoProfileTracks', to='video_transcoding.videotrack', verbose_name='Video tracks'),
-        ),
-        migrations.AlterField(
-            model_name='videoprofiletracks',
-            name='profile',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='video_transcoding.videoprofile', verbose_name='profile'),
-        ),
-        migrations.AlterField(
-            model_name='videoprofiletracks',
-            name='track',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='video_transcoding.videotrack', verbose_name='track'),
-        ),
     ]
+
+    if defaults.VIDEO_MODEL == 'video_transcoding.Video':
+        operations.extend([
+            migrations.AddField(
+                model_name='video',
+                name='preset',
+                field=models.ForeignKey(blank=True, null=True,
+                                        on_delete=django.db.models.deletion.SET_NULL,
+                                        to='video_transcoding.preset',
+                                        verbose_name='preset'),
+
+            ),
+        ])

@@ -107,3 +107,16 @@ TBD:
 * when using separate celery app, send SIGUSR1 from master to workers to trigger
     soft shutdown handling
     (see `video_transcoding.celery.send_term_to_children`)
+
+### Settings
+
+Application settings can be set up via env variables, see `video_transcoding.defaults`.
+Also defaults can be overridden this via `django.conf.settings.VIDEO_TRANSCODING_CONFIG`.
+
+### Model inheritance
+
+For preset-related models use `<Model>Base` abstract models defined in `video_transcoding.models`.
+For overriding `Video` model set `VIDEO_TRANSCODING_CONFIG["VIDEO_MODEL"]` key to `app_label.ModelName` in `settings`.
+Connect other django models to `Video` using `video_transcoding.models.get_video_model()`. 
+When `Video` is overridden, video model admin is not registered automatically. As with migrations, this should be
+done manually.

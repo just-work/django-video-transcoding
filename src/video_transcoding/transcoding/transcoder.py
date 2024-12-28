@@ -1,87 +1,135 @@
-import dataclasses
-from pprint import pformat
+import abc
+import os.path
+from itertools import product
+from typing import List, Dict, Any, Literal, cast
+from urllib.parse import urljoin
 
-from fffw.encoding import FFMPEG, input_file, Stream, Scale, output_file
+from fffw import encoding
 from fffw.encoding.vector import SIMD, Vector
 from fffw.graph import VIDEO, AUDIO
 
-from video_transcoding.transcoding import codecs
-from video_transcoding.transcoding.metadata import Metadata, Analyzer
-from video_transcoding.transcoding.profiles import Preset, Profile
+from video_transcoding import defaults
+from video_transcoding.transcoding import codecs, inputs, outputs, extract
+from video_transcoding.transcoding.metadata import Metadata
+from video_transcoding.transcoding.profiles import Profile
 from video_transcoding.utils import LoggerMixin
 
-# Allowed duration difference between source and result
-DURATION_DELTA = 0.95
 
-
-class TranscodeError(Exception):
-    """ Video transcoding error."""
-
-    def __init__(self, message: str):
-        self.message = message
-        super().__init__(message)
-
-
-class Transcoder(LoggerMixin):
-    """ Video transcoder.
-
-    >>> t = Transcoder('http://source.localhost/source.mp4', '/tmp/result.mp4')
-    >>> t.transcode()
+class Processor(LoggerMixin, abc.ABC):
     """
+    A single processing step abstract class.
+    """
+    requires_video: bool = True
+    requires_audio: bool = True
 
-    def __init__(self, source: str, destination: str, preset: Preset):
-        """
-        :param source: source file link (http/ftp or file path)
-        :param destination: result file path
-        :param preset: transcoding preset
-        """
+    def __init__(self, src: str, dst: str, *,
+                 profile: Profile,
+                 meta: Metadata) -> None:
         super().__init__()
-        self.source = source
-        self.destination = destination
-        self.preset = preset
+        self.src = src
+        self.dst = dst
+        self.profile = profile
+        self.meta = meta
 
-    def get_media_info(self, filename: str) -> Metadata:
+    def __call__(self) -> Metadata:
+        return self.process()
+
+    def process(self) -> Metadata:
+        ff = self.prepare_ffmpeg(self.meta)
+        self.run(ff)
+        # Get result media info
+        dst = self.get_result_metadata(self.dst)
+        return dst
+
+    @abc.abstractmethod
+    def get_result_metadata(self, uri: str) -> Metadata:  # pragma: no cover
         """
-        Transforms video and audio metadata to a dict
+        Get result metadata.
 
-        :param filename: analyzed media
-        :returns: metadata object with video and audio stream
+        :param uri: analyzed media
+        :return: metadata object with video and audio stream
         """
-        audios, videos = Analyzer().get_meta_data(filename)
+        raise NotImplementedError()
 
-        if videos is None:
-            raise TranscodeError("missing video stream")
-        if audios is None:
-            raise TranscodeError("missing audio stream")
-        media_info = Metadata(videos=videos, audios=audios)
-        self.logger.info("Parsed media info:\n%s",
-                         pformat(dataclasses.asdict(media_info)))
-        return media_info
+    @staticmethod
+    def run(ff: encoding.FFMPEG) -> None:
+        """ Starts ffmpeg process and captures errors from it's logs"""
+        return_code, output, error = ff.run()
+        if return_code != 0:
+            # Check return code and error messages
+            error = error or f"invalid ffmpeg return code {return_code}"
+            raise RuntimeError(error)
 
-    def transcode(self) -> Metadata:
-        """ Transcodes video
+    @abc.abstractmethod
+    def prepare_ffmpeg(self, src: Metadata
+                       ) -> encoding.FFMPEG:  # pragma: no cover
+        raise NotImplementedError
 
-        * checks source mediainfo
-        * runs `ffmpeg`
-        * validates result
 
-        :returns: metadata with all video and audio stream in resulting file
+class Transcoder(Processor):
+    """
+    Source transcoding logic.
+    """
+    requires_audio = False
+
+    def get_result_metadata(self, uri: str) -> Metadata:
+        dst = extract.VideoResultExtractor().get_meta_data(uri)
+        return dst
+
+    def prepare_ffmpeg(self, src: Metadata) -> encoding.FFMPEG:
         """
-        # Get source mediainfo to use in validation
-        src = self.get_media_info(self.source)
-
-        # Select transcoding profile from source metadata
-        profile = self.select_profile(src)
-
+        Prepares ffmpeg command for a given source
+        :param src: input file metadata
+        :return: ffmpeg wrapper
+        """
         # Initialize source file descriptor with stream metadata
-        source = input_file(self.source,
-                            Stream(VIDEO, src.video),
-                            Stream(AUDIO, src.audio))
+        source = self.prepare_input(src)
 
         # Initialize output file with audio and codecs from profile tracks.
-        video_tracks = []
-        for video in profile.video:
-            video_tracks.append(codecs.VideoCodec(
+        video_codecs = self.prepare_video_codecs()
+        dst = self.prepare_output(video_codecs)
+
+        simd = self.scale_and_encode(source, video_codecs, dst)
+
+        return simd.ffmpeg
+
+    def scale_and_encode(self,
+                         source: inputs.Input,
+                         video_codecs: List[codecs.VideoCodec],
+                         dst: outputs.Output) -> SIMD:
+        # ffmpeg wrapper with vectorized processing capabilities
+        simd = SIMD(source, dst,
+                    overwrite=True, loglevel='repeat+level+info')
+        # per-video-track scaling
+        scaling_params = [
+            (video.width, video.height) for video in self.profile.video
+        ]
+        scaled_video = simd.video.connect(encoding.Scale, params=scaling_params)
+        # connect scaled video streams to simd video codecs
+        scaled_video | Vector(video_codecs)
+        return simd
+
+    @staticmethod
+    def prepare_input(src: Metadata) -> encoding.Input:
+        return inputs.input_file(src.uri, *src.streams)
+
+    def prepare_output(self,
+                       video_codecs: List[encoding.VideoCodec],
+                       ) -> encoding.Output:
+        return outputs.FileOutput(
+            output_file=self.dst,
+            method='PUT',
+            codecs=[*video_codecs],
+            format='mpegts',
+            muxdelay='0',
+            avoid_negative_ts='disabled',
+            copyts=True,
+        )
+
+    def prepare_video_codecs(self) -> List[codecs.VideoCodec]:
+        video_codecs = []
+        for video in self.profile.video:
+            video_codecs.append(codecs.VideoCodec(
                 codec=video.codec,
                 force_key_frames=video.force_key_frames,
                 constant_rate_factor=video.constant_rate_factor,
@@ -93,78 +141,153 @@ class Transcoder(LoggerMixin):
                 gop=video.gop_size,
                 rate=video.frame_rate,
             ))
-        audio_tracks = []
-        for audio in profile.audio:
-            audio_tracks.append(codecs.AudioCodec(
+        return video_codecs
+
+
+class Splitter(Processor):
+    """
+    Source splitting logic.
+    """
+
+    def get_result_metadata(self, uri: str) -> Metadata:
+        dst = extract.SplitExtractor().get_meta_data(uri)
+        # Mediainfo takes metadata from first HLS chunk in a playlist, so
+        # we need to force some fields from source metadata
+        if len(self.meta.videos) != len(dst.videos):  # pragma: no cover
+            raise RuntimeError("Streams mismatch")
+        for s, d in zip(self.meta.videos, dst.videos):
+            d.bitrate = s.bitrate
+        if len(self.meta.audios) != len(dst.audios):  # pragma: no cover
+            raise RuntimeError("Streams mismatch")
+        for s, d in zip(self.meta.audios, dst.audios):
+            d.bitrate = s.bitrate
+        return dst
+
+    def prepare_ffmpeg(self, src: Metadata) -> encoding.FFMPEG:
+        source = inputs.input_file(self.src, *src.streams)
+        video_codecs = [source.video > codecs.Copy(kind=VIDEO)]
+        audio_codecs = [source.audio > codecs.Copy(kind=AUDIO)]
+        video_out = self.prepare_output(video_codecs)
+        audio_out = self.prepare_output(audio_codecs)
+        ff = encoding.FFMPEG(input=source, loglevel='level+info')
+        ff > video_out
+        ff > audio_out
+        return ff
+
+    def prepare_output(self, codecs_list: List[encoding.Codec]) -> encoding.Output:
+        return outputs.SegmentOutput(**self.get_output_kwargs(codecs_list))
+
+    def get_output_kwargs(self, codecs_list: List[encoding.Codec]) -> Dict[str, Any]:
+        kinds = {c.kind for c in codecs_list}
+        kind = cast(Literal["video", "audio"], kinds.pop().name.lower())
+        return dict(
+            codecs=codecs_list,
+            format='stream_segment',
+            segment_format='mkv',
+            avoid_negative_ts='disabled',
+            copyts=True,
+            segment_list=urljoin(self.dst, f'source-{kind}.m3u8'),
+            segment_list_type='m3u8',
+            segment_time=defaults.VIDEO_CHUNK_DURATION,
+            min_seg_duration=defaults.VIDEO_CHUNK_DURATION,
+            output_file=urljoin(self.dst, f'source-{kind}-%05d.mkv'),
+        )
+
+
+class Segmentor(Processor):
+    """
+    Result segmentation logic.
+    """
+
+    def __init__(self, *,
+                 video_source: str, audio_source: str,
+                 dst: str, profile: Profile,
+                 meta: Metadata) -> None:
+        super().__init__(video_source, dst, profile=profile, meta=meta)
+        self.audio = audio_source
+
+    def get_result_metadata(self, uri: str) -> Metadata:
+        dst = extract.HLSExtractor().get_meta_data(uri)
+        return dst
+
+    def prepare_ffmpeg(self, src: Metadata) -> encoding.FFMPEG:
+        video_streams = [s for s in src.streams if s.kind == VIDEO]
+        video_source = inputs.input_file(self.src, *video_streams,
+                                         allowed_extensions='mkv')
+        video_codecs = [s > codecs.Copy(kind=VIDEO, bitrate=s.meta.bitrate)
+                        for s in video_source.streams
+                        if s.kind == VIDEO]
+        if len(video_codecs) != len(self.profile.video):  # pragma: no cover
+            raise RuntimeError("video streams mismatch")
+        # We need bitrate hints for HLS bandwidth tags
+        for vc, vt in zip(video_codecs, self.profile.video):
+            vc.bitrate = vt.max_rate
+
+        audio_streams = [s for s in src.streams if s.kind == AUDIO]
+        audio_source = inputs.input_file(self.audio, *audio_streams)
+        audio_codecs = [audio_source.audio > c for c in self.prepare_audio_codecs()]
+
+        if len(audio_codecs) != len(self.profile.audio):  # pragma: no cover
+            raise RuntimeError("audio streams mismatch")
+
+        for ac, at in zip(audio_codecs, self.profile.audio):
+            ac.bitrate = at.bitrate
+
+        out = self.prepare_output(video_codecs + audio_codecs)
+        ff = encoding.FFMPEG(input=video_source,
+                             output=out,
+                             loglevel='level+info')
+        ff.add_input(audio_source)
+        return ff
+
+    def prepare_audio_codecs(self) -> List[codecs.AudioCodec]:
+        audio_codecs = []
+        for audio in self.profile.audio:
+            audio_codecs.append(codecs.AudioCodec(
                 codec=audio.codec,
                 bitrate=audio.bitrate,
                 channels=audio.channels,
                 rate=audio.sample_rate,
             ))
-        dst = output_file(self.destination,
-                          *video_tracks,
-                          *audio_tracks,
-                          format='mp4')
+        return audio_codecs
 
-        # ffmpeg wrapper with vectorized processing capabilities
-        simd = SIMD(source, dst,
-                    overwrite=True, loglevel='repeat+level+info')
+    def prepare_output(self,
+                       codecs_list: List[encoding.Codec]
+                       ) -> encoding.Output:
+        return outputs.HLSOutput(
+            **self.get_output_kwargs(codecs_list)
+        )
 
-        # per-video-track scaling
-        scaling_params = [
-            (video.width, video.height) for video in profile.video
-        ]
-        scaled_video = simd.video.connect(Scale, params=scaling_params)
-
-        # connect scaled video streams to simd video codecs
-        scaled_video | Vector(video_tracks)
-
-        # pass audio as is to simd audio codecs
-        simd.audio | Vector(audio_tracks)
-
-        # Run ffmpeg
-        self.run(simd.ffmpeg)
-
-        # Get result mediainfo
-        dest_media_info = self.get_media_info(self.destination)
-
-        # Validate ffmpeg result
-        self.validate(src, dest_media_info)
-
-        return dest_media_info
-
-    def select_profile(self, src: Metadata) -> Profile:
-        """
-        :param src: source metadata
-        :return: selected transcoding profile
-        """
-        profile = self.preset.select_profile(src.video, src.audio)
-        return profile
+    def get_output_kwargs(self,
+                          codecs_list: List[encoding.Codec]
+                          ) -> Dict[str, Any]:
+        return dict(
+            hls_time=self.profile.container.segment_duration,
+            hls_playlist_type='vod',
+            codecs=codecs_list,
+            muxdelay='0',
+            copyts=True,
+            avoid_negative_ts='auto',
+            var_stream_map=self.get_var_stream_map(codecs_list),
+            reset_timestamps=1,
+            output_file=urljoin(self.dst, 'playlist-%v.m3u8'),
+            hls_segment_filename=urljoin(self.dst, 'segment-%v-%05d.ts'),
+            master_pl_name=os.path.basename(self.dst),
+        )
 
     @staticmethod
-    def validate(source_media_info: Metadata,
-                 dest_media_info: Metadata) -> None:
-        """
-        Validate video transcoding result.
-
-        :param source_media_info: source metadata
-        :param dest_media_info: result metadata
-        """
-        src_duration = max(source_media_info.video.duration,
-                           source_media_info.audio.duration)
-        dst_duration = min(dest_media_info.video.duration,
-                           dest_media_info.audio.duration)
-        if dst_duration < DURATION_DELTA * src_duration:
-            # Check whether result duration corresponds to source duration
-            # (damaged source files may be processed successfully but result
-            # is shorter)
-            raise TranscodeError(f"incomplete file: {dst_duration}")
-
-    @staticmethod
-    def run(ff: FFMPEG) -> None:
-        """ Starts ffmpeg process and captures errors from it's logs"""
-        return_code, output, error = ff.run()
-        if return_code != 0:
-            # Check return code and error messages
-            error = error or f"invalid ffmpeg return code {return_code}"
-            raise TranscodeError(error)
+    def get_var_stream_map(codecs_list: List[encoding.Codec]) -> str:
+        audios = []
+        videos = []
+        for c in codecs_list:
+            if c.kind == VIDEO:
+                videos.append(c)
+            else:
+                audios.append(c)
+        vsm = []
+        for i, a in enumerate(audios):
+            vsm.append(f'a:{i},agroup:a{i}:bandwidth:{a.bitrate}')
+        for (i, a), (j, v) in product(enumerate(audios), enumerate(videos)):
+            vsm.append(f'v:{j},agroup:a{i}:bandwidth:{v.bitrate}')
+        var_stream_map = ' '.join(vsm)
+        return var_stream_map
