@@ -1,3 +1,4 @@
+import contextlib
 import json
 from dataclasses import asdict
 from unittest import mock
@@ -101,12 +102,15 @@ class ResumableStrategyTestCase(base.ProfileMixin, base.MetadataMixin,
         self.assertEqual(uri, f'{root}{basename}/')
 
     def test_main_flow(self):
-        with (
-            mock.patch.object(self.strategy, 'process',
-                              return_value=mock.sentinel.rv) as p,
-            mock.patch.object(self.strategy, 'initialize') as i,
-            mock.patch.object(self.strategy, 'cleanup') as c,
-        ):
+        with contextlib.ExitStack() as stack:
+            p = stack.enter_context(
+                mock.patch.object(self.strategy, 'process',
+                                  return_value=mock.sentinel.rv))
+            i = stack.enter_context(
+                mock.patch.object(self.strategy, 'initialize'))
+            c = stack.enter_context(
+                mock.patch.object(self.strategy, 'cleanup')
+            )
             result = self.strategy()
 
         self.assertEqual(result, mock.sentinel.rv)
@@ -333,7 +337,8 @@ class ResumableStrategyTestCase(base.ProfileMixin, base.MetadataMixin,
             ''  # another comment',
             's2',
         ))
-        self.tmp_ws.tree['tmp-basename']['sources']['source-video.m3u8'] = content
+        self.tmp_ws.tree['tmp-basename']['sources'][
+            'source-video.m3u8'] = content
         segments = self.strategy.get_segment_list()
         self.assertListEqual(segments, ['s1', 's2'])
 
@@ -373,7 +378,8 @@ class ResumableStrategyTestCase(base.ProfileMixin, base.MetadataMixin,
 
             result = self.strategy._process_segment('s1')
 
-        m.assert_called_once_with(workspace.File('tmp-basename', 'sources', 's1'))
+        m.assert_called_once_with(
+            workspace.File('tmp-basename', 'sources', 's1'))
         t.assert_called_once_with(
             'memory:tmp-basename/sources/s1',
             'memory:tmp-basename/results/s1',
