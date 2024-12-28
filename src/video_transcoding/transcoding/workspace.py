@@ -42,7 +42,7 @@ class Resource(abc.ABC):
     def __repr__(self) -> str:
         return self.path
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: Any) -> bool:  # pragma: no cover
         if not isinstance(other, Resource):
             return False
         return self.parts == other.parts

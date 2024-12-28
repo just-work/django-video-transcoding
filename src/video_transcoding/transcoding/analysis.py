@@ -60,6 +60,9 @@ class FFProbeHLSAnalyzer(ffprobe.Analyzer):
                 streams.append(self.video_meta_data(**stream))
             elif stream["codec_type"] == "audio":
                 streams.append(self.audio_meta_data(**stream))
+            else:
+                # Skip side data
+                continue
         return streams
 
     def get_duration(self, track: Dict[str, Any]) -> meta.TS:
