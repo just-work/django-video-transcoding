@@ -95,7 +95,7 @@ class Transcoder(Processor):
 
     def scale_and_encode(self,
                          source: inputs.Input,
-                         video_codecs: list[codecs.VideoCodec],
+                         video_codecs: List[codecs.VideoCodec],
                          dst: outputs.Output) -> SIMD:
         # ffmpeg wrapper with vectorized processing capabilities
         simd = SIMD(source, dst,
@@ -153,11 +153,11 @@ class Splitter(Processor):
         dst = extract.SplitExtractor().get_meta_data(uri)
         # Mediainfo takes metadata from first HLS chunk in a playlist, so
         # we need to force some fields from source metadata
-        if len(self.meta.videos) != len(dst.videos):
+        if len(self.meta.videos) != len(dst.videos):  # pragma: no cover
             raise RuntimeError("Streams mismatch")
         for s, d in zip(self.meta.videos, dst.videos):
             d.bitrate = s.bitrate
-        if len(self.meta.audios) != len(dst.audios):
+        if len(self.meta.audios) != len(dst.audios):  # pragma: no cover
             raise RuntimeError("Streams mismatch")
         for s, d in zip(self.meta.audios, dst.audios):
             d.bitrate = s.bitrate
