@@ -68,6 +68,6 @@ VIDEO_MODEL = 'video_transcoding.Video'
 _default_config = locals()
 _local_config = getattr(settings, 'VIDEO_TRANSCODING_CONFIG', {})
 for k, v in _local_config.items():
-    if k not in _default_config:
+    if k not in _default_config:  # pragma: no cover
         raise KeyError(k)
     _default_config[k] = v

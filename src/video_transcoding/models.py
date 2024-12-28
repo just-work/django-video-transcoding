@@ -1,5 +1,5 @@
 import os
-from typing import Any, cast, Type, Optional
+from typing import Any, cast, Type
 from uuid import UUID
 
 from django.apps import apps

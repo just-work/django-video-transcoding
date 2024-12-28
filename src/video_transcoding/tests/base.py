@@ -24,7 +24,8 @@ class BaseTestCase(TestCase):
 
 
 class ProfileMixin:
-    def default_profile(self) -> profiles.Profile:
+    @staticmethod
+    def default_profile() -> profiles.Profile:
         return profiles.Profile(
             video=[profiles.VideoTrack(
                 frame_rate=30,
@@ -124,7 +125,7 @@ class MemoryWorkspace:
             parent = t
             try:
                 t = t[p]
-            except KeyError:
+            except KeyError:  # pragma: no cover
                 break
         else:
             del parent[p]
@@ -151,7 +152,8 @@ class MemoryWorkspace:
             t = t[p]
         t[f.parts[-1]] = content
 
-    def get_absolute_uri(self, r: workspace.Resource) -> ParseResult:
+    @staticmethod
+    def get_absolute_uri(r: workspace.Resource) -> ParseResult:
         path = '/'.join(r.parts)
         # noinspection PyArgumentList
         return urlparse(urlunparse(('memory', '', path, '', '', '')))
