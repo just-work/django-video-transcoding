@@ -1,8 +1,9 @@
 import json
 from dataclasses import asdict
 from typing import Type, TYPE_CHECKING
-from unittest import TestCase, mock
+from unittest import mock
 
+from django.test import TestCase
 from fffw.analysis import ffprobe
 from fffw.graph import VIDEO, AUDIO
 
@@ -68,7 +69,7 @@ class SourceExtractorTestCase(ExtractorBaseTestCase):
             self.mediainfo_pacher.start()
 
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     MKVVideoSegmentTestsMixinTarget = ExtractorBaseTestCase
 else:
     MKVVideoSegmentTestsMixinTarget = object
@@ -174,7 +175,7 @@ class SplitExtractorTestCase(ExtractorBaseTestCase):
             self.streams = self.video_meta
         elif 'audio' in uri:
             self.streams = self.audio_meta
-        else:
+        else:  # pragma: no cover
             raise ValueError('uri')
         return self.ffprobe_mock.return_value
 
