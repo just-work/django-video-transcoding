@@ -3,7 +3,7 @@ import http
 import os
 import shutil
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Literal
 from urllib.parse import urlparse, ParseResult
 
 import requests
@@ -42,7 +42,7 @@ class Resource(abc.ABC):
     def __repr__(self) -> str:
         return self.path
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> Literal[True, False, NotImplemented]:
         if not isinstance(other, Resource):
             return NotImplemented
         return self.parts == other.parts
