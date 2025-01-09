@@ -20,4 +20,4 @@ help:
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
 autodoc:
-	sphinx-apidoc -o source ../src/video_transcoding -d 0
+	sphinx-apidoc -o source/modules ../src/video_transcoding -d 0
