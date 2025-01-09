@@ -14,4 +14,4 @@ jobs:
     - name: Generate documentation
       run: |
         pip install -r docs/requirements.txt
-        cd docs && make html
+        cd docs && make autodoc html
