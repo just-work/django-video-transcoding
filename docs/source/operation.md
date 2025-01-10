@@ -9,6 +9,11 @@ Processing video files is a very long operation, so waiting for celery task
 complition while shutting down is inacceptable. On the other hand, if celery
 worker processes are killed, lost tasks an zombie ffmpeg processes may appear.
 
+* if you are running transcoder in a container, make sure that celery master 
+  process has pid 1 (docker will send SIGTERM to it by default)
+* for separate celery app make sure that it sets process group for all workers
+  and propagates SIGUSR1 to trigger graceful worker shutdown
+
 ### Resumable workers
 
 For modern cloud-based installations an optimal solution is to use 
