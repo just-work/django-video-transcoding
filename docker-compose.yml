@@ -1,7 +1,6 @@
-version: "3.5"
 services:
   rabbitmq:
-    image: rabbitmq:3.8-management
+    image: rabbitmq:management
     container_name: dvt-rabbitmq
     hostname: rabbitmq
     ports:
@@ -46,26 +45,23 @@ services:
     restart: unless-stopped
     volumes:
       - "database:/app/db/"
+      - "storage:/data/"
     depends_on:
       - rabbitmq
     links:
       - "storage:storage.localhost"
     environment:
       - DJANGO_SETTINGS_MODULE=dvt.settings
-      - VIDEO_ORIGINS
       - VIDEO_TRANSCODING_CELERY_BROKER_URL
     stop_signal: SIGTERM
 
   storage:
-    build:
-      context: .
-      dockerfile: deploy/storage/Dockerfile
+    image: nginx:stable
     hostname: storage.localhost
-    command: sh -c /app/start-nginx.sh
     ports:
-      - "8080:8080"
+      - "8080:80"
     volumes:
-      - "videos:/opt/static/videos"
+      - "storage:/usr/share/nginx/html:ro"
 
 volumes:
   database:
