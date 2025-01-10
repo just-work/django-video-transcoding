@@ -8,29 +8,11 @@ Simple video transcoding application for Django Framework
 [![PyPI version](https://badge.fury.io/py/django-video-transcoding.svg)](http://badge.fury.io/py/django-video-transcoding)
 [![Documentation Status](https://readthedocs.org/projects/django-video-transcoding/badge/?version=latest)](https://django-video-transcoding.readthedocs.io/en/latest/?badge=latest)
 
-## Quick Start
+## Use as a service
 
 Use `docker-compose.yml` as a source of inspiration.
 
-1. Start components
-    ```shell
-    docker-compose up --build -d
-    ```
-
-   This will start:
-
-    * WebDAV on localhost:8080
-    * Django admin on localhost:8000
-
-2. Put a source video to WebDAV
-    ```shell
-    curl -T source.mp4 http://localhost:8080/
-    ```
-
-3. Login to Django admin (default credentials are `admin:admin`)
-4. Create a new Video pointing to `http://sources.local/source.mp4`.
-    This host is used as a valid hostname for Django and internal
-    WebDAV container name instead of localhost.
+See [quickstart](docs/source/quickstart.md) for details.
 
 ## Installation
 

@@ -10,9 +10,12 @@ video files for video-on-demand services.
    :maxdepth: 2
    :caption: Contents:
 
-   quickstart
-   installation
+   standalone
+   application
+   development
    architecture
+   deployment
+
 
 Indices and tables
 ==================
