@@ -54,11 +54,17 @@ services:
     environment:
       - DJANGO_SETTINGS_MODULE=dvt.settings
       - VIDEO_TRANSCODING_CELERY_BROKER_URL
+      - VIDEO_TEMP_URI
+      - VIDEO_RESULTS_URI
     stop_signal: SIGTERM
 
   storage:
     image: nginx:stable
     hostname: storage.localhost
+    networks:
+      default:
+        aliases:
+          - storage.local
     ports:
       - "8080:80"
     volumes:
