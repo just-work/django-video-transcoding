@@ -1,28 +1,38 @@
-Installation
+Application
 ============
 
-This page describes installing needed components on a linux host system. For 
-Docker example see `docker-compose.yml`.
+This page describes `django-video-transcoding` integration into existing
+Django project.
 
-System requirements
--------------------
+Installation
+------------
 
-1. [ffmpeg](http://ffmpeg.org/)
-2. [mediainfo](https://mediaarea.net/en/MediaInfo)
+### Infrastructure requirements
+
+1. [Compatible](https://docs.celeryq.dev/en/stable/getting-started/backends-and-brokers/index.html#broker-instructions)
+   message broker for Celery
+2. Persistent storage for temporary files
+    * i.e. local FS for a single transcoding server
+    * S3 persistent volume if transcoding container can move between hosts
+3. Persistent storage with HTTP server for transcoded HLS streams
+    * i.e. `nginx` or `S3`
+
+### System requirements
+
+1. [ffmpeg-6.1](http://ffmpeg.org/) or later
+2. [libmediainfo](https://mediaarea.net/en/MediaInfo)
 
 ```shell
-apt-get install ffmpeg mediainfo
+apt-get install ffmpeg libmediainfo-dev
 ```
 
-Python requirements
--------------------
+### Python requirements
 
 ```shell
 pip install django-video-transcoding
 ```
 
-Django integration
-------------------
+### Django integration
 
 Add `video_transcoding` to project settings
 
@@ -30,26 +40,36 @@ Add `video_transcoding` to project settings
 INSTALLED_APPS.append("video_transcoding")
 ```
 
-Celery configuration
---------------------
+### Celery configuration
 
-`video_transcoding.celery` contains Celery application that can use environment 
+`video_transcoding.celery` contains Celery application that can use environment
 variables for configuration. This application can be used as a starting point
 for configuring own app.
 
-| env                                       | description        |
-|-------------------------------------------|--------------------|
-| `VIDEO_TRANSCODING_CELERY_BROKER_URL`     | celery broker      |
-| `VIDEO_TRANSCODING_CELERY_RESULT_BACKEND` | result backend     |
-| `VIDEO_TRANSCODING_CELERY_CONCURRENCY`    | worker concurrency |
+| env                                   | description              |
+|---------------------------------------|--------------------------|
+| `VIDEO_TRANSCODING_CELERY_BROKER_URL` | celery broker            |
+| `VIDEO_TEMP_URI`                      | URI for temporary files  |
+| `VIDEO_RESULTS_URI`                   | URI for transcoded files |
+
+### Serving HLS streams
+
+Demo uses Django Static Files for serving transcoded files, but this is
+inacceptable for production usage. Please, configure HTTP server to serve files.
+It may be `nginx` to serve static files and/or any `CDN` solution.
+
+| env           | description                  |
+|---------------|------------------------------|
+| `VIDEO_EDGES` | URIs for serving HLS streams |
+| `VIDEO_URL`   | HLS stream url template      |
 
 ### Proper shutdown
 
-Processing video files is a very long operation, so waiting for celery task 
+Processing video files is a very long operation, so waiting for celery task
 complition while shutting down is inacceptable. On the other hand, if celery
 worker processes are killed, lost tasks an zombie ffmpeg processes may appear.
 
-For correct soft shutdown, a USR1 signal must be passed to celery child 
+For correct soft shutdown, a USR1 signal must be passed to celery child
 processes. This signal is treated by celery internals as `SoftTimeLimitExceeded`
 exception, and `django-video-transcoding` handles it terminating `ffmpeg` child
 processes correctly.
@@ -58,17 +78,11 @@ processes correctly.
 import os, signal
 from celery.signals import worker_shutting_down
 
+
 @worker_shutting_down.connect
 def send_term_to_children(**_) -> None:
     os.killpg(os.getpid(), signal.SIGUSR1)
 ```
-
-Video origin and edge hosts
----------------------------
-
-Serving video-on-demand content in the Internet requires special segmenting 
-software to make HLS or MPEG/Dash fragments from mp4 files.
-It may be `nginx` with Kaltura `nginx-vod-module` or anything else.
 
 ### Setting up nginx
 
@@ -79,10 +93,10 @@ of this project, as this part is very specific for each project.
 ### Getting video sources
 
 `django-video-transcoding` supports downloading video sources from any link that
-can be handled with `requests` library. It's recommended to use HTTP-enabled 
+can be handled with `requests` library. It's recommended to use HTTP-enabled
 storage.
 
-As `ffmpeg` can use HTTP links directly, there is a flag allowing to skip 
+As `ffmpeg` can use HTTP links directly, there is a flag allowing to skip
 source download step and start transcoding immediately:
 
 ```bash

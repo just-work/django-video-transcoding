@@ -12,71 +12,13 @@ Simple video transcoding application for Django Framework
 
 Use `docker-compose.yml` as a source of inspiration.
 
-See [quickstart](docs/source/quickstart.md) for details.
+See [quickstart.md](docs/source/quickstart.md) for details.
 
-## Installation
+### Install a Django app
 
-### System dependencies
+Use `src/dvt/settings.py` as a source of inspiration.
 
-* ffmpeg-6.1 or later
-* libmediainfo
-* rabbitmq, redis or any another supported broker for Celery
-
-### Python requirements
-
-```shell script
-pip install django-video-transcoding
-```
-
-### Configure Django
-
-Edit your project `settings.py`
-
-```python
-INSTALLED_APPS.append('video_transcoding')
-```
-
-### Prepare storage
-
-* For temporary files `mkdir /data/tmp`
-* For transcoded video  `mkdir /data/results`
-
-### Setup environment variables
-
-#### Django admin env
-
-```dotenv
-# Public URI to serve transcoded video 
-# (comma-separated for round-robin balancing)
-VIDEO_EDGES=http://localhost:8000/media/
-# HLS manifest link
-VIDEO_URL={edge}/results/{filename}/index.m3u8
-```
-
-#### Celery worker env
-
-```dotenv
-# Django project settings module
-DJANGO_SETTINGS_MODULE=dvt.settings
-# Temporary files location
-VIDEO_TEMP_URI=file:///data/tmp/
-# Transcoded video location
-VIDEO_RESULTS_URI=file:///data/results/
-```
-
-#### Common env
-
-```dotenv
-# Celery broker url
-VIDEO_TRANSCODING_CELERY_BROKER_URL=amqp://guest:guest@rabbitmq:5672/
-```
-### Start celery worker
-
-```shell script
-$> celery -A video_transcoding.celery worker
-```
-
-## Develop
+See [application.md](docs/source/application.md) for details.
 
 ### Tests
 
