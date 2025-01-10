@@ -50,6 +50,8 @@ services:
       - "storage:/data/"
     depends_on:
       - rabbitmq
+    links:
+      - "sources:sources.localhost"
     environment:
       - DJANGO_SETTINGS_MODULE=dvt.settings
       - VIDEO_TRANSCODING_CELERY_BROKER_URL
@@ -57,6 +59,19 @@ services:
       - VIDEO_RESULTS_URI
     stop_signal: SIGTERM
 
+  sources:
+    image: clickhouse/nginx-dav:latest
+    hostname: sources.local
+    networks:
+      default:
+        aliases:
+          - sources.local
+    ports:
+      - "8080:80"
+    volumes:
+      - "sources:/usr/share/nginx/"
+
 volumes:
   database:
   storage:
+  sources:
