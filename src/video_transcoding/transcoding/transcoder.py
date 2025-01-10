@@ -189,7 +189,6 @@ class Splitter(Processor):
             segment_list=urljoin(self.dst, f'source-{kind}.m3u8'),
             segment_list_type='m3u8',
             segment_time=defaults.VIDEO_CHUNK_DURATION,
-            min_seg_duration=defaults.VIDEO_CHUNK_DURATION,
             output_file=urljoin(self.dst, f'source-{kind}-%05d.mkv'),
         )
 

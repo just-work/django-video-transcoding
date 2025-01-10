@@ -124,6 +124,9 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 
+MEDIA_ROOT = '/data/'
+MEDIA_URL = '/media/'
+
 VIDEO_TRANSCODING_CONFIG = {
     'VIDEO_MODEL': "video_transcoding.Video",
 }

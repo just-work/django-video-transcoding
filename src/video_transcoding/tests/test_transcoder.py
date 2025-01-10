@@ -253,7 +253,6 @@ class SplitterTestCase(ProcessorBaseTestCase):
             '-segment_list', '/dst/source-video.m3u8',
             '-segment_list_type', 'm3u8',
             '-segment_time', defaults.VIDEO_CHUNK_DURATION,
-            '-min_seg_duration', defaults.VIDEO_CHUNK_DURATION,
             '/dst/source-video-%05d.mkv',
             '-map', '0:a:0',
             '-c:a:0', 'copy',
@@ -264,7 +263,6 @@ class SplitterTestCase(ProcessorBaseTestCase):
             '-segment_list', '/dst/source-audio.m3u8',
             '-segment_list_type', 'm3u8',
             '-segment_time', defaults.VIDEO_CHUNK_DURATION,
-            '-min_seg_duration', defaults.VIDEO_CHUNK_DURATION,
             '/dst/source-audio-%05d.mkv',
         ]
         self.assertEqual(ff.get_args(), ensure_binary(expected))

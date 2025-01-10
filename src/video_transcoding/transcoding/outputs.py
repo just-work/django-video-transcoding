@@ -31,7 +31,6 @@ class SegmentOutput(Output):
     segment_list: Optional[str] = None
     segment_list_type: Optional[str] = None
     segment_time: Optional[float] = None
-    min_seg_duration: Optional[float] = None
 
 
 @dataclass

@@ -45,16 +45,15 @@ VIDEO_TRANSCODING_COUNTDOWN = int(e('VIDEO_TRANSCODING_COUNTDOWN', 10))
 VIDEO_TRANSCODING_WAIT = int(e('VIDEO_TRANSCODING_WAIT', 0))
 
 # URI for shared files
-VIDEO_TEMP_URI = e('VIDEO_TEMP_URI', 'dav://storage.localhost:8080/tmp/')
+VIDEO_TEMP_URI = e('VIDEO_TEMP_URI', 'file:///data/tmp/')
 # URI for result files
-VIDEO_RESULTS_URI = e('VIDEO_RESULTS_URI',
-                      'dav://storage.localhost:8080/results/')
+VIDEO_RESULTS_URI = e('VIDEO_RESULTS_URI', 'file:///data/results/')
 
 # Video streamer public urls (comma-separated)
-VIDEO_EDGES = e('VIDEO_EDGES', 'http://storage.localhost:8080/').split(',')
+VIDEO_EDGES = e('VIDEO_EDGES', 'http://localhost:8000/media/').split(',')
 
 # Edge video manifest url template
-VIDEO_URL = '{edge}/{filename}/index.m3u8'
+VIDEO_URL = e('VIDEO_URL', '{edge}/results/{filename}/index.m3u8')
 
 # HTTP Request timeouts
 VIDEO_CONNECT_TIMEOUT = float(e('VIDEO_CONNECT_TIMEOUT', 1))
