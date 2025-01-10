@@ -92,57 +92,6 @@ Environment variables
   container restarts. It's recommended to align this value with 
   `VideoProfile.segment_duration` to prevent short HLS fragments every N seconds.
 
-### Proper shutdown
-
-Processing video files is a very long operation, so waiting for celery task
-complition while shutting down is inacceptable. On the other hand, if celery
-worker processes are killed, lost tasks an zombie ffmpeg processes may appear.
-
-For correct soft shutdown, a USR1 signal must be passed to celery child
-processes. This signal is treated by celery internals as `SoftTimeLimitExceeded`
-exception, and `django-video-transcoding` handles it terminating `ffmpeg` child
-processes correctly.
-
-```python
-import os, signal
-from celery.signals import worker_shutting_down
-
-
-@worker_shutting_down.connect
-def send_term_to_children(**_) -> None:
-    os.killpg(os.getpid(), signal.SIGUSR1)
-```
-
-### Setting up nginx
-
-There is an example of `nginx` setup for docker in `deploy/storage` which can
-be used as starting point, and that's all. Streaming protocols are not a part
-of this project, as this part is very specific for each project.
-
-### Getting video sources
-
-`django-video-transcoding` supports downloading video sources from any link that
-can be handled with `requests` library. It's recommended to use HTTP-enabled
-storage.
-
-As `ffmpeg` can use HTTP links directly, there is a flag allowing to skip
-source download step and start transcoding immediately:
-
-```bash
-export VIDEO_DOWNLOAD_SOURCE=1
-```
-
-### Storing transcoding results
-
-`django-video-transcoding` stores transcode results by `HTTP PUT` request,
-so results storage must support it. `nginx` with `dav` module is preferred.
-
-For rendundancy, multiple storage hosts are supported:
-
-```bash
-export VIDEO_ORIGINS=http://storage-1/writable/,http://storage-2/writable/
-```
-
 ### Generating streaming links
 
 `django-video-transcoding` supports edge-server load balancing by generating
@@ -155,11 +104,11 @@ export VIDEO_EDGES=http://edge-1/streaming/,http://edge-1/streaming/
 
 ### Generating manifest links
 
-By default, `django-video-transcoding` generates HLS manifest links for
-`nginx-vod-module`, but link format may be adopted to any streaming software.
+By default, `django-video-transcoding` generates links to HLS manifests
+accessible via HTTP server, but this can be customized.
 
 ```bash
-export VIDEO_URL={edge}/hls/{filename}1080p.mp4/index.m3u8
+export VIDEO_URL={edge}/results/{filename}/index.m3u8
 ```
 
 See `video_transcoding.models.Video.format_video_url`.
