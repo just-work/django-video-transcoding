@@ -1,4 +1,5 @@
 # django-video-transcoding
+
 Simple video transcoding application for Django Framework
 
 [![build](https://github.com/just-work/django-video-transcoding/workflows/build/badge.svg?branch=master)](https://github.com/just-work/django-video-transcoding/actions?query=event%3Apush+branch%3Amaster+workflow%3Abuild)
@@ -7,26 +8,39 @@ Simple video transcoding application for Django Framework
 [![PyPI version](https://badge.fury.io/py/django-video-transcoding.svg)](http://badge.fury.io/py/django-video-transcoding)
 [![Documentation Status](https://readthedocs.org/projects/django-video-transcoding/badge/?version=latest)](https://django-video-transcoding.readthedocs.io/en/latest/?badge=latest)
 
+## Quick Start
+
+Use `docker-compose.yml` as a source of inspiration.
+
+1. Start components
+    ```shell
+    docker-compose up --build -d
+    ```
+
+   This will start:
+
+    * WebDAV on localhost:8080
+    * Django admin on localhost:8000
+
+2. Put a source video to WebDAV
+    ```shell
+    curl -T source.mp4 http://localhost:8080/
+    ```
+
+3. Login to Django admin (default credentials are `admin:admin`)
+4. Create a new Video pointing to `http://sources.local/source.mp4`.
+    This host is used as a valid hostname for Django and internal
+    WebDAV container name instead of localhost.
+
 ## Installation
 
-### System requirements
+### System dependencies
 
-In case of latest Ubuntu LTS (20.04):
+* ffmpeg-6.1 or later
+* libmediainfo
+* rabbitmq, redis or any another supported broker for Celery
 
-1. ffmpeg-4.x
-  ```shell script
-  $> sudo apt install ffmpeg
-  ```
-2. mediainfo
-  ```shell script
-  $> sudo apt install mediainfo 
-  ```
-3. RabbitMQ
-  ```shell script
-  $> sudo apt install rabbitmq-server
-```
-
-### django-video-transcoding
+### Python requirements
 
 ```shell script
 pip install django-video-transcoding
@@ -35,43 +49,52 @@ pip install django-video-transcoding
 ### Configure Django
 
 Edit your project `settings.py`
+
 ```python
 INSTALLED_APPS.append('video_transcoding')
 ```
 
-### Env
+### Prepare storage
 
-Common env variables used in django web server and celery
+* For temporary files `mkdir /data/tmp`
+* For transcoded video  `mkdir /data/results`
 
-```
-DJANGO_SETTINGS_MODULE=YOUR_PROJECT.settings
-VIDEO_TRANSCODING_CELERY_BROKER_URL=amqp://guest:guest@rabbitmq:15672/
-```
+### Setup environment variables
 
-Web-server-only env variables:
+#### Django admin env
 
-```
-VIDEO_DOWNLOAD_SOURCE=0
-VIDEO_EDGES='http://edge-1.localhost,http://edge-2.localhost'
-```
-
-Celery-only env variables:
-
-```
-VIDEO_TEMP_DIR=/tmp
-VIDEO_TRANSCODING_CELERY_CONCURRENCY=2
-VIDEO_ORIGINS='http://origin-1.localhost/video,http://origin-2.localhost/video'
+```dotenv
+# Public URI to serve transcoded video 
+# (comma-separated for round-robin balancing)
+VIDEO_EDGES=http://localhost:8000/media/
+# HLS manifest link
+VIDEO_URL={edge}/results/{filename}/index.m3u8
 ```
 
-Start celery worker
+#### Celery worker env
+
+```dotenv
+# Django project settings module
+DJANGO_SETTINGS_MODULE=dvt.settings
+# Temporary files location
+VIDEO_TEMP_URI=file:///data/tmp/
+# Transcoded video location
+VIDEO_RESULTS_URI=file:///data/results/
+```
+
+#### Common env
+
+```dotenv
+# Celery broker url
+VIDEO_TRANSCODING_CELERY_BROKER_URL=amqp://guest:guest@rabbitmq:5672/
+```
+### Start celery worker
 
 ```shell script
-$> celery worker -A video_transcoding.celery
+$> celery -A video_transcoding.celery worker
 ```
 
 ## Develop
-
-[Development environment quickstart guide](/docs/source/quickstart.md)
 
 ### Tests
 
@@ -83,30 +106,20 @@ src/manage.py test
 
 ```
 $> pip install mypy django-stubs
-$> cd src && /data/dvt/virtualenv/bin/dmypy run -- \
+$> cd src && dmypy run -- \
    --config-file ../mypy.ini -p video_transcoding
 
 ```
-
-TBD:
-
-* [x] travis-ci
-* [ ] sphinx docs - autodoc + manual
-* [x] coverage
-* [x] typing
-* [x] badges
-* [x] video hosting demo project with docker-compose, nginx and player demo
-
 
 ## Production
 
 ### Graceful shutdown
 
 * if you are running transcoder in docker, make sure that celery master process
-    has pid 1 (docker will send SIGTERM to it by default)
+  has pid 1 (docker will send SIGTERM to it by default)
 * when using separate celery app, send SIGUSR1 from master to workers to trigger
-    soft shutdown handling
-    (see `video_transcoding.celery.send_term_to_children`)
+  soft shutdown handling
+  (see `video_transcoding.celery.send_term_to_children`)
 
 ### Settings
 
@@ -117,6 +130,6 @@ Also defaults can be overridden this via `django.conf.settings.VIDEO_TRANSCODING
 
 For preset-related models use `<Model>Base` abstract models defined in `video_transcoding.models`.
 For overriding `Video` model set `VIDEO_TRANSCODING_CONFIG["VIDEO_MODEL"]` key to `app_label.ModelName` in `settings`.
-Connect other django models to `Video` using `video_transcoding.models.get_video_model()`. 
+Connect other django models to `Video` using `video_transcoding.models.get_video_model()`.
 When `Video` is overridden, video model admin is not registered automatically. As with migrations, this should be
 done manually.
