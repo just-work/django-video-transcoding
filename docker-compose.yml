@@ -20,6 +20,7 @@ services:
     command: bash -c /app/start-django-dev.sh
     container_name: dvt-admin
     restart: unless-stopped
+    stop_signal: SIGINT
     volumes:
       - "database:/app/db/"
     ports:
