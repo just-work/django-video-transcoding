@@ -1,8 +1,6 @@
 FROM python:latest
 
-RUN apt-get update && apt-get upgrade -y && apt-get install -y
-RUN apt-get install -y apt-utils
-RUN apt-get install -y build-essential mediainfo ffmpeg
+RUN apt-get update && apt-get install -y libmediainfo-dev ffmpeg
 
 WORKDIR /app/src/
 ADD ./requirements.txt /app/
