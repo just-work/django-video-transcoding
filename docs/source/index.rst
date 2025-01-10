@@ -10,7 +10,7 @@ video files for video-on-demand services.
    :maxdepth: 2
    :caption: Contents:
 
-   standalone
+   quickstart
    application
    architecture
    development
