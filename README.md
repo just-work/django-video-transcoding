@@ -14,46 +14,12 @@ Use `docker-compose.yml` as a source of inspiration.
 
 See [quickstart.md](docs/source/quickstart.md) for details.
 
-### Install a Django app
+## Install a Django app
 
 Use `src/dvt/settings.py` as a source of inspiration.
 
 See [application.md](docs/source/application.md) for details.
 
-### Tests
+## Develop and extend
 
-```
-src/manage.py test
-```
-
-### Type checking
-
-```
-$> pip install mypy django-stubs
-$> cd src && dmypy run -- \
-   --config-file ../mypy.ini -p video_transcoding
-
-```
-
-## Production
-
-### Graceful shutdown
-
-* if you are running transcoder in docker, make sure that celery master process
-  has pid 1 (docker will send SIGTERM to it by default)
-* when using separate celery app, send SIGUSR1 from master to workers to trigger
-  soft shutdown handling
-  (see `video_transcoding.celery.send_term_to_children`)
-
-### Settings
-
-Application settings can be set up via env variables, see `video_transcoding.defaults`.
-Also defaults can be overridden this via `django.conf.settings.VIDEO_TRANSCODING_CONFIG`.
-
-### Model inheritance
-
-For preset-related models use `<Model>Base` abstract models defined in `video_transcoding.models`.
-For overriding `Video` model set `VIDEO_TRANSCODING_CONFIG["VIDEO_MODEL"]` key to `app_label.ModelName` in `settings`.
-Connect other django models to `Video` using `video_transcoding.models.get_video_model()`.
-When `Video` is overridden, video model admin is not registered automatically. As with migrations, this should be
-done manually.
+See [development.md](docs/source/development.md) for details.

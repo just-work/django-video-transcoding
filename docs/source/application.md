@@ -63,6 +63,35 @@ It may be `nginx` to serve static files and/or any `CDN` solution.
 | `VIDEO_EDGES` | URIs for serving HLS streams |
 | `VIDEO_URL`   | HLS stream url template      |
 
+Environment variables
+---------------------
+
+* `VIDEO_TRANSCODING_CELERY_BROKER_URL` (`amqp://guest:guest@rabbitmq:5672/`) - 
+  Celery broker url for django-video-transcoding
+* `VIDEO_TRANSCODING_CELERY_RESULT_BACKEND` (not set) - Celery result backend
+  (not used)
+* `VIDEO_TRANSCODING_CELERY_CONCURRENCY` (not set) - Celery concurrency
+* `VIDEO_TRANSCODING_TIMEOUT` - task acknowledge timeout for AMQP backend
+  (see `x-consumer-timeout` for [RabbitMQ](https://www.rabbitmq.com/docs/consumers#per-queue-delivery-timeouts-using-an-optional-queue-argument))
+* `VIDEO_TRANSCODING_COUNTDOWN` (10) - transcoding task delay in seconds
+* `VIDEO_TRANSCODING_WAIT` (0) - transcoding start delay in seconds (used if
+  task delay is not supported by Celery broker)
+* `VIDEO_TEMP_URI` - URI for temporary files (`file:///data/tmp/`). 
+  Supports `file`, `http` and `https`. For HTTP uses `PUT` **and** `POST` 
+  requests to store files.
+* `VIDEO_RESULTS_URI` - URI for transcoded files (`file:///data/results/`).
+  Supports `file`, `http` and `https`.
+* `VIDEO_EDGES` - comma-separated list of public endpoints for transcoded files.
+  By default uses Django static files (`http://localhost:8000/media/`).
+* `VIDEO_URL` - public HLS stream template (`{edge}/results/{filename}/index.m3u8`).
+  `edge` is one of `VIDEO_EDGES` and `filename` is `Video.basename` value.
+* `VIDEO_CONNECT_TIMEOUT` (1) - connect timeout for HTTP requests in seconds.
+* `VIDEO_REQUEST_TIMEOUT` (1) - request timeout for HTTP requests in seconds.
+* `VIDEO_CHUNK_DURATION` (60) - chunk duration in seconds. Transcoder splits
+  source file into chunks and then transcodes them one-by-one to handle 
+  container restarts. It's recommended to align this value with 
+  `VideoProfile.segment_duration` to prevent short HLS fragments every N seconds.
+
 ### Proper shutdown
 
 Processing video files is a very long operation, so waiting for celery task

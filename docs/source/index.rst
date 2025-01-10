@@ -12,9 +12,9 @@ video files for video-on-demand services.
 
    standalone
    application
-   development
    architecture
-   deployment
+   development
+   operation
 
 
 Indices and tables
