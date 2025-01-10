@@ -15,4 +15,11 @@ video files for video-on-demand services.
    architecture
    development
    operation
-   modules/modules
+
+
+Indices and tables
+==================
+
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`
