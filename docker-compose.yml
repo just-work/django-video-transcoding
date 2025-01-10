@@ -23,6 +23,7 @@ services:
     stop_signal: SIGINT
     volumes:
       - "database:/app/db/"
+      - "storage:/data/"
     ports:
       - "8000:8000"
     expose:
@@ -49,26 +50,12 @@ services:
       - "storage:/data/"
     depends_on:
       - rabbitmq
-    links:
-      - "storage:storage.localhost"
     environment:
       - DJANGO_SETTINGS_MODULE=dvt.settings
       - VIDEO_TRANSCODING_CELERY_BROKER_URL
       - VIDEO_TEMP_URI
       - VIDEO_RESULTS_URI
     stop_signal: SIGTERM
-
-  storage:
-    image: nginx:stable
-    hostname: storage.localhost
-    networks:
-      default:
-        aliases:
-          - storage.local
-    ports:
-      - "8080:80"
-    volumes:
-      - "storage:/usr/share/nginx/html:ro"
 
 volumes:
   database:

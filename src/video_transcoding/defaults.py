@@ -50,7 +50,7 @@ VIDEO_TEMP_URI = e('VIDEO_TEMP_URI', 'file:///data/tmp/')
 VIDEO_RESULTS_URI = e('VIDEO_RESULTS_URI', 'file:///data/results/')
 
 # Video streamer public urls (comma-separated)
-VIDEO_EDGES = e('VIDEO_EDGES', 'http://storage.localhost:8080').split(',')
+VIDEO_EDGES = e('VIDEO_EDGES', 'http://localhost:8000/media/').split(',')
 
 # Edge video manifest url template
 VIDEO_URL = e('VIDEO_URL', '{edge}/results/{filename}/index.m3u8')
