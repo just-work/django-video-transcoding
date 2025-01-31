@@ -24,5 +24,6 @@ jobs:
     - name: Test with tox
       run: |
         tox
+        pip install -r requirements.txt
         src/manage.py compilemessages
         python -m build
