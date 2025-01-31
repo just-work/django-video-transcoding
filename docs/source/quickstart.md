@@ -1,30 +1,30 @@
 Quick Start
 ===========
 
-This document describes how to start transcoding for development purposes.
+This document describes how to start django-video-transcoding as a service
+with demo docker-compose config.
 
-## Demo project
-
-### Code checkout
+## Code checkout
 
 ```sh
 git clone git@github.com:just-work/django-video-transcoding.git
 cd django-video-transcoding
 ```
 
-### Run admin, storage and celery worker
+## Run admin, webdav and celery worker
 
 ```sh
 docker-compose up
 ```
 
 * <http://localhost:8000/admin/> - Django admin (credentials are `admin:admin`)
-* <http://storage.localhost:8080/videos/> - WebDAV for sources & results
-* <http://storage.localhost:8080/hls/> - HLS stream endpoint
+* <http://localhost:8000/media/> - Transcoded HLS streams served by Django 
+* <http://sources.local/> - WebDAV for sources
 
 ### Transcode something
 
-* `curl -T cat.mp4 http://storage.localhost:8080/videos/sources/cat.mp4`
+* Add `sources.local` to hosts file
+* `curl -T cat.mp4 http://sources.local/`
 * Create new video with link above
 * Wait till video will change status to DONE.
 * On video change form admin page there is a sample video player. 
@@ -37,13 +37,11 @@ containers:
 1. `rabbitmq` - celery task broker container
 2. `admin` - django admin container
 3. `celery` - transcoder worker container
-4. `storage` - multi-purpose `nginx` container:
-    * `HTTP` server for sources 
-    * `WebDAV` write-enabled server for transcoded files (`origin` role)
-    * `VOD` server for `HLS` streaming with caching 
-        (combines `origin` and `edge` roles)
+4. `sources` - `WebDAV` write-enabled server for source files
 
 * `SQLite` database file is used for simplicity, it is shared via `database` 
     volume between `admin` and `celery` containers
-* `videos` volume is used by `storage` container for sources, transcoding 
-    results and hls chunks cache
+* `sources` volume is used by `sources` container for sources video
+* `tmp` volume is used by `celery` container for temporary files
+* `results` volume is used by `celery` container for saving transcoded HLS 
+  streams which are then served by `admin` container for CORS bypass 

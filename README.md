@@ -1,4 +1,5 @@
 # django-video-transcoding
+
 Simple video transcoding application for Django Framework
 
 [![build](https://github.com/just-work/django-video-transcoding/workflows/build/badge.svg?branch=master)](https://github.com/just-work/django-video-transcoding/actions?query=event%3Apush+branch%3Amaster+workflow%3Abuild)
@@ -7,116 +8,18 @@ Simple video transcoding application for Django Framework
 [![PyPI version](https://badge.fury.io/py/django-video-transcoding.svg)](http://badge.fury.io/py/django-video-transcoding)
 [![Documentation Status](https://readthedocs.org/projects/django-video-transcoding/badge/?version=latest)](https://django-video-transcoding.readthedocs.io/en/latest/?badge=latest)
 
-## Installation
+## Use as a service
 
-### System requirements
+Use `docker-compose.yml` as a source of inspiration.
 
-In case of latest Ubuntu LTS (20.04):
+See [quickstart.md](docs/source/quickstart.md) for details.
 
-1. ffmpeg-4.x
-  ```shell script
-  $> sudo apt install ffmpeg
-  ```
-2. mediainfo
-  ```shell script
-  $> sudo apt install mediainfo 
-  ```
-3. RabbitMQ
-  ```shell script
-  $> sudo apt install rabbitmq-server
-```
+## Install a Django app
 
-### django-video-transcoding
+Use `src/dvt/settings.py` as a source of inspiration.
 
-```shell script
-pip install django-video-transcoding
-```
+See [application.md](docs/source/application.md) for details.
 
-### Configure Django
+## Develop and extend
 
-Edit your project `settings.py`
-```python
-INSTALLED_APPS.append('video_transcoding')
-```
-
-### Env
-
-Common env variables used in django web server and celery
-
-```
-DJANGO_SETTINGS_MODULE=YOUR_PROJECT.settings
-VIDEO_TRANSCODING_CELERY_BROKER_URL=amqp://guest:guest@rabbitmq:15672/
-```
-
-Web-server-only env variables:
-
-```
-VIDEO_DOWNLOAD_SOURCE=0
-VIDEO_EDGES='http://edge-1.localhost,http://edge-2.localhost'
-```
-
-Celery-only env variables:
-
-```
-VIDEO_TEMP_DIR=/tmp
-VIDEO_TRANSCODING_CELERY_CONCURRENCY=2
-VIDEO_ORIGINS='http://origin-1.localhost/video,http://origin-2.localhost/video'
-```
-
-Start celery worker
-
-```shell script
-$> celery worker -A video_transcoding.celery
-```
-
-## Develop
-
-[Development environment quickstart guide](/docs/source/quickstart.md)
-
-### Tests
-
-```
-src/manage.py test
-```
-
-### Type checking
-
-```
-$> pip install mypy django-stubs
-$> cd src && /data/dvt/virtualenv/bin/dmypy run -- \
-   --config-file ../mypy.ini -p video_transcoding
-
-```
-
-TBD:
-
-* [x] travis-ci
-* [ ] sphinx docs - autodoc + manual
-* [x] coverage
-* [x] typing
-* [x] badges
-* [x] video hosting demo project with docker-compose, nginx and player demo
-
-
-## Production
-
-### Graceful shutdown
-
-* if you are running transcoder in docker, make sure that celery master process
-    has pid 1 (docker will send SIGTERM to it by default)
-* when using separate celery app, send SIGUSR1 from master to workers to trigger
-    soft shutdown handling
-    (see `video_transcoding.celery.send_term_to_children`)
-
-### Settings
-
-Application settings can be set up via env variables, see `video_transcoding.defaults`.
-Also defaults can be overridden this via `django.conf.settings.VIDEO_TRANSCODING_CONFIG`.
-
-### Model inheritance
-
-For preset-related models use `<Model>Base` abstract models defined in `video_transcoding.models`.
-For overriding `Video` model set `VIDEO_TRANSCODING_CONFIG["VIDEO_MODEL"]` key to `app_label.ModelName` in `settings`.
-Connect other django models to `Video` using `video_transcoding.models.get_video_model()`. 
-When `Video` is overridden, video model admin is not registered automatically. As with migrations, this should be
-done manually.
+See [development.md](docs/source/development.md) for details.

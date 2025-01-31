@@ -11,9 +11,12 @@ video files for video-on-demand services.
    :caption: Contents:
 
    quickstart
-   installation
+   application
    architecture
-   modules
+   development
+   operation
+   modules/modules
+
 
 Indices and tables
 ==================

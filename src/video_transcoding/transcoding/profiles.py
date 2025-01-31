@@ -323,7 +323,7 @@ DEFAULT_PRESET = Preset(
     audio=[
         AudioTrack(
             id='192k',
-            codec='libfdk_aac',
+            codec='aac',
             bitrate=192000,
             channels=2,
             sample_rate=48000,
