@@ -24,4 +24,5 @@ jobs:
     - name: Test with tox
       run: |
         tox
+        src/manage.py compilemessages
         python -m build
