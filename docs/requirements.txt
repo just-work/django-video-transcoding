@@ -6,4 +6,4 @@ sphinxcontrib-seqdiag==3.0.0
 sphinx-markdown-tables==0.0.17
 recommonmark==0.7.1
 funcparserlib==1.0.1
-Pillow==9.5.0  # For blockdiag to work
+Pillow==10.3.0  # For blockdiag to work
