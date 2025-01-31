@@ -23,7 +23,7 @@ services:
     stop_signal: SIGINT
     volumes:
       - "database:/app/db/"
-      - "storage:/data/"
+      - "results:/data/results/"
     ports:
       - "8000:8000"
     expose:
@@ -47,11 +47,12 @@ services:
     restart: unless-stopped
     volumes:
       - "database:/app/db/"
-      - "storage:/data/"
+      - "tmp:/data/tmp/"
+      - "results:/data/results/"
     depends_on:
       - rabbitmq
     links:
-      - "sources:sources.localhost"
+      - "sources:sources.local"
     environment:
       - DJANGO_SETTINGS_MODULE=dvt.settings
       - VIDEO_TRANSCODING_CELERY_BROKER_URL
@@ -67,11 +68,12 @@ services:
         aliases:
           - sources.local
     ports:
-      - "8080:80"
+      - "80:80"
     volumes:
       - "sources:/usr/share/nginx/"
 
 volumes:
   database:
-  storage:
   sources:
+  tmp:
+  results:

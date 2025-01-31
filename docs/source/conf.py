@@ -42,6 +42,7 @@ extensions = [
     'sphinxcontrib.blockdiag',
     'sphinxcontrib.seqdiag',
     'recommonmark',
+    'sphinx_markdown_tables',
 ]
 
 source_suffix = {

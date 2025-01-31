@@ -8,128 +8,18 @@ Simple video transcoding application for Django Framework
 [![PyPI version](https://badge.fury.io/py/django-video-transcoding.svg)](http://badge.fury.io/py/django-video-transcoding)
 [![Documentation Status](https://readthedocs.org/projects/django-video-transcoding/badge/?version=latest)](https://django-video-transcoding.readthedocs.io/en/latest/?badge=latest)
 
-## Quick Start
+## Use as a service
 
 Use `docker-compose.yml` as a source of inspiration.
 
-1. Start components
-    ```shell
-    docker-compose up --build -d
-    ```
+See [quickstart.md](docs/source/quickstart.md) for details.
 
-   This will start:
+## Install a Django app
 
-    * WebDAV on localhost:8080
-    * Django admin on localhost:8000
+Use `src/dvt/settings.py` as a source of inspiration.
 
-2. Put a source video to WebDAV
-    ```shell
-    curl -T source.mp4 http://localhost:8080/
-    ```
+See [application.md](docs/source/application.md) for details.
 
-3. Login to Django admin (default credentials are `admin:admin`)
-4. Create a new Video pointing to `http://sources.local/source.mp4`.
-    This host is used as a valid hostname for Django and internal
-    WebDAV container name instead of localhost.
+## Develop and extend
 
-## Installation
-
-### System dependencies
-
-* ffmpeg-6.1 or later
-* libmediainfo
-* rabbitmq, redis or any another supported broker for Celery
-
-### Python requirements
-
-```shell script
-pip install django-video-transcoding
-```
-
-### Configure Django
-
-Edit your project `settings.py`
-
-```python
-INSTALLED_APPS.append('video_transcoding')
-```
-
-### Prepare storage
-
-* For temporary files `mkdir /data/tmp`
-* For transcoded video  `mkdir /data/results`
-
-### Setup environment variables
-
-#### Django admin env
-
-```dotenv
-# Public URI to serve transcoded video 
-# (comma-separated for round-robin balancing)
-VIDEO_EDGES=http://localhost:8000/media/
-# HLS manifest link
-VIDEO_URL={edge}/results/{filename}/index.m3u8
-```
-
-#### Celery worker env
-
-```dotenv
-# Django project settings module
-DJANGO_SETTINGS_MODULE=dvt.settings
-# Temporary files location
-VIDEO_TEMP_URI=file:///data/tmp/
-# Transcoded video location
-VIDEO_RESULTS_URI=file:///data/results/
-```
-
-#### Common env
-
-```dotenv
-# Celery broker url
-VIDEO_TRANSCODING_CELERY_BROKER_URL=amqp://guest:guest@rabbitmq:5672/
-```
-### Start celery worker
-
-```shell script
-$> celery -A video_transcoding.celery worker
-```
-
-## Develop
-
-### Tests
-
-```
-src/manage.py test
-```
-
-### Type checking
-
-```
-$> pip install mypy django-stubs
-$> cd src && dmypy run -- \
-   --config-file ../mypy.ini -p video_transcoding
-
-```
-
-## Production
-
-### Graceful shutdown
-
-* if you are running transcoder in docker, make sure that celery master process
-  has pid 1 (docker will send SIGTERM to it by default)
-* when using separate celery app, send SIGUSR1 from master to workers to trigger
-  soft shutdown handling
-  (see `video_transcoding.celery.send_term_to_children`)
-
-### Settings
-
-Application settings can be set up via env variables, see `video_transcoding.defaults`.
-Also defaults can be overridden this via `django.conf.settings.VIDEO_TRANSCODING_CONFIG`.
-
-### Model inheritance
-
-For preset-related models use `<Model>Base` abstract models defined in `video_transcoding.models`.
-For overriding `Video` model set `VIDEO_TRANSCODING_CONFIG["VIDEO_MODEL"]` key to `app_label.ModelName` in `settings`.
-Connect other django models to `Video` using `video_transcoding.models.get_video_model()`.
-When `Video` is overridden, video model admin is not registered automatically. As with migrations, this should be
-done manually.
+See [development.md](docs/source/development.md) for details.
