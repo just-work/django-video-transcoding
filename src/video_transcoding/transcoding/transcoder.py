@@ -252,8 +252,7 @@ class Segmentor(Processor):
 
     def prepare_ffmpeg(self, src: Metadata) -> encoding.FFMPEG:
         video_streams = [s for s in src.streams if s.kind == VIDEO]
-        video_source = inputs.input_file(self.src, *video_streams,
-                                         allowed_extensions='mkv')
+        video_source = inputs.input_file(self.src, *video_streams)
         video_codecs = [s > codecs.Copy(kind=VIDEO, bitrate=s.meta.bitrate)
                         for s in video_source.streams
                         if s.kind == VIDEO]

@@ -321,7 +321,6 @@ class SegmentorTestCase(ProcessorBaseTestCase):
         expected = [
             '-loglevel', 'level+info', '-y',
             '-i', '/results/source-video.m3u8',
-            '-allowed_extensions', 'mkv',
             '-i', '/sources/source-audio.mkv',
             '-map', '0:v:0',
             '-c:v:0', 'copy',
