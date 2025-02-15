@@ -149,6 +149,17 @@ class Splitter(Processor):
     Source splitting logic.
     """
 
+    def __init__(self, src: str, dst: str, *, profile: Profile,
+                 meta: Metadata,
+                 source_video_playlist: str,
+                 source_video_chunk: str,
+                 source_audio: str,
+                 ) -> None:
+        super().__init__(src, dst, profile=profile, meta=meta)
+        self.source_video_playlist = source_video_playlist
+        self.source_video_chunk = source_video_chunk
+        self.source_audio = source_audio
+
     def get_result_metadata(self, uri: str) -> Metadata:
         dst = extract.SplitExtractor().get_meta_data(uri)
         # Mediainfo takes metadata from first HLS chunk in a playlist, so
@@ -194,10 +205,10 @@ class Splitter(Processor):
             segment_format='mkv',
             avoid_negative_ts='disabled',
             copyts=True,
-            segment_list=urljoin(self.dst, f'source-video.m3u8'),
+            segment_list=urljoin(self.dst, self.source_video_playlist),
             segment_list_type='m3u8',
             segment_time=defaults.VIDEO_CHUNK_DURATION,
-            output_file=urljoin(self.dst, f'source-video-%05d.mkv'),
+            output_file=urljoin(self.dst, self.source_video_chunk),
         )
 
     def get_audio_output_kwargs(self, codecs_list: List[encoding.Codec]
@@ -213,7 +224,7 @@ class Splitter(Processor):
             format='mkv',
             avoid_negative_ts='disabled',
             copyts=True,
-            output_file=urljoin(self.dst, f'source-audio.mkv'),
+            output_file=urljoin(self.dst, self.source_audio),
         )
 
 

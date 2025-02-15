@@ -219,6 +219,9 @@ class SplitterTestCase(ProcessorBaseTestCase):
             '/dst/',
             profile=self.profile,
             meta=self.meta,
+            source_video_playlist='source-video.m3u8',
+            source_video_chunk='source-video-%05d.mkv',
+            source_audio='source-audio.mkv',
         )
 
     def test_get_result_metadata(self):
@@ -270,7 +273,7 @@ class SegmentorTestCase(ProcessorBaseTestCase):
         super().setUp()
         self.segmentor = transcoder.Segmentor(
             video_source='/results/source-video.m3u8',
-            audio_source='/sources/source-audio.m3u8',
+            audio_source='/sources/source-audio.mkv',
             dst='/dst/',
             profile=self.profile,
             meta=self.meta,
@@ -316,7 +319,7 @@ class SegmentorTestCase(ProcessorBaseTestCase):
             '-loglevel', 'level+info',
             '-i', '/results/source-video.m3u8',
             '-allowed_extensions', 'mkv',
-            '-i', '/sources/source-audio.m3u8',
+            '-i', '/sources/source-audio.mkv',
             '-map', '0:v:0',
             '-c:v:0', 'copy',
             '-b:v:0', 1500000,
