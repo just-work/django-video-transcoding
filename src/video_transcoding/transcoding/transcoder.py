@@ -202,6 +202,12 @@ class Splitter(Processor):
 
     def get_audio_output_kwargs(self, codecs_list: List[encoding.Codec]
                                 ) -> Dict[str, Any]:
+        # Splitting audio stream into MKV with segment muxer produces read
+        # errors in mkv demuxer (File extends beyond end of segment), so
+        # copy source stream into universal streaming container without
+        # splitting to chunks.
+        # NUT muxer does not work correctly either, others don't support
+        # open list of audio codecs or don't support streaming (require seek).
         return dict(
             codecs=codecs_list,
             format='mkv',
