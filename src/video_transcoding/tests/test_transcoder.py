@@ -248,7 +248,7 @@ class SplitterTestCase(ProcessorBaseTestCase):
 
         # ffmpeg
         expected = [
-            '-loglevel', 'level+info',
+            '-loglevel', 'level+info', '-y',
             '-i', 'src.mp4',
             '-map', '0:v:0',
             '-c:v:0', 'copy',
@@ -319,7 +319,7 @@ class SegmentorTestCase(ProcessorBaseTestCase):
         ])
 
         expected = [
-            '-loglevel', 'level+info',
+            '-loglevel', 'level+info', '-y',
             '-i', '/results/source-video.m3u8',
             '-allowed_extensions', 'mkv',
             '-i', '/sources/source-audio.mkv',
