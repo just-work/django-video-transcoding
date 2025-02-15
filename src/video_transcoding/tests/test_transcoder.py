@@ -200,7 +200,7 @@ class TranscoderTestCase(ProcessorBaseTestCase):
 
     def test_get_result_metadata(self):
         target = 'video_transcoding.transcoding.extract.VideoResultExtractor'
-        with mock.patch(target) as m:
+        with mock.patch(target, autospec=True) as m:
             m.return_value.get_meta_data.return_value = self.meta
 
             result = self.transcoder.get_result_metadata('uri')
@@ -231,12 +231,15 @@ class SplitterTestCase(ProcessorBaseTestCase):
             # noinspection PyTypeChecker
             stream._meta = replace(stream.meta, bitrate=stream.meta.bitrate + 1)
         target = 'video_transcoding.transcoding.extract.SplitExtractor'
-        with mock.patch(target) as m:
+        with mock.patch(target, autospec=True) as m:
             m.return_value.get_meta_data.return_value = meta
 
             result = self.splitter.get_result_metadata('uri')
 
-        m.assert_called_once_with()
+        m.assert_called_once_with(
+            video_playlist='source-video.m3u8',
+            audio_file='source-audio.mkv',
+        )
         m.return_value.get_meta_data.assert_called_once_with('uri')
         self.assertEqual(result, self.meta)
 
@@ -260,7 +263,7 @@ class SplitterTestCase(ProcessorBaseTestCase):
             '-map', '0:a:0',
             '-c:a:0', 'copy',
             '-vn',
-            '-f', 'mkv',
+            '-f', 'matroska',
             '-copyts', '-avoid_negative_ts', 'disabled',
             '/dst/source-audio.mkv',
         ]
@@ -281,7 +284,7 @@ class SegmentorTestCase(ProcessorBaseTestCase):
 
     def test_get_result_metadata(self):
         target = 'video_transcoding.transcoding.extract.HLSExtractor'
-        with mock.patch(target) as m:
+        with mock.patch(target, autospec=True) as m:
             m.return_value.get_meta_data.return_value = self.meta
 
             result = self.segmentor.get_result_metadata('uri')

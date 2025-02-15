@@ -99,7 +99,8 @@ class Transcoder(Processor):
                          dst: outputs.Output) -> SIMD:
         # ffmpeg wrapper with vectorized processing capabilities
         simd = SIMD(source, dst,
-                    overwrite=True, loglevel='repeat+level+info')
+                    overwrite=True,
+                    loglevel='repeat+level+info')
         # per-video-track scaling
         scaling_params = [
             (video.width, video.height) for video in self.profile.video
@@ -161,7 +162,10 @@ class Splitter(Processor):
         self.source_audio = source_audio
 
     def get_result_metadata(self, uri: str) -> Metadata:
-        dst = extract.SplitExtractor().get_meta_data(uri)
+        extractor = extract.SplitExtractor(
+            video_playlist=self.source_video_playlist,
+            audio_file=self.source_audio)
+        dst = extractor.get_meta_data(uri)
         # Mediainfo takes metadata from first HLS chunk in a playlist, so
         # we need to force some fields from source metadata
         if len(self.meta.videos) != len(dst.videos):  # pragma: no cover
@@ -180,7 +184,9 @@ class Splitter(Processor):
         audio_codecs = [source.audio > codecs.Copy(kind=AUDIO)]
         video_out = self.prepare_video_output(video_codecs)
         audio_out = self.prepare_audio_output(audio_codecs)
-        ff = encoding.FFMPEG(input=source, loglevel='level+info')
+        ff = encoding.FFMPEG(input=source,
+                             loglevel='level+info',
+                             overwrite=True)
         ff > video_out
         ff > audio_out
         return ff
@@ -221,7 +227,7 @@ class Splitter(Processor):
         # open list of audio codecs or don't support streaming (require seek).
         return dict(
             codecs=codecs_list,
-            format='mkv',
+            format='matroska',
             avoid_negative_ts='disabled',
             copyts=True,
             output_file=urljoin(self.dst, self.source_audio),
@@ -270,7 +276,8 @@ class Segmentor(Processor):
         out = self.prepare_output(video_codecs + audio_codecs)
         ff = encoding.FFMPEG(input=video_source,
                              output=out,
-                             loglevel='level+info')
+                             loglevel='level+info',
+                             overwrite=True)
         ff.add_input(audio_source)
         return ff
 
