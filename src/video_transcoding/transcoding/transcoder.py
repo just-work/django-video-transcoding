@@ -1,7 +1,7 @@
 import abc
 import os.path
 from itertools import product
-from typing import List, Dict, Any, Literal, cast
+from typing import List, Dict, Any
 from urllib.parse import urljoin
 
 from fffw import encoding
@@ -99,7 +99,8 @@ class Transcoder(Processor):
                          dst: outputs.Output) -> SIMD:
         # ffmpeg wrapper with vectorized processing capabilities
         simd = SIMD(source, dst,
-                    overwrite=True, loglevel='repeat+level+info')
+                    overwrite=True,
+                    loglevel='repeat+level+info')
         # per-video-track scaling
         scaling_params = [
             (video.width, video.height) for video in self.profile.video
@@ -149,8 +150,22 @@ class Splitter(Processor):
     Source splitting logic.
     """
 
+    def __init__(self, src: str, dst: str, *, profile: Profile,
+                 meta: Metadata,
+                 source_video_playlist: str,
+                 source_video_chunk: str,
+                 source_audio: str,
+                 ) -> None:
+        super().__init__(src, dst, profile=profile, meta=meta)
+        self.source_video_playlist = source_video_playlist
+        self.source_video_chunk = source_video_chunk
+        self.source_audio = source_audio
+
     def get_result_metadata(self, uri: str) -> Metadata:
-        dst = extract.SplitExtractor().get_meta_data(uri)
+        extractor = extract.SplitExtractor(
+            video_playlist=self.source_video_playlist,
+            audio_file=self.source_audio)
+        dst = extractor.get_meta_data(uri)
         # Mediainfo takes metadata from first HLS chunk in a playlist, so
         # we need to force some fields from source metadata
         if len(self.meta.videos) != len(dst.videos):  # pragma: no cover
@@ -167,29 +182,55 @@ class Splitter(Processor):
         source = inputs.input_file(self.src, *src.streams)
         video_codecs = [source.video > codecs.Copy(kind=VIDEO)]
         audio_codecs = [source.audio > codecs.Copy(kind=AUDIO)]
-        video_out = self.prepare_output(video_codecs)
-        audio_out = self.prepare_output(audio_codecs)
-        ff = encoding.FFMPEG(input=source, loglevel='level+info')
+        video_out = self.prepare_video_output(video_codecs)
+        audio_out = self.prepare_audio_output(audio_codecs)
+        ff = encoding.FFMPEG(input=source,
+                             loglevel='level+info',
+                             overwrite=True)
         ff > video_out
         ff > audio_out
         return ff
 
-    def prepare_output(self, codecs_list: List[encoding.Codec]) -> encoding.Output:
-        return outputs.SegmentOutput(**self.get_output_kwargs(codecs_list))
+    def prepare_video_output(self, codecs_list: List[encoding.Codec]
+                             ) -> encoding.Output:
+        return outputs.SegmentOutput(
+            **self.get_video_output_kwargs(codecs_list)
+        )
 
-    def get_output_kwargs(self, codecs_list: List[encoding.Codec]) -> Dict[str, Any]:
-        kinds = {c.kind for c in codecs_list}
-        kind = cast(Literal["video", "audio"], kinds.pop().name.lower())
+    def prepare_audio_output(self, codecs_list: List[encoding.Codec]
+                             ) -> encoding.Output:
+        return outputs.FileOutput(
+            **self.get_audio_output_kwargs(codecs_list)
+        )
+
+    def get_video_output_kwargs(self, codecs_list: List[encoding.Codec]
+                                ) -> Dict[str, Any]:
         return dict(
             codecs=codecs_list,
             format='stream_segment',
             segment_format='mkv',
             avoid_negative_ts='disabled',
             copyts=True,
-            segment_list=urljoin(self.dst, f'source-{kind}.m3u8'),
+            segment_list=urljoin(self.dst, self.source_video_playlist),
             segment_list_type='m3u8',
             segment_time=defaults.VIDEO_CHUNK_DURATION,
-            output_file=urljoin(self.dst, f'source-{kind}-%05d.mkv'),
+            output_file=urljoin(self.dst, self.source_video_chunk),
+        )
+
+    def get_audio_output_kwargs(self, codecs_list: List[encoding.Codec]
+                                ) -> Dict[str, Any]:
+        # Splitting audio stream into MKV with segment muxer produces read
+        # errors in mkv demuxer (File extends beyond end of segment), so
+        # copy source stream into universal streaming container without
+        # splitting to chunks.
+        # NUT muxer does not work correctly either, others don't support
+        # open list of audio codecs or don't support streaming (require seek).
+        return dict(
+            codecs=codecs_list,
+            format='matroska',
+            avoid_negative_ts='disabled',
+            copyts=True,
+            output_file=urljoin(self.dst, self.source_audio),
         )
 
 
@@ -211,8 +252,7 @@ class Segmentor(Processor):
 
     def prepare_ffmpeg(self, src: Metadata) -> encoding.FFMPEG:
         video_streams = [s for s in src.streams if s.kind == VIDEO]
-        video_source = inputs.input_file(self.src, *video_streams,
-                                         allowed_extensions='mkv')
+        video_source = inputs.input_file(self.src, *video_streams)
         video_codecs = [s > codecs.Copy(kind=VIDEO, bitrate=s.meta.bitrate)
                         for s in video_source.streams
                         if s.kind == VIDEO]
@@ -235,7 +275,8 @@ class Segmentor(Processor):
         out = self.prepare_output(video_codecs + audio_codecs)
         ff = encoding.FFMPEG(input=video_source,
                              output=out,
-                             loglevel='level+info')
+                             loglevel='level+info',
+                             overwrite=True)
         ff.add_input(audio_source)
         return ff
 

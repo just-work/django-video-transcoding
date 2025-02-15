@@ -127,7 +127,11 @@ class VideoResultExtractorTestCase(MKVVideoSegmentTestsMixin,
 
 class SplitExtractorTestCase(ExtractorBaseTestCase):
     analyzer = 'MKVPlaylistAnalyzer'
-    extractor_class = extract.SplitExtractor
+
+    @staticmethod
+    def extractor_class():
+        return extract.SplitExtractor(video_playlist='source-video.m3u8',
+                                      audio_file='source-audio.mkv')
 
     def test_extract(self):
         self.video_meta = [s.meta for s in self.meta.streams if s.kind == VIDEO]
@@ -140,7 +144,7 @@ class SplitExtractorTestCase(ExtractorBaseTestCase):
         kw = dict(timeout=60.0, allowed_extensions='mkv')
         self.ffprobe_mock.assert_has_calls([
             mock.call('/dir/source-video.m3u8', **kw),
-            mock.call('/dir/source-audio.m3u8', **kw),
+            mock.call('/dir/source-audio.mkv', **kw),
         ])
         self.analyze_mock.assert_has_calls([mock.call(), mock.call()])
         self.meta.uri = '/dir/split.json'

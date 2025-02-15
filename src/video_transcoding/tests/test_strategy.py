@@ -186,7 +186,7 @@ class ResumableStrategyTestCase(base.ProfileMixin, base.MetadataMixin,
 
     def test_analyze_source_call(self):
         t = 'video_transcoding.transcoding.extract.SourceExtractor'
-        with mock.patch(t) as m:
+        with mock.patch(t, autospec=True) as m:
             m.return_value.get_meta_data.return_value = mock.sentinel.rv
             src = self.strategy._analyze_source()
         self.assertEqual(src, mock.sentinel.rv)
@@ -255,15 +255,20 @@ class ResumableStrategyTestCase(base.ProfileMixin, base.MetadataMixin,
         split = self.make_meta(30.0)
         t = 'video_transcoding.transcoding.transcoder.Splitter'
         self.strategy.profile = self.profile
-        with mock.patch(t) as m:
+
+        with mock.patch(t, autospec=True) as m:
             m.return_value.return_value = split
             result = self.strategy._split(src)
         self.assertEqual(result, split)
+
         m.assert_called_once_with(
             self.strategy.source_uri,
             'memory:tmp-basename/sources/split.json',
             profile=self.profile,
-            meta=src
+            meta=src,
+            source_video_playlist='source-video.m3u8',
+            source_video_chunk='source-video-%05d.mkv',
+            source_audio='source-audio.mkv'
         )
         m.return_value.assert_called_once_with()
 
@@ -275,7 +280,8 @@ class ResumableStrategyTestCase(base.ProfileMixin, base.MetadataMixin,
             ''  # another comment',
             's2',
         ))
-        self.tmp_ws.tree['tmp-basename']['sources']['source-video.m3u8'] = content
+        sources = self.tmp_ws.tree['tmp-basename']['sources']
+        sources['source-video.m3u8'] = content
         segments = self.strategy.get_segment_list()
         self.assertListEqual(segments, ['s1', 's2'])
 
@@ -309,13 +315,14 @@ class ResumableStrategyTestCase(base.ProfileMixin, base.MetadataMixin,
         with (
             mock.patch.object(self.strategy, 'get_segment_meta',
                               return_value=src) as m,
-            mock.patch(target) as t
+            mock.patch(target, autospec=True) as t
         ):
             t.return_value.return_value = dst
 
             result = self.strategy._process_segment('s1')
 
-        m.assert_called_once_with(workspace.File('tmp-basename', 'sources', 's1'))
+        m.assert_called_once_with(
+            workspace.File('tmp-basename', 'sources', 's1'))
         t.assert_called_once_with(
             'memory:tmp-basename/sources/s1',
             'memory:tmp-basename/results/s1',
@@ -333,7 +340,7 @@ class ResumableStrategyTestCase(base.ProfileMixin, base.MetadataMixin,
             mock.patch.object(
                 self.strategy, 'write_concat_file',
                 return_value='memory:tmp-basename/results/concat.ffconcat') as m,
-            mock.patch(target) as t
+            mock.patch(target, autospec=True) as t
         ):
             t.return_value.return_value = dst
             result = self.strategy.merge(['s1', 's2'], src)
@@ -341,7 +348,7 @@ class ResumableStrategyTestCase(base.ProfileMixin, base.MetadataMixin,
         m.assert_called_once_with(['s1', 's2'])
         t.assert_called_once_with(
             video_source='memory:tmp-basename/results/concat.ffconcat',
-            audio_source='memory:tmp-basename/sources/source-audio.m3u8',
+            audio_source='memory:tmp-basename/sources/source-audio.mkv',
             dst='memory:dst-basename/index.m3u8',
             profile=self.profile,
             meta=src
@@ -363,7 +370,7 @@ class ResumableStrategyTestCase(base.ProfileMixin, base.MetadataMixin,
         src = workspace.File('tmp-basename', 'sources', 's1')
         meta = self.make_meta(30.0)
         target = 'video_transcoding.transcoding.extract.VideoSegmentExtractor'
-        with mock.patch(target) as m:
+        with mock.patch(target, autospec=True) as m:
             m.return_value.get_meta_data.return_value = meta
             result = self.strategy.get_segment_meta(src)
         m.assert_called_once_with()

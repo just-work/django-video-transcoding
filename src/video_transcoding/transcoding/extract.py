@@ -64,10 +64,15 @@ class SplitExtractor(MKVExtractor):
     Extracts source metadata from video and audio HLS playlists.
     """
 
+    def __init__(self, video_playlist: str, audio_file: str) -> None:
+        super().__init__()
+        self.video_playlist = video_playlist
+        self.audio_file = audio_file
+
     def get_meta_data(self, uri: str) -> Metadata:
-        video_uri = uri.replace('/split.json', '/source-video.m3u8')
+        video_uri = uri.replace('/split.json', f'/{self.video_playlist}')
         video_streams = analysis.MKVPlaylistAnalyzer(self.ffprobe(video_uri)).analyze()
-        audio_uri = uri.replace('/split.json', '/source-audio.m3u8')
+        audio_uri = uri.replace('/split.json', f'/{self.audio_file}')
         audio_streams = analysis.MKVPlaylistAnalyzer(self.ffprobe(audio_uri)).analyze()
         return Metadata(
             uri=uri,

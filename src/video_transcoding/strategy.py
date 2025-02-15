@@ -147,11 +147,18 @@ class ResumableStrategy(Strategy):
         return self.sources.file('source-video.m3u8')
 
     @property
-    def audio_playlist_file(self) -> workspace.File:
+    def video_chunk_file(self) -> workspace.File:
         """
-        :return: An m3u8 playlist file for transcoded audio.
+        :return: An mkv chunk for m3u8 playlist for split video source.
         """
-        return self.sources.file('source-audio.m3u8')
+        return self.sources.file('source-video-%05d.mkv')
+
+    @property
+    def audio_file(self) -> workspace.File:
+        """
+        :return: An mkv file with extracted source audio.
+        """
+        return self.sources.file('source-audio.mkv')
 
     @property
     def manifest_uri(self) -> str:
@@ -331,6 +338,9 @@ class ResumableStrategy(Strategy):
             destination.geturl(),
             profile=self.profile,
             meta=src,
+            source_video_playlist=self.video_playlist_file.basename,
+            source_video_chunk=self.video_chunk_file.basename,
+            source_audio=self.audio_file.basename,
         )
         return split()
 
@@ -403,7 +413,7 @@ class ResumableStrategy(Strategy):
         src = self.write_concat_file(segments)
         dst = self.manifest_uri
         self.logger.debug("Segmenting %s to %s", src, dst)
-        audio = self.ws.get_absolute_uri(self.audio_playlist_file).geturl()
+        audio = self.ws.get_absolute_uri(self.audio_file).geturl()
         segment = transcoder.Segmentor(
             video_source=src,
             audio_source=audio,
