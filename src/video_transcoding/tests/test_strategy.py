@@ -280,8 +280,8 @@ class ResumableStrategyTestCase(base.ProfileMixin, base.MetadataMixin,
             ''  # another comment',
             's2',
         ))
-        self.tmp_ws.tree['tmp-basename']['sources'][
-            'source-video.m3u8'] = content
+        sources = self.tmp_ws.tree['tmp-basename']['sources']
+        sources['source-video.m3u8'] = content
         segments = self.strategy.get_segment_list()
         self.assertListEqual(segments, ['s1', 's2'])
 
