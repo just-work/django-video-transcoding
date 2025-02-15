@@ -1,7 +1,7 @@
 import abc
 import os.path
 from itertools import product
-from typing import List, Dict, Any, Literal, cast
+from typing import List, Dict, Any
 from urllib.parse import urljoin
 
 from fffw import encoding
@@ -167,29 +167,47 @@ class Splitter(Processor):
         source = inputs.input_file(self.src, *src.streams)
         video_codecs = [source.video > codecs.Copy(kind=VIDEO)]
         audio_codecs = [source.audio > codecs.Copy(kind=AUDIO)]
-        video_out = self.prepare_output(video_codecs)
-        audio_out = self.prepare_output(audio_codecs)
+        video_out = self.prepare_video_output(video_codecs)
+        audio_out = self.prepare_audio_output(audio_codecs)
         ff = encoding.FFMPEG(input=source, loglevel='level+info')
         ff > video_out
         ff > audio_out
         return ff
 
-    def prepare_output(self, codecs_list: List[encoding.Codec]) -> encoding.Output:
-        return outputs.SegmentOutput(**self.get_output_kwargs(codecs_list))
+    def prepare_video_output(self, codecs_list: List[encoding.Codec]
+                             ) -> encoding.Output:
+        return outputs.SegmentOutput(
+            **self.get_video_output_kwargs(codecs_list)
+        )
 
-    def get_output_kwargs(self, codecs_list: List[encoding.Codec]) -> Dict[str, Any]:
-        kinds = {c.kind for c in codecs_list}
-        kind = cast(Literal["video", "audio"], kinds.pop().name.lower())
+    def prepare_audio_output(self, codecs_list: List[encoding.Codec]
+                             ) -> encoding.Output:
+        return outputs.FileOutput(
+            **self.get_audio_output_kwargs(codecs_list)
+        )
+
+    def get_video_output_kwargs(self, codecs_list: List[encoding.Codec]
+                                ) -> Dict[str, Any]:
         return dict(
             codecs=codecs_list,
             format='stream_segment',
             segment_format='mkv',
             avoid_negative_ts='disabled',
             copyts=True,
-            segment_list=urljoin(self.dst, f'source-{kind}.m3u8'),
+            segment_list=urljoin(self.dst, f'source-video.m3u8'),
             segment_list_type='m3u8',
             segment_time=defaults.VIDEO_CHUNK_DURATION,
-            output_file=urljoin(self.dst, f'source-{kind}-%05d.mkv'),
+            output_file=urljoin(self.dst, f'source-video-%05d.mkv'),
+        )
+
+    def get_audio_output_kwargs(self, codecs_list: List[encoding.Codec]
+                                ) -> Dict[str, Any]:
+        return dict(
+            codecs=codecs_list,
+            format='mkv',
+            avoid_negative_ts='disabled',
+            copyts=True,
+            output_file=urljoin(self.dst, f'source-audio.mkv'),
         )
 
 

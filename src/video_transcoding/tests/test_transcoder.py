@@ -257,13 +257,9 @@ class SplitterTestCase(ProcessorBaseTestCase):
             '-map', '0:a:0',
             '-c:a:0', 'copy',
             '-vn',
-            '-f', 'stream_segment',
+            '-f', 'mkv',
             '-copyts', '-avoid_negative_ts', 'disabled',
-            '-segment_format', 'mkv',
-            '-segment_list', '/dst/source-audio.m3u8',
-            '-segment_list_type', 'm3u8',
-            '-segment_time', defaults.VIDEO_CHUNK_DURATION,
-            '/dst/source-audio-%05d.mkv',
+            '/dst/source-audio.mkv',
         ]
         self.assertEqual(ff.get_args(), ensure_binary(expected))
 
