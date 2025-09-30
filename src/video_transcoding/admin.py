@@ -48,10 +48,11 @@ class VideoAdmin(admin.ModelAdmin):
 
     @short_description(_('Video player'))
     def video_player(self, obj: models.Video) -> str:
-        if obj.basename is None:
-            return ""
         edge = random.choice(defaults.VIDEO_EDGES)
-        source = obj.format_video_url(edge)
+        try:
+            source = obj.format_video_url(edge)
+        except (ValueError, TypeError, RuntimeError):
+            return ""
         return mark_safe('''
 <video id="video" width="480px" height="270px" controls></video>
 <script>
