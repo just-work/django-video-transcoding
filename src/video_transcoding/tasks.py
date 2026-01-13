@@ -65,7 +65,7 @@ class TranscodeVideo(LoggerMixin, celery.Task):
             meta = self.process_video(video)
             duration = timedelta(seconds=meta['duration'])
         except SoftTimeLimitExceeded as e:
-            self.logger.debug("Received SIGUSR1, return video to queue")
+            self.logger.warning("Received SIGUSR1, return video to queue")
             # celery graceful shutdown
             status = Video.QUEUED
             error = repr(e)
