@@ -330,6 +330,7 @@ class ResumableStrategyTestCase(base.ProfileMixin, base.MetadataMixin,
             meta=src,
             threads=0,
             filter_threads=0,
+            filter_complex_threads=0,
         )
         self.assertEqual(result, dst)
 

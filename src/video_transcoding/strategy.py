@@ -400,6 +400,7 @@ class ResumableStrategy(Strategy):
             meta=meta,
             threads=self.threads,
             filter_threads=self.threads,
+            filter_complex_threads=self.threads,
         )
         meta = transcode()
         self.logger.debug("Transcoded: %s", meta)
