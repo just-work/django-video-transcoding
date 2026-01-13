@@ -398,7 +398,8 @@ class ResumableStrategy(Strategy):
             self.ws.get_absolute_uri(dst).geturl(),
             profile=self.profile,
             meta=meta,
-            threads=self.threads
+            threads=self.threads,
+            filter_threads=self.threads,
         )
         meta = transcode()
         self.logger.debug("Transcoded: %s", meta)

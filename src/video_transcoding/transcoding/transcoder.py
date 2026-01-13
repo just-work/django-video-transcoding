@@ -75,9 +75,9 @@ class Transcoder(Processor):
     def __init__(self, src: str, dst: str, *,
                  profile: Profile,
                  meta: Metadata,
-                 threads: int = 0) -> None:
+                 **kwargs) -> None:
         super().__init__(src, dst, profile=profile, meta=meta)
-        self.threads = threads
+        self.kwargs = kwargs
 
     def get_result_metadata(self, uri: str) -> Metadata:
         dst = extract.VideoResultExtractor().get_meta_data(uri)
@@ -108,7 +108,7 @@ class Transcoder(Processor):
         simd = ffmpeg.SIMD(source, dst,
                            overwrite=True,
                            loglevel='repeat+level+info',
-                           threads=self.threads,
+                           **self.kwargs,
                            )
         # per-video-track scaling
         scaling_params = [

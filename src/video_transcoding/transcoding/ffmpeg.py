@@ -7,6 +7,7 @@ from fffw.wrapper import param
 @dataclass
 class FFMPEG(ffmpeg.FFMPEG):
     threads: int = param(default=0)
+    filter_threads: int = param(default=0)
 
 
 class SIMD(vector.SIMD):
