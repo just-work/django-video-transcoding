@@ -18,9 +18,16 @@ app.autodiscover_tasks(lambda: settings.INSTALLED_APPS)
 @signals.worker_init.connect
 def set_same_process_group(**kwargs: Any) -> None:
     logger = get_logger(app.__module__)
-    os.setpgrp()
-    logger.info("Set process group to %s for %s",
-                os.getpgid(os.getpid()), os.getpid())
+    pid = os.getpid()
+    gid = os.getpgid(pid)
+
+    if gid != pid:
+        os.setpgrp()
+        new_gid = os.getpgid(pid)
+        logger.info("Set process group from %s to %s for %s",
+                    gid, new_gid, pid)
+    else:
+        logger.debug("Process %s group is already %s", pid, gid)
 
 
 # noinspection PyUnusedLocal
