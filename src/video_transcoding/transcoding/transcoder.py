@@ -5,11 +5,11 @@ from typing import List, Dict, Any
 from urllib.parse import urljoin
 
 from fffw import encoding
-from fffw.encoding.vector import SIMD, Vector
+from fffw.encoding.vector import Vector
 from fffw.graph import VIDEO, AUDIO
 
 from video_transcoding import defaults
-from video_transcoding.transcoding import codecs, inputs, outputs, extract
+from video_transcoding.transcoding import codecs, inputs, outputs, extract, ffmpeg
 from video_transcoding.transcoding.metadata import Metadata
 from video_transcoding.transcoding.profiles import Profile
 from video_transcoding.utils import LoggerMixin
@@ -72,6 +72,13 @@ class Transcoder(Processor):
     """
     requires_audio = False
 
+    def __init__(self, src: str, dst: str, *,
+                 profile: Profile,
+                 meta: Metadata,
+                 threads: int = 0) -> None:
+        super().__init__(src, dst, profile=profile, meta=meta)
+        self.threads = threads
+
     def get_result_metadata(self, uri: str) -> Metadata:
         dst = extract.VideoResultExtractor().get_meta_data(uri)
         return dst
@@ -96,11 +103,13 @@ class Transcoder(Processor):
     def scale_and_encode(self,
                          source: inputs.Input,
                          video_codecs: List[codecs.VideoCodec],
-                         dst: outputs.Output) -> SIMD:
+                         dst: outputs.Output) -> ffmpeg.SIMD:
         # ffmpeg wrapper with vectorized processing capabilities
-        simd = SIMD(source, dst,
-                    overwrite=True,
-                    loglevel='repeat+level+info')
+        simd = ffmpeg.SIMD(source, dst,
+                           overwrite=True,
+                           loglevel='repeat+level+info',
+                           threads=self.threads,
+                           )
         # per-video-track scaling
         scaling_params = [
             (video.width, video.height) for video in self.profile.video

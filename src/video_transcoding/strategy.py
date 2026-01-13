@@ -24,6 +24,7 @@ class Strategy(LoggerMixin, abc.ABC):
                  source_uri: str,
                  basename: str,
                  preset: profiles.Preset,
+                 threads: int = 0
                  ) -> None:
         """
 
@@ -41,6 +42,7 @@ class Strategy(LoggerMixin, abc.ABC):
         self.source_uri = source_uri
         self.basename = basename
         self.preset = preset
+        self.threads = threads
 
     def __call__(self) -> metadata.Metadata:
         """
@@ -114,8 +116,9 @@ class ResumableStrategy(Strategy):
                  source_uri: str,
                  basename: str,
                  preset: profiles.Preset,
+                 threads: int = 0
                  ) -> None:
-        super().__init__(source_uri, basename, preset)
+        super().__init__(source_uri, basename, preset, threads)
 
         root = defaults.VIDEO_TEMP_URI.rstrip('/')
         base = f'{root}/{basename}/'
@@ -395,6 +398,7 @@ class ResumableStrategy(Strategy):
             self.ws.get_absolute_uri(dst).geturl(),
             profile=self.profile,
             meta=meta,
+            threads=self.threads
         )
         meta = transcode()
         self.logger.debug("Transcoded: %s", meta)

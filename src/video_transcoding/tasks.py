@@ -199,6 +199,7 @@ class TranscodeVideo(LoggerMixin, celery.Task):
             source_uri=source_uri,
             basename=basename,
             preset=preset,
+            threads=defaults.VIDEO_TRANSCODING_THREADS,
         )
 
     @staticmethod

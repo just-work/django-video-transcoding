@@ -62,6 +62,9 @@ VIDEO_REQUEST_TIMEOUT = float(e('VIDEO_REQUEST_TIMEOUT', 1))
 # Processing segment duration
 VIDEO_CHUNK_DURATION = int(e('VIDEO_CHUNK_DURATION', 60))
 
+# ffmpeg transcode threads limit
+VIDEO_TRANSCODING_THREADS = int(e('VIDEO_TRANSCODING_THREADS', 0))
+
 VIDEO_MODEL = 'video_transcoding.Video'
 
 _default_config = locals()

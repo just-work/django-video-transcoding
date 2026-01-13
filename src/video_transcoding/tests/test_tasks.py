@@ -298,6 +298,7 @@ class ProcessVideoTestCase(base.MetadataMixin, base.BaseTestCase):
             source_uri=self.video.source,
             basename=self.video.basename.hex,
             preset=tasks.transcode_video.init_preset(self.video.preset),
+            threads=0
         )
         self.strategy_mock.return_value.assert_called_once_with()
 
