@@ -43,7 +43,7 @@ class TranscodeVideo(LoggerMixin, celery.Task):
         if isinstance(exc, self.infinite_retry_for):
             # increment max_retries by one to achieve unlimited retries
             # for infrastructure errors
-            max_retries = (max_retries or self.max_retries) + 1
+            max_retries = (max_retries or self.max_retries) + self.request.retries
         return super().retry(args, kwargs, exc, throw, eta, countdown,
                              max_retries, **options)
 
