@@ -28,7 +28,7 @@ class TranscodeVideo(LoggerMixin, celery.Task):
     """ Video processing task."""
     routing_key = 'video_transcoding'
     autoretry_for = (OperationalError,)
-    inifinite_retry_for = (OperationalError,)
+    infinite_retry_for = (OperationalError, SoftTimeLimitExceeded)
     retry_backoff = True
 
     def retry(self,
@@ -40,7 +40,7 @@ class TranscodeVideo(LoggerMixin, celery.Task):
               countdown: Optional[Union[float, int]] = None,
               max_retries: Optional[int] = None,
               **options: Any) -> Any:
-        if isinstance(exc, self.inifinite_retry_for):
+        if isinstance(exc, self.infinite_retry_for):
             # increment max_retries by one to achieve unlimited retries
             # for infrastructure errors
             max_retries = (max_retries or self.max_retries) + 1
@@ -69,7 +69,7 @@ class TranscodeVideo(LoggerMixin, celery.Task):
             # celery graceful shutdown
             status = Video.QUEUED
             error = repr(e)
-            raise self.retry(countdown=10)
+            raise self.retry(countdown=10, exc=e)
         except Exception as e:
             status = Video.ERROR
             error = repr(e)
