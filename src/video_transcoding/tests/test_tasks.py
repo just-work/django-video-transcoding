@@ -150,7 +150,11 @@ class TranscodeTaskVideoStateTestCase(base.BaseTestCase):
         self.video.refresh_from_db()
         self.assertEqual(self.video.status, models.Video.QUEUED)
         self.assertEqual(self.video.error, repr(exc))
-        self.retry_mock.assert_called_once_with(countdown=10, exc=SoftTimeLimitExceeded())
+        self.retry_mock.assert_called_once()
+        args, kwargs = self.retry_mock.call_args
+        self.assertFalse(args)
+        self.assertEqual(kwargs['countdown'], 10)
+        self.assertIsInstance(kwargs['exc'], SoftTimeLimitExceeded)
 
     def test_init_preset_default(self):
         preset = tasks.transcode_video.init_preset(None)
