@@ -155,6 +155,7 @@ class TranscodeTaskVideoStateTestCase(base.BaseTestCase):
         self.assertFalse(args)
         self.assertEqual(kwargs['countdown'], 10)
         self.assertIsInstance(kwargs['exc'], SoftTimeLimitExceeded)
+        self.assertSetEqual(set(kwargs), {'countdown', 'exc'})
 
     def test_init_preset_default(self):
         preset = tasks.transcode_video.init_preset(None)
