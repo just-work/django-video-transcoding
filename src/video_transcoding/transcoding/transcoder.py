@@ -213,9 +213,28 @@ class Splitter(Processor):
             copyts=True,
             segment_list=urljoin(self.dst, self.source_video_playlist),
             segment_list_type='m3u8',
-            segment_time=defaults.VIDEO_CHUNK_DURATION,
+            segment_time=self.align_chunk_duration(),
             output_file=urljoin(self.dst, self.source_video_chunk),
         )
+
+    def align_chunk_duration(self) -> float:
+        """
+        Aligns chunk duration with source duration.
+
+        This prevents arrival of empty last chunk.
+
+        Example:
+
+        600.1 / 60 = 10 chunks plus one last 0.1 second chunks.
+        Aligned chunk duration will be 630.1 / 10 = 63.01 seconds
+        So, 600.1 / 63.01 will be 9.52 chunks.
+        """
+        segment = defaults.VIDEO_CHUNK_DURATION
+        duration = self.meta.streams[0].meta.duration
+        chunks = duration // segment
+        aligned = duration + segment * 0.5
+        return round(aligned / chunks, 3)
+
 
     def get_audio_output_kwargs(self, codecs_list: List[encoding.Codec]
                                 ) -> Dict[str, Any]:

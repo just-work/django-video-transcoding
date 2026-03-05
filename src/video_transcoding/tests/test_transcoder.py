@@ -246,6 +246,12 @@ class SplitterTestCase(ProcessorBaseTestCase):
     def test_prepare_ffmpeg(self):
         ff = self.splitter.prepare_ffmpeg(self.meta)
 
+        segment = defaults.VIDEO_CHUNK_DURATION
+        duration = self.meta.streams[0].meta.duration
+        chunks = duration // segment
+        aligned = duration + segment / 2
+        segment_time = round(aligned / chunks, 3)
+
         # ffmpeg
         expected = [
             '-loglevel', 'level+info', '-y',
@@ -258,7 +264,7 @@ class SplitterTestCase(ProcessorBaseTestCase):
             '-segment_format', 'mkv',
             '-segment_list', '/dst/source-video.m3u8',
             '-segment_list_type', 'm3u8',
-            '-segment_time', defaults.VIDEO_CHUNK_DURATION,
+            '-segment_time', segment_time,
             '/dst/source-video-%05d.mkv',
             '-map', '0:a:0',
             '-c:a:0', 'copy',
